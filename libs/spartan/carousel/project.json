@@ -1,0 +1,27 @@
+{
+  "name": "carousel",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/carousel/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/carousel/ng-package.json",
+        "tsConfig": "libs/spartan/carousel/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/carousel/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

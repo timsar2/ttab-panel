@@ -21,6 +21,14 @@ export default [
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
           depConstraints: [
             {
+              sourceTag: 'scope:panel',
+              onlyDependOnLibsWithTags: ['scope:panel', 'scope:ui', 'scope:shared'],
+            },
+            {
+              sourceTag: 'scope:ui',
+              onlyDependOnLibsWithTags: ['scope:ui'],
+            },
+            {
               sourceTag: 'scope:shared',
               onlyDependOnLibsWithTags: ['scope:shared'],
             },

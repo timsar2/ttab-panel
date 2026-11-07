@@ -1,0 +1,27 @@
+{
+  "name": "typography",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/typography/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/typography/ng-package.json",
+        "tsConfig": "libs/spartan/typography/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/typography/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "date-picker",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/date-picker/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/date-picker/ng-package.json",
+        "tsConfig": "libs/spartan/date-picker/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/date-picker/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

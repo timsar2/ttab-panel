@@ -1,0 +1,27 @@
+{
+  "name": "attachment",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/attachment/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/attachment/ng-package.json",
+        "tsConfig": "libs/spartan/attachment/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/attachment/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

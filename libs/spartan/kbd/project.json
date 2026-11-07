@@ -1,0 +1,27 @@
+{
+  "name": "kbd",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/kbd/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/kbd/ng-package.json",
+        "tsConfig": "libs/spartan/kbd/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/kbd/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

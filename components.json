@@ -1,0 +1,7 @@
+{
+  "componentsPath": "libs/spartan",
+  "buildable": true,
+  "generateAs": "library",
+  "importAlias": "@spartan-ng/helm",
+  "style": "nova"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "message-scroller",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/message-scroller/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/message-scroller/ng-package.json",
+        "tsConfig": "libs/spartan/message-scroller/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/message-scroller/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

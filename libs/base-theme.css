@@ -1,0 +1,300 @@
+/*
+ * MSY design tokens — shared base theme for every app.
+ *
+ * Layered tokens (pragmatic 3-layer):
+ *
+ *   primitives: --color-indigo-* / --color-copper-* / --slate-* / --emerald-* / --amber-* / --rose-* / --sky-*
+ *   semantic:   --primary / --accent / --background / --surface / --success / --warning / --destructive / --info
+ *   component:  --sidebar / --card / --ring / …
+ *
+ * Color values use OKLCH for perceptual uniformity. The same hue stays
+ * recognizable across light + dark. The spartan `hlm-tailwind-preset.css`
+ * already wires the `--background / --foreground / --primary / …` variables
+ * into Tailwind utilities, so we extend instead of redefining.
+ *
+ * Typography is RTL/Persian first with a Latin fallback (`Vazirmatn` ships
+ * with both glyphs). Apply the family globally so numbers stay readable in
+ * mixed-language cards (Farsi + Latin company names).
+ */
+
+:root {
+  color-scheme: light;
+
+  /* ---------------------------------------------------------------- */
+  /*  Typography                                                       */
+  /* ---------------------------------------------------------------- */
+  --font-sans:
+    'Vazirmatn Variable', 'Vazirmatn', 'IRANSansX', 'Segoe UI', 'Inter',
+    -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif,
+    'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-serif: 'Vazirmatn', 'Amiri', 'Times New Roman', serif;
+  --font-mono:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+
+  /* ---------------------------------------------------------------- */
+  /*  Primitives — institutional indigo + warm copper accent           */
+  /* ---------------------------------------------------------------- */
+  --slate-50: oklch(0.985 0.005 250);
+  --slate-100: oklch(0.965 0.008 250);
+  --slate-200: oklch(0.92 0.012 250);
+  --slate-300: oklch(0.86 0.015 250);
+  --slate-400: oklch(0.7 0.02 250);
+  --slate-500: oklch(0.55 0.025 250);
+  --slate-600: oklch(0.42 0.03 250);
+  --slate-700: oklch(0.32 0.035 250);
+  --slate-800: oklch(0.22 0.04 250);
+  --slate-900: oklch(0.16 0.04 250);
+  --slate-950: oklch(0.11 0.035 250);
+
+  --indigo-50: oklch(0.97 0.018 256);
+  --indigo-100: oklch(0.93 0.04 256);
+  --indigo-200: oklch(0.86 0.08 256);
+  --indigo-300: oklch(0.76 0.13 256);
+  --indigo-400: oklch(0.66 0.18 256);
+  --indigo-500: oklch(0.58 0.21 256);
+  --indigo-600: oklch(0.5 0.22 256);
+  --indigo-700: oklch(0.42 0.2 256);
+  --indigo-800: oklch(0.34 0.17 256);
+  --indigo-900: oklch(0.26 0.13 256);
+
+  --copper-50: oklch(0.97 0.02 50);
+  --copper-100: oklch(0.93 0.05 50);
+  --copper-200: oklch(0.86 0.09 50);
+  --copper-300: oklch(0.78 0.13 50);
+  --copper-400: oklch(0.7 0.16 50);
+  --copper-500: oklch(0.62 0.17 50);
+  --copper-600: oklch(0.52 0.16 50);
+  --copper-700: oklch(0.42 0.14 50);
+
+  --emerald-50: oklch(0.97 0.02 158);
+  --emerald-100: oklch(0.93 0.06 158);
+  --emerald-500: oklch(0.62 0.16 158);
+  --emerald-600: oklch(0.52 0.15 158);
+  --emerald-700: oklch(0.42 0.13 158);
+
+  --amber-50: oklch(0.98 0.03 80);
+  --amber-100: oklch(0.95 0.08 80);
+  --amber-500: oklch(0.78 0.16 80);
+  --amber-600: oklch(0.66 0.16 80);
+  --amber-700: oklch(0.52 0.14 80);
+
+  --rose-50: oklch(0.97 0.02 22);
+  --rose-100: oklch(0.93 0.06 22);
+  --rose-500: oklch(0.62 0.22 22);
+  --rose-600: oklch(0.52 0.21 22);
+  --rose-700: oklch(0.42 0.18 22);
+
+  --sky-50: oklch(0.97 0.02 232);
+  --sky-500: oklch(0.62 0.15 232);
+  --sky-600: oklch(0.52 0.15 232);
+  --sky-700: oklch(0.42 0.13 232);
+
+  /* ---------------------------------------------------------------- */
+  /*  Semantic tokens (light mode)                                     */
+  /* ---------------------------------------------------------------- */
+  --radius: 0.875rem;
+
+  /* surfaces — warm off-white for a premium feel */
+  --background: oklch(0.985 0.005 90);
+  --foreground: oklch(0.18 0.025 256);
+  --surface: oklch(1 0 0);
+  --surface-muted: oklch(0.965 0.008 250);
+  --surface-elevated: oklch(1 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.025 256);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.025 256);
+  --muted: oklch(0.96 0.01 250);
+  --muted-foreground: oklch(0.46 0.03 250);
+
+  /* primary — deep institutional indigo */
+  --primary: var(--indigo-700);
+  --primary-hover: var(--indigo-800);
+  --primary-active: var(--indigo-900);
+  --primary-foreground: oklch(0.99 0.005 256);
+  --primary-soft: var(--indigo-50);
+
+  /* secondary — cooler steel */
+  --secondary: oklch(0.94 0.015 240);
+  --secondary-foreground: var(--indigo-800);
+
+  /* accent — warm copper reserved for highlights & active state */
+  --accent: oklch(0.94 0.04 50);
+  --accent-foreground: var(--copper-700);
+  --accent-strong: var(--copper-600);
+
+  /* semantic status colors */
+  --success: var(--emerald-600);
+  --success-foreground: oklch(0.99 0.005 158);
+  --success-soft: var(--emerald-50);
+  --warning: var(--amber-600);
+  --warning-foreground: oklch(0.28 0.06 80);
+  --warning-soft: var(--amber-50);
+  --destructive: var(--rose-600);
+  --destructive-foreground: oklch(0.99 0.005 22);
+  --destructive-soft: var(--rose-50);
+  --info: var(--sky-600);
+  --info-foreground: oklch(0.99 0.005 232);
+  --info-soft: var(--sky-50);
+
+  /* borders & focus ring */
+  --border: oklch(0.91 0.012 250);
+  --input: oklch(0.91 0.012 250);
+  --ring: oklch(0.58 0.21 256 / 45%);
+  --ring-offset: var(--background);
+
+  /* sidebar surfaces — distinctly tinted to separate from page */
+  --sidebar: oklch(0.98 0.01 256);
+  --sidebar-foreground: var(--indigo-900);
+  --sidebar-primary: var(--indigo-700);
+  --sidebar-primary-foreground: oklch(0.99 0.005 256);
+  --sidebar-accent: oklch(0.94 0.04 50);
+  --sidebar-accent-foreground: var(--copper-700);
+  --sidebar-border: oklch(0.9 0.012 256);
+  --sidebar-ring: oklch(0.58 0.21 256 / 45%);
+
+  /* chart palette — uses brand colors for visual coherence */
+  --chart-1: var(--indigo-600);
+  --chart-2: var(--copper-500);
+  --chart-3: var(--emerald-600);
+  --chart-4: var(--amber-500);
+  --chart-5: var(--rose-500);
+  --chart-6: var(--sky-500);
+  --chart-7: var(--indigo-400);
+  --chart-8: var(--copper-400);
+
+  /* elevation tokens (not consumed by Tailwind yet, used by components) */
+  --shadow-xs: 0 1px 2px 0 oklch(0.2 0.04 250 / 0.04);
+  --shadow-sm:
+    0 1px 3px 0 oklch(0.2 0.04 250 / 0.08),
+    0 1px 2px -1px oklch(0.2 0.04 250 / 0.06);
+  --shadow-md:
+    0 4px 12px -2px oklch(0.2 0.04 250 / 0.1),
+    0 2px 6px -2px oklch(0.2 0.04 250 / 0.06);
+  --shadow-lg:
+    0 12px 32px -8px oklch(0.2 0.04 250 / 0.18),
+    0 4px 12px -4px oklch(0.2 0.04 250 / 0.1);
+  --shadow-inner: inset 0 1px 2px 0 oklch(0.2 0.04 250 / 0.08);
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  --background: oklch(0.16 0.025 256);
+  --foreground: oklch(0.97 0.005 256);
+  --surface: oklch(0.21 0.025 256);
+  --surface-muted: oklch(0.18 0.025 256);
+  --surface-elevated: oklch(0.24 0.03 256);
+  --card: oklch(0.21 0.025 256);
+  --card-foreground: oklch(0.97 0.005 256);
+  --popover: oklch(0.21 0.025 256);
+  --popover-foreground: oklch(0.97 0.005 256);
+  --muted: oklch(0.24 0.025 256);
+  --muted-foreground: oklch(0.7 0.02 256);
+
+  --primary: var(--indigo-400);
+  --primary-hover: var(--indigo-300);
+  --primary-active: var(--indigo-200);
+  --primary-foreground: oklch(0.18 0.04 256);
+  --primary-soft: oklch(0.28 0.06 256);
+
+  --secondary: oklch(0.26 0.03 240);
+  --secondary-foreground: oklch(0.95 0.01 256);
+
+  --accent: oklch(0.3 0.06 50);
+  --accent-foreground: oklch(0.96 0.04 50);
+
+  --success: var(--emerald-500);
+  --success-foreground: oklch(0.18 0.04 158);
+  --success-soft: oklch(0.22 0.05 158);
+  --warning: var(--amber-500);
+  --warning-foreground: oklch(0.22 0.06 80);
+  --warning-soft: oklch(0.24 0.06 80);
+  --destructive: var(--rose-500);
+  --destructive-foreground: oklch(0.18 0.04 22);
+  --destructive-soft: oklch(0.24 0.06 22);
+  --info: var(--sky-500);
+  --info-foreground: oklch(0.18 0.04 232);
+  --info-soft: oklch(0.22 0.05 232);
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.58 0.21 256 / 55%);
+  --ring-offset: var(--background);
+
+  --sidebar: oklch(0.18 0.03 256);
+  --sidebar-foreground: oklch(0.95 0.01 256);
+  --sidebar-primary: var(--indigo-400);
+  --sidebar-primary-foreground: oklch(0.18 0.04 256);
+  --sidebar-accent: oklch(0.3 0.06 50);
+  --sidebar-accent-foreground: oklch(0.96 0.04 50);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.58 0.21 256 / 55%);
+
+  --chart-1: var(--indigo-400);
+  --chart-2: var(--copper-400);
+  --chart-3: var(--emerald-500);
+  --chart-4: var(--amber-500);
+  --chart-5: var(--rose-500);
+  --chart-6: var(--sky-500);
+  --chart-7: var(--indigo-300);
+  --chart-8: var(--copper-300);
+}
+
+/*
+ * Expose the extended palette as Tailwind v4 utility colors.
+ * spartan already maps background/foreground/primary/... ;
+ * here we add chart, success, warning, info, plus the copper accent.
+ */
+@theme inline {
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-info-soft: var(--info-soft);
+  --color-accent-strong: var(--accent-strong);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.4);
+}
+
+/* ---------------------------------------------------------------- */
+/*  Global enhancements — applied to every app via styles.css.       */
+/* ---------------------------------------------------------------- */
+html[dir='rtl'] body {
+  font-feature-settings: 'ss01', 'ss02', 'cv01';
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: 'ss01', 'cv11', 'liga';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numerals switch to Persian in Farsi contexts. */
+:lang(fa) {
+  font-feature-settings: 'ss01';
+}

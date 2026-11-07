@@ -1,0 +1,175 @@
+/*
+ * MSY design tokens - colorful, professional palette built on spartan-ng/helm (Nova style).
+ *
+ * Every value is in OKLCH so the same theme re-tints correctly across light and dark.
+ * The base `bg-foreground`, `bg-primary` ... utility classes are wired up automatically
+ * by `@spartan-ng/brain/hlm-tailwind-preset.css`, which reads the `--*` variables below.
+ *
+ * Extra tokens (chart, success, warning, info) are also exposed as Tailwind colors via
+ * the `@theme inline` block at the bottom of this file so you can use
+ * `bg-chart-1`, `text-success`, `ring-warning`, etc. directly in templates.
+ */
+
+@import '../../../libs/base-theme.css';
+
+:root {
+  color-scheme: light;
+
+  --font-mono:
+    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    'Liberation Mono', 'Courier New', monospace;
+
+  --radius: 0.75rem;
+
+  /* surfaces */
+  --background: oklch(0.99 0.005 264);
+  --foreground: oklch(0.18 0.02 264);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 264);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 264);
+
+  /* primary - vivid indigo */
+  --primary: oklch(0.48 0.2 268);
+  --primary-hover: oklch(0.42 0.19 268);
+  --primary-active: oklch(0.38 0.17 268);
+  --primary-soft: oklch(0.96 0.025 268);
+  --primary-foreground: oklch(0.99 0.01 268);
+
+  /* secondary - soft sky */
+  --secondary: oklch(0.96 0.03 240);
+  --secondary-foreground: oklch(0.28 0.08 268);
+
+  /* muted - cool gray with a touch of blue */
+  --muted: oklch(0.96 0.01 260);
+  --muted-foreground: oklch(0.52 0.03 260);
+
+  /* accent - vibrant violet/pink for highlights */
+  --accent: oklch(0.95 0.04 310);
+  --accent-foreground: oklch(0.32 0.14 310);
+  --accent-strong: oklch(0.5 0.18 310);
+
+  /* destructive - warm red */
+  --destructive: oklch(0.56 0.21 27);
+
+  /* borders & focus */
+  --border: oklch(0.92 0.015 260);
+  --input: oklch(0.92 0.015 260);
+  --ring: oklch(0.62 0.2 268 / 60%);
+
+  /* sidebar - subtle indigo tint to distinguish from page */
+  --sidebar: oklch(0.97 0.02 268);
+  --sidebar-foreground: oklch(0.22 0.04 268);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: oklch(0.99 0.01 268);
+  --sidebar-accent: oklch(0.93 0.05 310);
+  --sidebar-accent-foreground: oklch(0.32 0.14 310);
+  --sidebar-border: oklch(0.9 0.02 268);
+  --sidebar-ring: oklch(0.62 0.2 268 / 60%);
+
+  /* extended palette - status & data viz */
+  --success: oklch(0.5 0.14 152);
+  --success-foreground: oklch(0.99 0.01 152);
+  --warning: oklch(0.82 0.16 82);
+  --warning-foreground: oklch(0.28 0.08 82);
+  --info: oklch(0.7 0.15 232);
+  --info-foreground: oklch(0.99 0.01 232);
+  --success-soft: oklch(0.96 0.035 152);
+  --warning-soft: oklch(0.97 0.035 82);
+  --info-soft: oklch(0.96 0.03 232);
+  --destructive-soft: oklch(0.97 0.025 27);
+
+  --chart-1: oklch(0.62 0.22 268);
+  --chart-2: oklch(0.68 0.2 310);
+  --chart-3: oklch(0.72 0.18 152);
+  --chart-4: oklch(0.78 0.17 82);
+  --chart-5: oklch(0.66 0.22 27);
+  --chart-6: oklch(0.68 0.18 200);
+  --chart-7: oklch(0.66 0.2 340);
+  --chart-8: oklch(0.72 0.15 110);
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  --background: oklch(0.16 0.02 264);
+  --foreground: oklch(0.97 0.01 264);
+  --card: oklch(0.21 0.025 264);
+  --card-foreground: oklch(0.97 0.01 264);
+  --popover: oklch(0.21 0.025 264);
+  --popover-foreground: oklch(0.97 0.01 264);
+
+  --primary: oklch(0.72 0.2 268);
+  --primary-hover: oklch(0.77 0.17 268);
+  --primary-active: oklch(0.82 0.13 268);
+  --primary-soft: oklch(0.28 0.07 268);
+  --primary-foreground: oklch(0.18 0.04 268);
+
+  --secondary: oklch(0.28 0.04 268);
+  --secondary-foreground: oklch(0.95 0.01 268);
+
+  --muted: oklch(0.26 0.025 264);
+  --muted-foreground: oklch(0.7 0.02 264);
+
+  --accent: oklch(0.32 0.08 310);
+  --accent-foreground: oklch(0.96 0.03 310);
+  --accent-strong: oklch(0.76 0.17 310);
+
+  --destructive: oklch(0.7 0.2 27);
+
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.72 0.2 268 / 55%);
+
+  --sidebar: oklch(0.19 0.03 268);
+  --sidebar-foreground: oklch(0.95 0.01 268);
+  --sidebar-primary: oklch(0.72 0.2 268);
+  --sidebar-primary-foreground: oklch(0.18 0.04 268);
+  --sidebar-accent: oklch(0.3 0.08 310);
+  --sidebar-accent-foreground: oklch(0.96 0.03 310);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.72 0.2 268 / 55%);
+
+  --success: oklch(0.74 0.18 152);
+  --success-foreground: oklch(0.18 0.04 152);
+  --warning: oklch(0.82 0.16 82);
+  --warning-foreground: oklch(0.22 0.06 82);
+  --info: oklch(0.74 0.15 232);
+  --info-foreground: oklch(0.18 0.04 232);
+  --success-soft: oklch(0.24 0.05 152);
+  --warning-soft: oklch(0.26 0.05 82);
+  --info-soft: oklch(0.24 0.05 232);
+  --destructive-soft: oklch(0.25 0.055 27);
+
+  --chart-1: oklch(0.72 0.2 268);
+  --chart-2: oklch(0.74 0.19 310);
+  --chart-3: oklch(0.78 0.18 152);
+  --chart-4: oklch(0.82 0.17 82);
+  --chart-5: oklch(0.72 0.22 27);
+  --chart-6: oklch(0.74 0.18 200);
+  --chart-7: oklch(0.74 0.2 340);
+  --chart-8: oklch(0.78 0.15 110);
+}
+
+/*
+ * Expose the extended palette as Tailwind v4 utility colors.
+ * The spartan preset already maps background/foreground/primary/etc.;
+ * here we add chart, success, warning, info on top.
+ */
+@theme inline {
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+}

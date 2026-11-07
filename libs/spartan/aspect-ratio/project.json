@@ -1,0 +1,27 @@
+{
+  "name": "aspect-ratio",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/aspect-ratio/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/aspect-ratio/ng-package.json",
+        "tsConfig": "libs/spartan/aspect-ratio/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/aspect-ratio/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

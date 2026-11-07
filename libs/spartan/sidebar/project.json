@@ -1,0 +1,27 @@
+{
+  "name": "sidebar",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/sidebar/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/sidebar/ng-package.json",
+        "tsConfig": "libs/spartan/sidebar/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/sidebar/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

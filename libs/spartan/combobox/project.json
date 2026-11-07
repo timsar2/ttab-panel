@@ -1,0 +1,27 @@
+{
+  "name": "combobox",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/combobox/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/combobox/ng-package.json",
+        "tsConfig": "libs/spartan/combobox/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/combobox/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

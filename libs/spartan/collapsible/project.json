@@ -1,0 +1,27 @@
+{
+  "name": "collapsible",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/collapsible/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/collapsible/ng-package.json",
+        "tsConfig": "libs/spartan/collapsible/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/collapsible/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

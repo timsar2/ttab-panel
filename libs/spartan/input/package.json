@@ -1,0 +1,11 @@
+{
+  "name": "@spartan-ng/helm/input",
+  "version": "0.0.1",
+  "peerDependencies": {
+    "@angular/core": "^22.2.0",
+    "@spartan-ng/brain": "^1.9.0",
+    "@spartan-ng/helm/utils": "0.0.1"
+  },
+  "sideEffects": false,
+  "private": true
+}

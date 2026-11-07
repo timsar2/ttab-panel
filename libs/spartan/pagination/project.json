@@ -1,0 +1,27 @@
+{
+  "name": "pagination",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/pagination/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/pagination/ng-package.json",
+        "tsConfig": "libs/spartan/pagination/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/pagination/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

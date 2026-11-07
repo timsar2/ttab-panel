@@ -1,0 +1,27 @@
+{
+  "name": "code-block",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/code-block/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/code-block/ng-package.json",
+        "tsConfig": "libs/spartan/code-block/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/code-block/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

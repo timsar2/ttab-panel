@@ -1,0 +1,27 @@
+{
+  "name": "navigation-menu",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/navigation-menu/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/navigation-menu/ng-package.json",
+        "tsConfig": "libs/spartan/navigation-menu/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/navigation-menu/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+@import 'tailwindcss' source(none);
+@import '@fontsource-variable/vazirmatn';
+
+@import '@spartan-ng/brain/hlm-tailwind-preset.css';
+
+@import './theme.css';
+
+@source './app';
+@source '../../../libs/spartan/alert';
+@source '../../../libs/spartan/button';
+@source '../../../libs/spartan/card';
+@source '../../../libs/spartan/input';
+@source '../../../libs/spartan/label';
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    min-inline-size: 320px;
+  }
+}

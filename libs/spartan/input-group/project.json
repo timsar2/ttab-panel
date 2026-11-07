@@ -1,0 +1,27 @@
+{
+  "name": "input-group",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/spartan/input-group/src",
+  "prefix": "hlm",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:ng-packagr-lite",
+      "outputs": [
+        "{workspaceRoot}/dist/{projectRoot}"
+      ],
+      "defaultConfiguration": "production",
+      "options": {
+        "project": "libs/spartan/input-group/ng-package.json",
+        "tsConfig": "libs/spartan/input-group/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/spartan/input-group/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      }
+    }
+  }
+}
