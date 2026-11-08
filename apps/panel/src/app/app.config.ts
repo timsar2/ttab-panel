@@ -8,6 +8,7 @@ import {
 import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router'
 import { provideAuth } from '@org/auth-data-access'
 import { AUTH_APPEARANCE, provideAuthFeature } from '@org/auth-feature'
+import { provideTheme, ThemeStore } from '@org/theme'
 import { panelConfig } from './panel.config'
 import { Directionality } from '@angular/cdk/bidi'
 import { AppDirectionality } from './core/preferences/app-directionality'
@@ -24,17 +25,19 @@ export const appConfig: ApplicationConfig = {
     provideZonelessChangeDetection(),
     provideClientHydration(withEventReplay(), withNoHttpTransferCache()),
     provideBrowserGlobalErrorListeners(),
+    provideTheme({ storageKey: 'panel.theme.v1' }),
     provideAuth(panelConfig),
     provideAuthFeature({ brandName: panelConfig.brandName }),
     {
       provide: AUTH_APPEARANCE,
       useFactory: () => {
         const preferences = inject(PreferencesStore)
+        const theme = inject(ThemeStore)
         return {
           direction: preferences.direction,
-          theme: preferences.theme,
+          theme: theme.version,
           toggleDirection: () => preferences.toggleDirection(),
-          toggleTheme: () => preferences.toggleTheme(),
+          toggleTheme: () => theme.set('version', theme.version() === 'light' ? 'dark' : 'light'),
         }
       },
     },

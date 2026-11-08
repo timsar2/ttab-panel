@@ -2,8 +2,14 @@
   "name": "@spartan-ng/helm/native-select",
   "version": "0.0.1",
   "peerDependencies": {
-    "@angular/common": "^22.2.0",
-    "@angular/core": "^22.2.0"
+    "@angular/core": "^22.2.0",
+    "@angular/cdk": "22.0.0",
+    "@angular/forms": "^22.2.0",
+    "@ng-icons/core": "^32.5.0 || ^33.3.0",
+    "@ng-icons/lucide": "^32.5.0 || ^33.3.0",
+    "@spartan-ng/brain": "^1.9.0",
+    "@spartan-ng/helm/utils": "0.0.1",
+    "clsx": "^2.1.1"
   },
   "sideEffects": false,
   "private": true

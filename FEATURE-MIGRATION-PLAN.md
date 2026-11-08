@@ -2,8 +2,9 @@
 
 Source: `../panel` (Angular 15 transport administration).
 Target: `apps/panel` (Angular 22, Nx 24, zoneless).
-Status: reusable foundation implementation started. Theme/settings work remains
-paused until explicitly requested. Future applications must be able to consume
+Status: reusable foundation implementation started. Updated Press ID theme
+customization is tracked in `CORE-THEME-TASKS.md` following the explicit request
+to resume it. Future applications must be able to consume
 the same features, layouts, components, guards, functions, and utilities.
 
 ## Tracking Rules

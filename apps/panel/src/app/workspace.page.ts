@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core'
-import { Router } from '@angular/router'
+import { Router, RouterLink } from '@angular/router'
 import { SessionStore } from '@org/auth-data-access'
 import { AppLayout } from '@org/layout'
 import { HlmButton } from '@spartan-ng/helm/button'
@@ -8,15 +8,27 @@ import { PreferencesStore } from './core/preferences/preferences.store'
 
 @Component({
   selector: 'app-workspace-page',
-  imports: [AppLayout, HlmButton, HlmCardImports],
+  imports: [AppLayout, HlmButton, HlmCardImports, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <lib-app-layout>
+      <span layoutBrand class="truncate font-semibold">Panel</span>
+      <nav layoutNavigation [attr.aria-label]="preferences.isRtl() ? 'ناوبری' : 'Navigation'">
+        <a
+          routerLink="/workspace"
+          class="theme-nav-link"
+          aria-current="page"
+          [attr.aria-label]="preferences.isRtl() ? 'فضای کاری' : 'Workspace'"
+        >
+          <span aria-hidden="true">P</span>
+          <span data-nav-label>{{ preferences.isRtl() ? 'فضای کاری' : 'Workspace' }}</span>
+        </a>
+      </nav>
       <div layoutHeader class="flex w-full items-center justify-between gap-4">
         <span class="font-semibold">{{
           preferences.isRtl() ? 'پنل مدیریت' : 'Administration'
         }}</span>
-        <button hlmBtn variant="outline" (click)="logout()">
+        <button hlmBtn variant="outline" class="text-foreground" (click)="logout()">
           {{ preferences.isRtl() ? 'خروج' : 'Sign out' }}
         </button>
       </div>

@@ -21,3 +21,13 @@
 - The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
 
 <!-- nx configuration end-->
+
+## Project Architecture and Lessons
+
+- Before implementing or refactoring panel, shared libraries, or a future Angular
+  app, read [the architecture contract](apps/panel/ARCHITECTURE.md).
+- Load the project skill at
+  [.agents/skills/ttab-angular-workflow/SKILL.md](.agents/skills/ttab-angular-workflow/SKILL.md)
+  for the proven workflow, past mistakes, and required regression checks.
+- Use Bun, thin app composition, reusable Nx libraries, and both Nx/Sheriff
+  dependency rules. Apply the same feature-delivery contract to future apps.

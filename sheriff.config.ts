@@ -20,6 +20,8 @@ export const config: SheriffConfig = {
     'libs/shared/auth/feature/src': ['scope:shared', 'type:feature'],
     'libs/shared/layout/src': ['scope:shared', 'type:ui'],
     'libs/shared/ui/forms/src': ['scope:shared', 'type:ui'],
+    'libs/shared/theme/data-access/src': ['scope:shared', 'type:data'],
+    'libs/shared/theme/ui/src': ['scope:shared', 'type:feature'],
 
     'packages/shop/feature-<feature>/src': ['scope:shop', 'type:feature'],
     'packages/shop/data/src': ['scope:shop', 'type:data'],

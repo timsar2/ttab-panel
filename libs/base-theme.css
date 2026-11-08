@@ -1,21 +1,63 @@
 /*
  * MSY design tokens — shared base theme for every app.
  *
+ * Visual language: the Uena admin design system (orange primary, purple
+ * secondary, flat white chrome on #fbfbfb, near-sharp 2px radius, soft
+ * violet-tinted shadows) re-implemented as a token-driven Tailwind v4 +
+ * spartan/helm theme — no Bootstrap, no global CSS dumps.
+ *
  * Layered tokens (pragmatic 3-layer):
  *
- *   primitives: --color-indigo-* / --color-copper-* / --slate-* / --emerald-* / --amber-* / --rose-* / --sky-*
+ *   primitives: --orange-* / --purple-* / --green-* / --blue-* / --amber-* / --rose-* / --gray-*
  *   semantic:   --primary / --accent / --background / --surface / --success / --warning / --destructive / --info
- *   component:  --sidebar / --card / --ring / …
+ *   component:  --sidebar / --card / --ring / --shadow-* / …
  *
- * Color values use OKLCH for perceptual uniformity. The same hue stays
- * recognizable across light + dark. The spartan `hlm-tailwind-preset.css`
- * already wires the `--background / --foreground / --primary / …` variables
- * into Tailwind utilities, so we extend instead of redefining.
+ * The spartan `hlm-tailwind-preset.css` wires `--background / --foreground /
+ * --primary / …` into Tailwind utilities and hlm components, so re-tokening
+ * this file restyles the whole UI. Values are the exact hex values of the
+ * original design (designer-chosen hues); derived tints are its compiled
+ * `lighten()` results.
  *
- * Typography is RTL/Persian first with a Latin fallback (`Vazirmatn` ships
- * with both glyphs). Apply the family globally so numbers stay readable in
- * mixed-language cards (Farsi + Latin company names).
+ * Typography is RTL/Persian first with a Latin display face in front:
+ * `Poppins` renders Latin glyphs and numerals (the original template's
+ * runtime font), `Vazirmatn` covers Persian. Both load with
+ * `display=swap`. The `iransansx` typography preset additionally uses the
+ * IRANSans webfont below (jsdelivr-hosted, verified); locally installed
+ * IRANSansX wins in the stack when present.
  */
+
+/* IRANSans webfont for the `iransansx` typography preset. */
+@font-face {
+  font-family: 'IRANSans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/npm/iransans@1.0.0/woff2/IRANSansWeb_Light.woff2')
+    format('woff2');
+}
+@font-face {
+  font-family: 'IRANSans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/npm/iransans@1.0.0/woff2/IRANSansWeb.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IRANSans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/npm/iransans@1.0.0/woff2/IRANSansWeb_Medium.woff2')
+    format('woff2');
+}
+@font-face {
+  font-family: 'IRANSans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/npm/iransans@1.0.0/woff2/IRANSansWeb_Bold.woff2')
+    format('woff2');
+}
 
 :root {
   color-scheme: light;
@@ -24,229 +66,297 @@
   /*  Typography                                                       */
   /* ---------------------------------------------------------------- */
   --font-sans:
-    'Vazirmatn Variable', 'Vazirmatn', 'IRANSansX', 'Segoe UI', 'Inter',
-    -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif,
-    'Apple Color Emoji', 'Segoe UI Emoji';
-  --font-serif: 'Vazirmatn', 'Amiri', 'Times New Roman', serif;
-  --font-mono:
-    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+    'Poppins', 'Vazirmatn Variable', 'Vazirmatn', 'IRANSansX', 'Segoe UI', -apple-system,
+    BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-serif: 'Poppins', 'Vazirmatn Variable', 'Vazirmatn', 'Amiri', 'Times New Roman', serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
 
   /* ---------------------------------------------------------------- */
-  /*  Primitives — institutional indigo + warm copper accent           */
+  /*  Primitives — Uena palette                                        */
   /* ---------------------------------------------------------------- */
-  --slate-50: oklch(0.985 0.005 250);
-  --slate-100: oklch(0.965 0.008 250);
-  --slate-200: oklch(0.92 0.012 250);
-  --slate-300: oklch(0.86 0.015 250);
-  --slate-400: oklch(0.7 0.02 250);
-  --slate-500: oklch(0.55 0.025 250);
-  --slate-600: oklch(0.42 0.03 250);
-  --slate-700: oklch(0.32 0.035 250);
-  --slate-800: oklch(0.22 0.04 250);
-  --slate-900: oklch(0.16 0.04 250);
-  --slate-950: oklch(0.11 0.035 250);
+  --orange-50: #ffe9d9;
+  --orange-100: #ffd9bd;
+  --orange-500: #ff720d;
+  --orange-600: #f06a0c;
+  --orange-700: #d95f0b;
 
-  --indigo-50: oklch(0.97 0.018 256);
-  --indigo-100: oklch(0.93 0.04 256);
-  --indigo-200: oklch(0.86 0.08 256);
-  --indigo-300: oklch(0.76 0.13 256);
-  --indigo-400: oklch(0.66 0.18 256);
-  --indigo-500: oklch(0.58 0.21 256);
-  --indigo-600: oklch(0.5 0.22 256);
-  --indigo-700: oklch(0.42 0.2 256);
-  --indigo-800: oklch(0.34 0.17 256);
-  --indigo-900: oklch(0.26 0.13 256);
+  --purple-50: #f1e0f4;
+  --purple-500: #ac4cbc;
+  --purple-600: #9b44ab;
+  --purple-700: #853b93;
 
-  --copper-50: oklch(0.97 0.02 50);
-  --copper-100: oklch(0.93 0.05 50);
-  --copper-200: oklch(0.86 0.09 50);
-  --copper-300: oklch(0.78 0.13 50);
-  --copper-400: oklch(0.7 0.16 50);
-  --copper-500: oklch(0.62 0.17 50);
-  --copper-600: oklch(0.52 0.16 50);
-  --copper-700: oklch(0.42 0.14 50);
+  --green-50: #ecfae4;
+  --green-500: #68cf29;
+  --green-600: #5cb824;
+  --green-700: #4ea11f;
 
-  --emerald-50: oklch(0.97 0.02 158);
-  --emerald-100: oklch(0.93 0.06 158);
-  --emerald-500: oklch(0.62 0.16 158);
-  --emerald-600: oklch(0.52 0.15 158);
-  --emerald-700: oklch(0.42 0.13 158);
+  --blue-50: #e9f1fd;
+  --blue-500: #3a82ef;
+  --blue-600: #3474d4;
+  --blue-700: #2c63b5;
 
-  --amber-50: oklch(0.98 0.03 80);
-  --amber-100: oklch(0.95 0.08 80);
-  --amber-500: oklch(0.78 0.16 80);
-  --amber-600: oklch(0.66 0.16 80);
-  --amber-700: oklch(0.52 0.14 80);
+  --amber-50: #fff0da;
+  --amber-500: #ffab2d;
+  --amber-600: #e69a28;
+  --amber-700: #c8831f;
 
-  --rose-50: oklch(0.97 0.02 22);
-  --rose-100: oklch(0.93 0.06 22);
-  --rose-500: oklch(0.62 0.22 22);
-  --rose-600: oklch(0.52 0.21 22);
-  --rose-700: oklch(0.42 0.18 22);
+  --rose-50: #fee6ea;
+  --rose-500: #f72b50;
+  --rose-600: #dd2647;
+  --rose-700: #bc1f3c;
 
-  --sky-50: oklch(0.97 0.02 232);
-  --sky-500: oklch(0.62 0.15 232);
-  --sky-600: oklch(0.52 0.15 232);
-  --sky-700: oklch(0.42 0.13 232);
+  --teal-500: #20c997;
+
+  --gray-50: #fbfbfb;
+  --gray-100: #f8f9fa;
+  --gray-200: #f2f4fa;
+  --gray-300: #eeeeee;
+  --gray-400: #eaeaea;
+  --gray-500: #c8c8c8;
+  --gray-600: #969ba0;
+  --gray-700: #89879f;
+  --gray-800: #6e6e6e;
+  --gray-900: #3d4465;
+  --ink: #23252f;
 
   /* ---------------------------------------------------------------- */
   /*  Semantic tokens (light mode)                                     */
   /* ---------------------------------------------------------------- */
-  --radius: 0.875rem;
+  /* the signature near-sharp corner of the original design */
+  --radius: 0.125rem;
+  --radius-sm: 0.125rem;
+  --radius-lg: 0.125rem;
 
-  /* surfaces — warm off-white for a premium feel */
-  --background: oklch(0.985 0.005 90);
-  --foreground: oklch(0.18 0.025 256);
-  --surface: oklch(1 0 0);
-  --surface-muted: oklch(0.965 0.008 250);
-  --surface-elevated: oklch(1 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.025 256);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.025 256);
-  --muted: oklch(0.96 0.01 250);
-  --muted-foreground: oklch(0.46 0.03 250);
+  /* surfaces — body #fbfbfb, pure-white cards */
+  --background: var(--gray-50);
+  --foreground: #62646e;
+  --heading: var(--gray-900);
+  --surface: #ffffff;
+  --surface-muted: var(--gray-50);
+  --surface-elevated: #ffffff;
+  --card: #ffffff;
+  --card-foreground: #464a53;
+  --popover: #ffffff;
+  --popover-foreground: #464a53;
+  --muted: var(--gray-200);
+  --muted-foreground: #6b687f;
 
-  /* primary — deep institutional indigo */
-  --primary: var(--indigo-700);
-  --primary-hover: var(--indigo-800);
-  --primary-active: var(--indigo-900);
-  --primary-foreground: oklch(0.99 0.005 256);
-  --primary-soft: var(--indigo-50);
+  /* primary — Uena orange */
+  --primary: var(--orange-500);
+  --primary-hover: var(--orange-600);
+  --primary-active: var(--orange-700);
+  --primary-foreground: #23252f;
+  --primary-soft: var(--orange-50);
+  --primary-hover-foreground: #23252f;
+  --primary-active-foreground: #23252f;
 
-  /* secondary — cooler steel */
-  --secondary: oklch(0.94 0.015 240);
-  --secondary-foreground: var(--indigo-800);
+  /* secondary — Uena purple (solid) */
+  --secondary: var(--purple-500);
+  --secondary-foreground: #ffffff;
+  --secondary-hover: var(--purple-600);
+  --secondary-soft: var(--purple-50);
 
-  /* accent — warm copper reserved for highlights & active state */
-  --accent: oklch(0.94 0.04 50);
-  --accent-foreground: var(--copper-700);
-  --accent-strong: var(--copper-600);
+  /* accent — soft primary tint for hover/selection surfaces */
+  --accent: var(--orange-50);
+  --accent-foreground: var(--orange-500);
+  --accent-strong: var(--orange-600);
 
   /* semantic status colors */
-  --success: var(--emerald-600);
-  --success-foreground: oklch(0.99 0.005 158);
-  --success-soft: var(--emerald-50);
-  --warning: var(--amber-600);
-  --warning-foreground: oklch(0.28 0.06 80);
+  --success: var(--green-500);
+  --success-foreground: #23252f;
+  --success-soft: var(--green-50);
+  --warning: var(--amber-500);
+  --warning-foreground: #23252f;
   --warning-soft: var(--amber-50);
-  --destructive: var(--rose-600);
-  --destructive-foreground: oklch(0.99 0.005 22);
+  --destructive: #cc2041;
+  --destructive-foreground: #ffffff;
   --destructive-soft: var(--rose-50);
-  --info: var(--sky-600);
-  --info-foreground: oklch(0.99 0.005 232);
-  --info-soft: var(--sky-50);
+  --info: var(--blue-500);
+  --info-foreground: #23252f;
+  --info-soft: var(--blue-50);
 
   /* borders & focus ring */
-  --border: oklch(0.91 0.012 250);
-  --input: oklch(0.91 0.012 250);
-  --ring: oklch(0.58 0.21 256 / 45%);
+  --border: #f0f0f0;
+  --input: #f0f0f0;
+  /* Interactive control outline (checkbox / radio) — Uena
+     `_form-checkbox.scss`: 2px `#c8c8c8` unchecked border. `--input` is a
+     hairline divider tone and disappears on white, so selection controls
+     get their own perceivable outline colour. */
+  --control-border: #c8c8c8;
+  --ring: rgb(255 114 13 / 45%);
   --ring-offset: var(--background);
 
-  /* sidebar surfaces — distinctly tinted to separate from page */
-  --sidebar: oklch(0.98 0.01 256);
-  --sidebar-foreground: var(--indigo-900);
-  --sidebar-primary: var(--indigo-700);
-  --sidebar-primary-foreground: oklch(0.99 0.005 256);
-  --sidebar-accent: oklch(0.94 0.04 50);
-  --sidebar-accent-foreground: var(--copper-700);
-  --sidebar-border: oklch(0.9 0.012 256);
-  --sidebar-ring: oklch(0.58 0.21 256 / 45%);
+  /* Uena geometry (header / sidebar / content / search) */
+  --header-height: 7.5rem;
+  --header-bg: var(--card);
+  --nav-header-bg: var(--sidebar);
+  --sidebar-width: 21.563rem;
+  --sidebar-width-collapsed: 5.7rem;
+  --sidebar-width-full: 21.563rem;
+  --content-padding: 2.5rem;
+  --search-width: 260px;
 
-  /* chart palette — uses brand colors for visual coherence */
-  --chart-1: var(--indigo-600);
-  --chart-2: var(--copper-500);
-  --chart-3: var(--emerald-600);
-  --chart-4: var(--amber-500);
-  --chart-5: var(--rose-500);
-  --chart-6: var(--sky-500);
-  --chart-7: var(--indigo-400);
-  --chart-8: var(--copper-400);
+  /* form field metrics — Uena Material fields (density knob overrides) */
+  --field-height: 56px;
+  --field-font-size: 1rem;
+  --field-border: var(--border);
+  --field-focus-border: var(--primary);
+  --field-text: #6e6e6e;
+  --field-label: #6b687f;
+  /* Material "fill" surface = primary tint (old Uena: rgba($primary, .1)) */
+  --field-bg: color-mix(in oklab, var(--primary) 10%, transparent);
+  /* Material underline: rgba(0,0,0,.42) light / rgba(255,255,255,.42) dark */
+  --field-underline: rgb(0 0 0 / 42%);
+  --field-pad-top: 1.35rem;
+  --field-pad-bottom: 0.35rem;
+  --field-label-scale: 0.78;
 
-  /* elevation tokens (not consumed by Tailwind yet, used by components) */
-  --shadow-xs: 0 1px 2px 0 oklch(0.2 0.04 250 / 0.04);
-  --shadow-sm:
-    0 1px 3px 0 oklch(0.2 0.04 250 / 0.08),
-    0 1px 2px -1px oklch(0.2 0.04 250 / 0.06);
-  --shadow-md:
-    0 4px 12px -2px oklch(0.2 0.04 250 / 0.1),
-    0 2px 6px -2px oklch(0.2 0.04 250 / 0.06);
-  --shadow-lg:
-    0 12px 32px -8px oklch(0.2 0.04 250 / 0.18),
-    0 4px 12px -4px oklch(0.2 0.04 250 / 0.1);
-  --shadow-inner: inset 0 1px 2px 0 oklch(0.2 0.04 250 / 0.08);
+  /* control tokens — Uena `_form-checkbox.scss` (checkbox / switch).
+     One definition here; every `hlm-checkbox` / `hlm-switch` anywhere
+     (forms, lists, tables, dialogs) renders from it, and the theme
+     generator restyles all of them at once. (`--control-border` above.) */
+  --checkbox-size: 1.25rem;
+  --checkbox-radius: var(--radius);
+  --switch-track: #d8d8d8;
+  --switch-track-checked: color-mix(in oklab, var(--primary) 10%, transparent);
+  --switch-thumb: #959595;
+
+  /* sidebar surfaces — flat white chrome */
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--gray-600);
+  --sidebar-primary: var(--orange-500);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--orange-50);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: #f0f0f0;
+  --sidebar-ring: rgb(255 114 13 / 45%);
+
+  /* chart palette */
+  --chart-1: var(--orange-500);
+  --chart-2: var(--purple-500);
+  --chart-3: var(--green-500);
+  --chart-4: var(--blue-500);
+  --chart-5: var(--amber-500);
+  --chart-6: var(--rose-500);
+  --chart-7: var(--teal-500);
+  --chart-8: var(--gray-600);
+
+  /* elevation — soft violet-tinted shadows from the original design */
+  --shadow-xs: 0px 0px 13px 0px rgb(82 63 105 / 5%);
+  --shadow-sm: 0px 0px 13px 0px rgb(82 63 105 / 8%);
+  --shadow-md: 0px 0px 24px 0px rgb(82 63 105 / 8%);
+  --shadow-lg: 0px 0px 40px 0px rgb(82 63 105 / 10%);
+  --shadow-inner: inset 0 1px 2px 0 rgb(82 63 105 / 6%);
+  --shadow-primary: 0px 8px 10px 0px rgb(255 114 13 / 30%);
+  --shadow-sidebar: 0px 15px 30px 0px rgb(0 0 0 / 2%);
 }
 
 :root.dark {
   color-scheme: dark;
 
-  --background: oklch(0.16 0.025 256);
-  --foreground: oklch(0.97 0.005 256);
-  --surface: oklch(0.21 0.025 256);
-  --surface-muted: oklch(0.18 0.025 256);
-  --surface-elevated: oklch(0.24 0.03 256);
-  --card: oklch(0.21 0.025 256);
-  --card-foreground: oklch(0.97 0.005 256);
-  --popover: oklch(0.21 0.025 256);
-  --popover-foreground: oklch(0.97 0.005 256);
-  --muted: oklch(0.24 0.025 256);
-  --muted-foreground: oklch(0.7 0.02 256);
+  /* Uena dark version */
+  --background: #0e0803;
+  --foreground: #dddddd;
+  --heading: #dddddd;
+  --surface: #2b2623;
+  --surface-muted: #221e1b;
+  --surface-elevated: #2b2623;
+  --card: #2b2623;
+  --card-foreground: #dddddd;
+  --popover: #2b2623;
+  --popover-foreground: #dddddd;
+  --muted: #2e2a27;
+  --muted-foreground: #aaa7b9;
 
-  --primary: var(--indigo-400);
-  --primary-hover: var(--indigo-300);
-  --primary-active: var(--indigo-200);
-  --primary-foreground: oklch(0.18 0.04 256);
-  --primary-soft: oklch(0.28 0.06 256);
+  --primary: var(--orange-500);
+  --primary-hover: var(--orange-600);
+  --primary-active: var(--orange-700);
+  --primary-foreground: #ffffff;
+  --primary-soft: rgb(255 114 13 / 16%);
 
-  --secondary: oklch(0.26 0.03 240);
-  --secondary-foreground: oklch(0.95 0.01 256);
+  --secondary: var(--purple-500);
+  --secondary-foreground: #ffffff;
+  --secondary-hover: var(--purple-600);
+  --secondary-soft: rgb(172 76 188 / 18%);
 
-  --accent: oklch(0.3 0.06 50);
-  --accent-foreground: oklch(0.96 0.04 50);
+  --accent: rgb(255 114 13 / 14%);
+  --accent-foreground: var(--orange-500);
+  --accent-strong: var(--orange-500);
 
-  --success: var(--emerald-500);
-  --success-foreground: oklch(0.18 0.04 158);
-  --success-soft: oklch(0.22 0.05 158);
+  --success: var(--green-500);
+  --success-foreground: #ffffff;
+  --success-soft: rgb(104 207 41 / 16%);
   --warning: var(--amber-500);
-  --warning-foreground: oklch(0.22 0.06 80);
-  --warning-soft: oklch(0.24 0.06 80);
-  --destructive: var(--rose-500);
-  --destructive-foreground: oklch(0.18 0.04 22);
-  --destructive-soft: oklch(0.24 0.06 22);
-  --info: var(--sky-500);
-  --info-foreground: oklch(0.18 0.04 232);
-  --info-soft: oklch(0.22 0.05 232);
+  --warning-foreground: #ffffff;
+  --warning-soft: rgb(255 171 45 / 16%);
+  --destructive: #ff6d88;
+  --destructive-foreground: #ffffff;
+  --destructive-soft: rgb(247 43 80 / 16%);
+  --info: var(--blue-500);
+  --info-foreground: #ffffff;
+  --info-soft: rgb(58 130 239 / 16%);
 
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.58 0.21 256 / 55%);
+  --border: #3e3e3e;
+  --input: #3e3e3e;
+  --control-border: #3e3e3e;
+  --switch-track: #3e3e3e;
+  --switch-thumb: #9a9a9a;
+  --ring: rgb(255 114 13 / 55%);
   --ring-offset: var(--background);
 
-  --sidebar: oklch(0.18 0.03 256);
-  --sidebar-foreground: oklch(0.95 0.01 256);
-  --sidebar-primary: var(--indigo-400);
-  --sidebar-primary-foreground: oklch(0.18 0.04 256);
-  --sidebar-accent: oklch(0.3 0.06 50);
-  --sidebar-accent-foreground: oklch(0.96 0.04 50);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.58 0.21 256 / 55%);
+  --header-bg: var(--card);
+  --nav-header-bg: var(--sidebar);
+  --field-bg: rgb(255 255 255 / 10%);
+  --field-underline: rgb(255 255 255 / 42%);
+  --field-text: #dddddd;
+  --field-label: #aaa7b9;
+  --field-border: var(--border);
 
-  --chart-1: var(--indigo-400);
-  --chart-2: var(--copper-400);
-  --chart-3: var(--emerald-500);
-  --chart-4: var(--amber-500);
-  --chart-5: var(--rose-500);
-  --chart-6: var(--sky-500);
-  --chart-7: var(--indigo-300);
-  --chart-8: var(--copper-300);
+  --sidebar: #2b2623;
+  --sidebar-foreground: #aaa7b9;
+  --sidebar-primary: var(--orange-500);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(255 114 13 / 14%);
+  --sidebar-accent-foreground: #dddddd;
+  --sidebar-border: #3e3e3e;
+  --sidebar-ring: rgb(255 114 13 / 55%);
+
+  --chart-1: var(--orange-500);
+  --chart-2: var(--purple-500);
+  --chart-3: var(--green-500);
+  --chart-4: var(--blue-500);
+  --chart-5: var(--amber-500);
+  --chart-6: var(--rose-500);
+  --chart-7: var(--teal-500);
+  --chart-8: var(--gray-500);
+
+  --shadow-primary: 0px 8px 10px 0px rgb(255 114 13 / 20%);
+}
+
+:root[data-sidebar-style='mini'] {
+  --sidebar-width: 5.7rem;
+}
+:root[data-sidebar-style='compact'] {
+  --sidebar-width: 11.25rem;
+}
+:root[data-sidebar-style='modern'] {
+  --sidebar-width: 10.625rem;
+}
+:root[data-sidebar-style='icon-hover'] {
+  --sidebar-width: 3rem;
 }
 
 /*
  * Expose the extended palette as Tailwind v4 utility colors.
  * spartan already maps background/foreground/primary/... ;
- * here we add chart, success, warning, info, plus the copper accent.
+ * here we add status colors, soft tints, text roles, radii and shadows.
  */
 @theme inline {
+  --color-heading: var(--heading);
+  --color-ink: var(--ink);
+
+  --color-control-border: var(--control-border);
+
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-success-soft: var(--success-soft);
@@ -260,11 +370,14 @@
   --color-primary-soft: var(--primary-soft);
   --color-primary-hover: var(--primary-hover);
   --color-primary-active: var(--primary-active);
+  --color-primary-hover-foreground: var(--primary-hover-foreground);
+  --color-primary-active-foreground: var(--primary-active-foreground);
   --color-surface: var(--surface);
   --color-surface-muted: var(--surface-muted);
   --color-surface-elevated: var(--surface-elevated);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-soft: var(--destructive-soft);
+  --color-secondary-soft: var(--secondary-soft);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -275,26 +388,340 @@
   --color-chart-7: var(--chart-7);
   --color-chart-8: var(--chart-8);
 
-  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-sm: var(--radius-sm);
   --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) * 1.4);
+  --radius-lg: var(--radius-lg);
+
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-primary: var(--shadow-primary);
+  --shadow-sidebar: var(--shadow-sidebar);
 }
 
 /* ---------------------------------------------------------------- */
-/*  Global enhancements — applied to every app via styles.css.       */
+/*  Global base — typography scale and signature details             */
+/*                                                                */
+/*  Typographic roles (Uena) — use these, never hand-roll colors:   */
+/*    .page-title     page headline    readable heading token · 1.25rem · 500 */
+/*    .section-title  in-card section  heading #3d4465 · 1.125rem · 500 */
+/*    h1              same as .page-title (safety net for bare h1)      */
+/*    h2–h6           same color/weight as .section-title               */
+/*    body / text-foreground   #62646e                                  */
+/*    text-muted-foreground    #6b687f (meta, helper, eyebrow)          */
+/*    text-ink                 #23252f (card titles, key values)        */
 /* ---------------------------------------------------------------- */
-html[dir='rtl'] body {
-  font-feature-settings: 'ss01', 'ss02', 'cv01';
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  html[dir='rtl'] body {
+    font-feature-settings: 'ss01', 'ss02', 'cv01';
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    font-feature-settings: 'ss01', 'cv11', 'liga';
+  }
+
+  /* Numerals switch to Persian in Farsi contexts. */
+  :lang(fa) {
+    font-feature-settings: 'ss01';
+  }
+
+  h1 {
+    color: var(--heading);
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--heading);
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  h2 {
+    font-size: 1.875rem;
+  }
+  h3 {
+    font-size: 1.5rem;
+  }
+  h4 {
+    font-size: 1.125rem;
+  }
+  h5 {
+    font-size: 1rem;
+  }
+  h6 {
+    font-size: 0.938rem;
+  }
+
+  p {
+    line-height: 1.8;
+  }
+
+  ::selection {
+    color: var(--primary-foreground);
+    background: var(--primary);
+  }
 }
 
-body {
-  font-family: var(--font-sans);
-  font-feature-settings: 'ss01', 'cv11', 'liga';
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
+@layer components {
+  .theme-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-block-size: 2.75rem;
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+  }
 
-/* Numerals switch to Persian in Farsi contexts. */
-:lang(fa) {
-  font-feature-settings: 'ss01';
+  .theme-nav-link[aria-current='page'] {
+    background: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
+  }
+
+  [data-layout='vertical'][data-sidebar-style='mini'] .theme-nav-link [data-nav-label],
+  [data-layout='vertical'][data-sidebar-style='icon-hover'] .theme-nav-link [data-nav-label] {
+    display: none;
+  }
+
+  [data-layout='vertical'][data-sidebar-style='mini'] .theme-nav-link {
+    justify-content: center;
+  }
+
+  [data-sidebar-style='icon-hover'] .theme-sidebar:is(:hover, :focus-within) [data-nav-label] {
+    display: initial;
+  }
+
+  .page-title {
+    color: var(--heading);
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.35;
+  }
+
+  .section-title {
+    color: var(--heading);
+    font-size: 1.125rem;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Form field appearances (Uena Material fields)                    */
+  /*                                                                */
+  /*  Driven by `data-appearance` on `hlm-field` (fill | outline |   */
+  /*  standard). Floating label uses pure CSS: the label floats up    */
+  /*  unless the sibling input is empty AND unfocused AND has a        */
+  /*  placeholder (`:placeholder-shown`). Selects and textareas stay  */
+  /*  floated. No JS involved.                                        */
+  /* ---------------------------------------------------------------- */
+
+  [data-slot='field'][data-appearance] {
+    position: relative;
+  }
+
+  /* Material placeholder behavior: the hint text only appears while the
+     control has focus (when the label has floated up) and vanishes again
+     on blur — so the resting label and the hint never compete. Pure CSS:
+     `::placeholder` is transparent unless `:focus`. */
+  [data-slot='field'] [data-slot='input']::placeholder,
+  [data-slot='field'] [data-slot='textarea']::placeholder {
+    color: var(--field-label);
+    opacity: 1;
+    transition: color 0.15s ease;
+  }
+
+  [data-slot='field'] [data-slot='input']:not(:focus)::placeholder,
+  [data-slot='field'] [data-slot='textarea']:not(:focus)::placeholder {
+    color: transparent;
+  }
+
+  /* ---- fill (Uena Material look): tinted surface + bottom underline ---- */
+  [data-slot='field'][data-appearance='fill']:has(
+      [data-slot='input'],
+      [data-slot='textarea'],
+      [data-slot='select-trigger'],
+      [data-slot='native-select']
+    )
+    [data-slot='field-label']:has(
+      ~ [data-slot='input'],
+      ~ [data-slot='textarea'],
+      ~ [data-slot='select-trigger'],
+      [data-slot='native-select'],
+      ~ * [data-slot='input'],
+      ~ * [data-slot='textarea'],
+      ~ * [data-slot='select-trigger'],
+      [data-slot='native-select']
+    ) {
+    position: absolute;
+    z-index: 1;
+    top: 0.35rem;
+    inset-inline-start: 1rem;
+    margin: 0;
+    font-size: calc(var(--field-font-size) * var(--field-label-scale));
+    color: var(--field-label);
+    pointer-events: none;
+    transition:
+      top 0.15s ease,
+      font-size 0.15s ease,
+      color 0.15s ease;
+  }
+
+  /* resting: empty + unfocused input shows the label at full size, centered */
+  [data-slot='field'][data-appearance='fill']:has([data-slot='input']:placeholder-shown:not(:focus))
+    [data-slot='field-label'] {
+    top: 50%;
+    translate: 0 -50%;
+    font-size: var(--field-font-size);
+  }
+
+  /* ---- outline: label notched onto the border line ---- */
+  [data-slot='field'][data-appearance='outline']:has(
+      [data-slot='input'],
+      [data-slot='textarea'],
+      [data-slot='select-trigger'],
+      [data-slot='native-select']
+    )
+    [data-slot='field-label']:has(
+      ~ [data-slot='input'],
+      ~ [data-slot='textarea'],
+      ~ [data-slot='select-trigger'],
+      [data-slot='native-select'],
+      ~ * [data-slot='input'],
+      ~ * [data-slot='textarea'],
+      ~ * [data-slot='select-trigger'],
+      [data-slot='native-select']
+    ) {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    translate: 0 -50%;
+    inset-inline-start: 0.65rem;
+    margin: 0;
+    padding-inline: 0.25rem;
+    background: var(--card);
+    font-size: calc(var(--field-font-size) * var(--field-label-scale));
+    color: var(--field-label);
+    pointer-events: none;
+    transition:
+      font-size 0.15s ease,
+      color 0.15s ease;
+  }
+
+  [data-slot='field'][data-appearance='outline']:has(
+      [data-slot='input']:placeholder-shown:not(:focus)
+    )
+    [data-slot='field-label'] {
+    top: 50%;
+    font-size: var(--field-font-size);
+    background: transparent;
+    padding-inline: 0;
+  }
+
+  /* ---- standard: underline only, label floats above the value ---- */
+  [data-slot='field'][data-appearance='standard']:has(
+      [data-slot='input'],
+      [data-slot='textarea'],
+      [data-slot='select-trigger'],
+      [data-slot='native-select']
+    )
+    [data-slot='field-label']:has(
+      ~ [data-slot='input'],
+      ~ [data-slot='textarea'],
+      ~ [data-slot='select-trigger'],
+      [data-slot='native-select'],
+      ~ * [data-slot='input'],
+      ~ * [data-slot='textarea'],
+      ~ * [data-slot='select-trigger'],
+      [data-slot='native-select']
+    ) {
+    position: absolute;
+    z-index: 1;
+    top: 0.15rem;
+    inset-inline-start: 0;
+    margin: 0;
+    font-size: calc(var(--field-font-size) * var(--field-label-scale));
+    color: var(--field-label);
+    pointer-events: none;
+    transition:
+      top 0.15s ease,
+      font-size 0.15s ease,
+      color 0.15s ease;
+  }
+
+  [data-slot='field'][data-appearance='standard']:has(
+      [data-slot='input']:placeholder-shown:not(:focus)
+    )
+    [data-slot='field-label'] {
+    top: 50%;
+    translate: 0 -50%;
+    font-size: var(--field-font-size);
+  }
+
+  /* focus / filled: the label takes the primary tone */
+  [data-slot='field'][data-appearance]:has(
+      [data-slot='input']:focus,
+      [data-slot='textarea']:focus,
+      [data-slot='select-trigger'],
+      [data-slot='native-select']:focus
+    )
+    [data-slot='field-label'] {
+    color: var(--field-focus-border);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Layout engine — keyed off the data-* attributes the theme        */
+  /*  service writes (html + shell roots): sidebar style, layout,      */
+  /*  container.                                                      */
+  /* ---------------------------------------------------------------- */
+
+  /* mini + icon-hover: clip the labels inside the narrow rail */
+  [data-sidebar-style='mini'] [data-slot='sidebar-inner'],
+  [data-sidebar-style='icon-hover'] [data-slot='sidebar-inner'] {
+    overflow: hidden;
+  }
+
+  [data-sidebar-style='mini'] [data-slot='sidebar-inner'] span,
+  [data-sidebar-style='icon-hover'] [data-slot='sidebar-inner'] span {
+    white-space: nowrap;
+  }
+
+  /* icon-hover: 3rem rail that expands to the full sidebar on hover */
+  [data-sidebar-style='icon-hover']
+    [data-slot='sidebar-wrapper']:has([data-slot='sidebar-container']:hover),
+  [data-sidebar-style='icon-hover']
+    [data-slot='sidebar-wrapper']:has([data-slot='sidebar-gap']:hover) {
+    --sidebar-width: var(--sidebar-width-full, 21.563rem) !important;
+  }
+
+  /* modern: floating card look is applied by the shell (variant=floating) */
+
+  /* boxed / wide-boxed content columns */
+  [data-container='boxed'] .msy-content-column {
+    max-width: 1440px;
+    margin-inline: auto;
+    box-shadow: var(--shadow-md);
+  }
+
+  [data-container='wide-boxed'] .msy-content-column {
+    max-width: 1800px;
+    margin-inline: auto;
+    box-shadow: var(--shadow-md);
+  }
 }

@@ -90,7 +90,9 @@
       "@org/layout": ["./libs/shared/layout/src/index.ts"],
       "@org/auth-feature": ["./libs/shared/auth/feature/src/index.ts"],
       "@org/auth-feature/ui": ["./libs/shared/auth/feature/src/ui.ts"],
-      "@org/ui-forms": ["./libs/shared/ui/forms/src/index.ts"]
+      "@org/ui-forms": ["./libs/shared/ui/forms/src/index.ts"],
+      "@org/theme": ["./libs/shared/theme/data-access/src/index.ts"],
+      "@org/theme-ui": ["./libs/shared/theme/ui/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

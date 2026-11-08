@@ -6,7 +6,8 @@ import { AppLayout } from './app-layout'
 @Component({
   imports: [AppLayout],
   template: `<lib-app-layout
-    ><div layoutHeader>Account</div>
+    ><span layoutBrand>Example brand</span>
+    <div layoutHeader>Account</div>
     <nav layoutNavigation>Routes</nav>
     <section>Workspace</section></lib-app-layout
   >`,
@@ -23,7 +24,9 @@ describe('AppLayout', () => {
     const element: HTMLElement = fixture.nativeElement
     expect(element.querySelector('header')?.textContent).toBe('Account')
     expect(element.querySelector('aside nav')?.textContent).toBe('Routes')
+    expect(element.querySelector('.theme-brand')?.textContent).toBe('Example brand')
     expect(element.querySelector('main section')?.textContent).toBe('Workspace')
     expect(element.querySelector('main')?.textContent).not.toContain('Account')
+    expect(element.querySelector('main')?.textContent).not.toContain('Example brand')
   })
 })

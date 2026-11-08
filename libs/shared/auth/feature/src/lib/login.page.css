@@ -47,7 +47,7 @@
   padding-block: 2rem;
 }
 .brand-eyebrow {
-  color: var(--primary);
+  color: var(--muted-foreground);
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -84,7 +84,7 @@
   text-align: start;
 }
 .wordmark:focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--foreground);
   outline-offset: 5px;
   border-radius: 0.25rem;
 }

@@ -4,10 +4,15 @@ import { ChangeDetectionStrategy, Component } from '@angular/core'
   selector: 'lib-app-layout',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <header><ng-content select="[layoutHeader]" /></header>
-    <div class="workspace">
-      <aside><ng-content select="[layoutNavigation]" /></aside>
-      <main><ng-content /></main>
+    <div class="theme-shell">
+      <aside class="theme-sidebar">
+        <div class="theme-brand"><ng-content select="[layoutBrand]" /></div>
+        <div class="theme-navigation"><ng-content select="[layoutNavigation]" /></div>
+      </aside>
+      <div class="theme-content-column">
+        <header><ng-content select="[layoutHeader]" /></header>
+        <main><ng-content /></main>
+      </div>
     </div>
   `,
   styleUrl: './app-layout.css',

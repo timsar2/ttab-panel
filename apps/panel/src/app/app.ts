@@ -1,11 +1,15 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core'
+import { RouterOutlet } from '@angular/router'
+import { ThemePanel } from '@org/theme-ui'
+import { PreferencesStore } from './core/preferences/preferences.store'
 
 @Component({
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, ThemePanel],
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
-export class App {}
+export class App {
+  protected readonly preferences = inject(PreferencesStore)
+}

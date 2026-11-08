@@ -1,8 +1,14 @@
 @import 'tailwindcss' source(none);
 @import '@fontsource-variable/vazirmatn';
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/500.css';
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
+@import '@fontsource-variable/roboto';
 
 @import '@spartan-ng/brain/hlm-tailwind-preset.css';
 
+@import '@angular/cdk/overlay-prebuilt.css';
 @import './theme.css';
 
 @source './app';
@@ -14,6 +20,9 @@
 @source '../../../libs/spartan/label';
 @source '../../../libs/spartan/field';
 @source '../../../libs/spartan/separator';
+@source '../../../libs/spartan/sheet';
+@source '../../../libs/spartan/native-select';
+@source '../../../libs/spartan/textarea';
 
 @layer base {
   * {
