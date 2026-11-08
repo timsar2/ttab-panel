@@ -31,3 +31,6 @@
   for the proven workflow, past mistakes, and required regression checks.
 - Use Bun, thin app composition, reusable Nx libraries, and both Nx/Sheriff
   dependency rules. Apply the same feature-delivery contract to future apps.
+- Use [the linked migration TODO](docs/migration/TODO.md) as the active backlog;
+  read its mandatory business/architecture instructions and update the matching
+  feature checklist when implementing or verifying work.

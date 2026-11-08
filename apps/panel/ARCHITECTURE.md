@@ -20,6 +20,9 @@ this Nx workspace. Run the commands below from the `front` workspace root.
   route mounting, and app-specific branding belong in `apps/*`.
 - Implement reusable capabilities in Nx libraries. Shared libraries must not
   import an app, its preferences store, its environment, or its concrete routes.
+- Generate every new feature/page/component implementation inside an appropriate
+  Nx library, reusing an existing library where it owns the capability. Do not add
+  new feature components under `apps/panel`; app files are composition only.
 - Separate generic capabilities from transport business rules. Authentication,
   layouts, form primitives, and theme are generic; company and assignment rules
   belong to reusable transport-domain libraries.
@@ -58,10 +61,12 @@ a small authenticated composition, not completed company management. Company
 selection, reusable tables, business CRUD, scheduling, assignments, and realtime
 remain migration work. Do not present planned folders as implemented features.
 
-Use [FEATURE-MIGRATION-PLAN.md](../../FEATURE-MIGRATION-PLAN.md) for business scope
-and task status, and [CORE-THEME-TASKS.md](../../CORE-THEME-TASKS.md) for theme
-behavior and validation evidence. Those checklists are not substitutes for this
-architecture contract.
+Read [BUSINESS_DOMAIN.md](../../docs/BUSINESS_DOMAIN.md) for business scope and
+evidence. Use [the main migration TODO](../../docs/migration/TODO.md) and its
+linked feature files for active task status. The older
+[migration plan](../../FEATURE-MIGRATION-PLAN.md) preserves planning history;
+[CORE-THEME-TASKS.md](../../CORE-THEME-TASKS.md) retains theme validation evidence.
+Those checklists are not substitutes for this architecture contract.
 
 ## Dependency Rules
 

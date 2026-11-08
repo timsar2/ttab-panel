@@ -1,5 +1,13 @@
 # Legacy Panel Feature Migration Plan
 
+## Active Task Tracking
+
+Use [the main migration TODO](docs/migration/TODO.md) and its linked per-feature
+files as the active execution backlog. This document preserves the original
+plan, earlier task identifiers, and delivery history; do not maintain a second
+competing progress ledger here. Read `docs/BUSINESS_DOMAIN.md` and
+`apps/panel/ARCHITECTURE.md` before implementing any linked task.
+
 Source: `../panel` (Angular 15 transport administration).
 Target: `apps/panel` (Angular 22, Nx 24, zoneless).
 Status: reusable foundation implementation started. Updated Press ID theme
@@ -12,7 +20,8 @@ the same features, layouts, components, guards, functions, and utilities.
 Each task starts with `[ ]` and becomes `[X]` only after its stated work and
 verification are complete. Source-wired legacy behavior is not proof of a working
 backend integration or a completed feature in the new app. Complete each vertical
-slice before moving on; keep this file current during implementation.
+slice before moving on; update the active feature file and its main-index task
+during implementation.
 
 ## Completed Preparation
 
