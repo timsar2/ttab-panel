@@ -10,233 +10,88 @@
     "importHelpers": true,
     "target": "es2015",
     "module": "esnext",
-    "lib": [
-      "es2020",
-      "dom"
-    ],
+    "lib": ["es2020", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "paths": {
-      "@org/api/products": [
-        "./packages/api/products/src/index.ts"
-      ],
-      "@org/models": [
-        "./packages/shared/models/src/index.ts"
-      ],
-      "@org/shop/data": [
-        "./packages/shop/data/src/index.ts"
-      ],
-      "@org/shop/feature-product-detail": [
-        "./packages/shop/feature-product-detail/src/index.ts"
-      ],
-      "@org/shop/feature-products": [
-        "./packages/shop/feature-products/src/index.ts"
-      ],
-      "@org/shop/shared-ui": [
-        "./packages/shop/shared-ui/src/index.ts"
-      ],
-      "@spartan-ng/helm/accordion": [
-        "./libs/spartan/accordion/src/index.ts"
-      ],
-      "@spartan-ng/helm/alert": [
-        "./libs/spartan/alert/src/index.ts"
-      ],
-      "@spartan-ng/helm/alert-dialog": [
-        "./libs/spartan/alert-dialog/src/index.ts"
-      ],
-      "@spartan-ng/helm/aspect-ratio": [
-        "./libs/spartan/aspect-ratio/src/index.ts"
-      ],
-      "@spartan-ng/helm/attachment": [
-        "./libs/spartan/attachment/src/index.ts"
-      ],
-      "@spartan-ng/helm/autocomplete": [
-        "./libs/spartan/autocomplete/src/index.ts"
-      ],
-      "@spartan-ng/helm/avatar": [
-        "./libs/spartan/avatar/src/index.ts"
-      ],
-      "@spartan-ng/helm/badge": [
-        "./libs/spartan/badge/src/index.ts"
-      ],
-      "@spartan-ng/helm/breadcrumb": [
-        "./libs/spartan/breadcrumb/src/index.ts"
-      ],
-      "@spartan-ng/helm/bubble": [
-        "./libs/spartan/bubble/src/index.ts"
-      ],
-      "@spartan-ng/helm/button": [
-        "./libs/spartan/button/src/index.ts"
-      ],
-      "@spartan-ng/helm/button-group": [
-        "./libs/spartan/button-group/src/index.ts"
-      ],
-      "@spartan-ng/helm/calendar": [
-        "./libs/spartan/calendar/src/index.ts"
-      ],
-      "@spartan-ng/helm/card": [
-        "./libs/spartan/card/src/index.ts"
-      ],
-      "@spartan-ng/helm/carousel": [
-        "./libs/spartan/carousel/src/index.ts"
-      ],
-      "@spartan-ng/helm/chart": [
-        "./libs/spartan/chart/src/index.ts"
-      ],
-      "@spartan-ng/helm/checkbox": [
-        "./libs/spartan/checkbox/src/index.ts"
-      ],
-      "@spartan-ng/helm/code-block": [
-        "./libs/spartan/code-block/src/index.ts"
-      ],
-      "@spartan-ng/helm/collapsible": [
-        "./libs/spartan/collapsible/src/index.ts"
-      ],
-      "@spartan-ng/helm/combobox": [
-        "./libs/spartan/combobox/src/index.ts"
-      ],
-      "@spartan-ng/helm/command": [
-        "./libs/spartan/command/src/index.ts"
-      ],
-      "@spartan-ng/helm/context-menu": [
-        "./libs/spartan/context-menu/src/index.ts"
-      ],
-      "@spartan-ng/helm/date-picker": [
-        "./libs/spartan/date-picker/src/index.ts"
-      ],
-      "@spartan-ng/helm/dialog": [
-        "./libs/spartan/dialog/src/index.ts"
-      ],
-      "@spartan-ng/helm/drawer": [
-        "./libs/spartan/drawer/src/index.ts"
-      ],
-      "@spartan-ng/helm/dropdown-menu": [
-        "./libs/spartan/dropdown-menu/src/index.ts"
-      ],
-      "@spartan-ng/helm/empty": [
-        "./libs/spartan/empty/src/index.ts"
-      ],
-      "@spartan-ng/helm/field": [
-        "./libs/spartan/field/src/index.ts"
-      ],
-      "@spartan-ng/helm/hover-card": [
-        "./libs/spartan/hover-card/src/index.ts"
-      ],
-      "@spartan-ng/helm/input": [
-        "./libs/spartan/input/src/index.ts"
-      ],
-      "@spartan-ng/helm/input-group": [
-        "./libs/spartan/input-group/src/index.ts"
-      ],
-      "@spartan-ng/helm/input-otp": [
-        "./libs/spartan/input-otp/src/index.ts"
-      ],
-      "@spartan-ng/helm/item": [
-        "./libs/spartan/item/src/index.ts"
-      ],
-      "@spartan-ng/helm/kbd": [
-        "./libs/spartan/kbd/src/index.ts"
-      ],
-      "@spartan-ng/helm/label": [
-        "./libs/spartan/label/src/index.ts"
-      ],
-      "@spartan-ng/helm/marker": [
-        "./libs/spartan/marker/src/index.ts"
-      ],
-      "@spartan-ng/helm/menubar": [
-        "./libs/spartan/menubar/src/index.ts"
-      ],
-      "@spartan-ng/helm/message": [
-        "./libs/spartan/message/src/index.ts"
-      ],
-      "@spartan-ng/helm/message-scroller": [
-        "./libs/spartan/message-scroller/src/index.ts"
-      ],
-      "@spartan-ng/helm/native-select": [
-        "./libs/spartan/native-select/src/index.ts"
-      ],
-      "@spartan-ng/helm/navigation-menu": [
-        "./libs/spartan/navigation-menu/src/index.ts"
-      ],
-      "@spartan-ng/helm/pagination": [
-        "./libs/spartan/pagination/src/index.ts"
-      ],
-      "@spartan-ng/helm/popover": [
-        "./libs/spartan/popover/src/index.ts"
-      ],
-      "@spartan-ng/helm/progress": [
-        "./libs/spartan/progress/src/index.ts"
-      ],
-      "@spartan-ng/helm/questionnaire": [
-        "./libs/spartan/questionnaire/src/index.ts"
-      ],
-      "@spartan-ng/helm/radio-group": [
-        "./libs/spartan/radio-group/src/index.ts"
-      ],
-      "@spartan-ng/helm/resizable": [
-        "./libs/spartan/resizable/src/index.ts"
-      ],
-      "@spartan-ng/helm/scroll-area": [
-        "./libs/spartan/scroll-area/src/index.ts"
-      ],
-      "@spartan-ng/helm/select": [
-        "./libs/spartan/select/src/index.ts"
-      ],
-      "@spartan-ng/helm/separator": [
-        "./libs/spartan/separator/src/index.ts"
-      ],
-      "@spartan-ng/helm/sheet": [
-        "./libs/spartan/sheet/src/index.ts"
-      ],
-      "@spartan-ng/helm/sidebar": [
-        "./libs/spartan/sidebar/src/index.ts"
-      ],
-      "@spartan-ng/helm/skeleton": [
-        "./libs/spartan/skeleton/src/index.ts"
-      ],
-      "@spartan-ng/helm/slider": [
-        "./libs/spartan/slider/src/index.ts"
-      ],
-      "@spartan-ng/helm/sonner": [
-        "./libs/spartan/sonner/src/index.ts"
-      ],
-      "@spartan-ng/helm/spinner": [
-        "./libs/spartan/spinner/src/index.ts"
-      ],
-      "@spartan-ng/helm/switch": [
-        "./libs/spartan/switch/src/index.ts"
-      ],
-      "@spartan-ng/helm/table": [
-        "./libs/spartan/table/src/index.ts"
-      ],
-      "@spartan-ng/helm/tabs": [
-        "./libs/spartan/tabs/src/index.ts"
-      ],
-      "@spartan-ng/helm/textarea": [
-        "./libs/spartan/textarea/src/index.ts"
-      ],
-      "@spartan-ng/helm/toggle": [
-        "./libs/spartan/toggle/src/index.ts"
-      ],
-      "@spartan-ng/helm/toggle-group": [
-        "./libs/spartan/toggle-group/src/index.ts"
-      ],
-      "@spartan-ng/helm/tooltip": [
-        "./libs/spartan/tooltip/src/index.ts"
-      ],
-      "@spartan-ng/helm/trace": [
-        "./libs/spartan/trace/src/index.ts"
-      ],
-      "@spartan-ng/helm/typography": [
-        "./libs/spartan/typography/src/index.ts"
-      ],
-      "@spartan-ng/helm/utils": [
-        "./libs/spartan/utils/src/index.ts"
-      ]
+      "@org/api/products": ["./packages/api/products/src/index.ts"],
+      "@org/models": ["./packages/shared/models/src/index.ts"],
+      "@org/shop/data": ["./packages/shop/data/src/index.ts"],
+      "@org/shop/feature-product-detail": ["./packages/shop/feature-product-detail/src/index.ts"],
+      "@org/shop/feature-products": ["./packages/shop/feature-products/src/index.ts"],
+      "@org/shop/shared-ui": ["./packages/shop/shared-ui/src/index.ts"],
+      "@spartan-ng/helm/accordion": ["./libs/spartan/accordion/src/index.ts"],
+      "@spartan-ng/helm/alert": ["./libs/spartan/alert/src/index.ts"],
+      "@spartan-ng/helm/alert-dialog": ["./libs/spartan/alert-dialog/src/index.ts"],
+      "@spartan-ng/helm/aspect-ratio": ["./libs/spartan/aspect-ratio/src/index.ts"],
+      "@spartan-ng/helm/attachment": ["./libs/spartan/attachment/src/index.ts"],
+      "@spartan-ng/helm/autocomplete": ["./libs/spartan/autocomplete/src/index.ts"],
+      "@spartan-ng/helm/avatar": ["./libs/spartan/avatar/src/index.ts"],
+      "@spartan-ng/helm/badge": ["./libs/spartan/badge/src/index.ts"],
+      "@spartan-ng/helm/breadcrumb": ["./libs/spartan/breadcrumb/src/index.ts"],
+      "@spartan-ng/helm/bubble": ["./libs/spartan/bubble/src/index.ts"],
+      "@spartan-ng/helm/button": ["./libs/spartan/button/src/index.ts"],
+      "@spartan-ng/helm/button-group": ["./libs/spartan/button-group/src/index.ts"],
+      "@spartan-ng/helm/calendar": ["./libs/spartan/calendar/src/index.ts"],
+      "@spartan-ng/helm/card": ["./libs/spartan/card/src/index.ts"],
+      "@spartan-ng/helm/carousel": ["./libs/spartan/carousel/src/index.ts"],
+      "@spartan-ng/helm/chart": ["./libs/spartan/chart/src/index.ts"],
+      "@spartan-ng/helm/checkbox": ["./libs/spartan/checkbox/src/index.ts"],
+      "@spartan-ng/helm/code-block": ["./libs/spartan/code-block/src/index.ts"],
+      "@spartan-ng/helm/collapsible": ["./libs/spartan/collapsible/src/index.ts"],
+      "@spartan-ng/helm/combobox": ["./libs/spartan/combobox/src/index.ts"],
+      "@spartan-ng/helm/command": ["./libs/spartan/command/src/index.ts"],
+      "@spartan-ng/helm/context-menu": ["./libs/spartan/context-menu/src/index.ts"],
+      "@spartan-ng/helm/date-picker": ["./libs/spartan/date-picker/src/index.ts"],
+      "@spartan-ng/helm/dialog": ["./libs/spartan/dialog/src/index.ts"],
+      "@spartan-ng/helm/drawer": ["./libs/spartan/drawer/src/index.ts"],
+      "@spartan-ng/helm/dropdown-menu": ["./libs/spartan/dropdown-menu/src/index.ts"],
+      "@spartan-ng/helm/empty": ["./libs/spartan/empty/src/index.ts"],
+      "@spartan-ng/helm/field": ["./libs/spartan/field/src/index.ts"],
+      "@spartan-ng/helm/hover-card": ["./libs/spartan/hover-card/src/index.ts"],
+      "@spartan-ng/helm/input": ["./libs/spartan/input/src/index.ts"],
+      "@spartan-ng/helm/input-group": ["./libs/spartan/input-group/src/index.ts"],
+      "@spartan-ng/helm/input-otp": ["./libs/spartan/input-otp/src/index.ts"],
+      "@spartan-ng/helm/item": ["./libs/spartan/item/src/index.ts"],
+      "@spartan-ng/helm/kbd": ["./libs/spartan/kbd/src/index.ts"],
+      "@spartan-ng/helm/label": ["./libs/spartan/label/src/index.ts"],
+      "@spartan-ng/helm/marker": ["./libs/spartan/marker/src/index.ts"],
+      "@spartan-ng/helm/menubar": ["./libs/spartan/menubar/src/index.ts"],
+      "@spartan-ng/helm/message": ["./libs/spartan/message/src/index.ts"],
+      "@spartan-ng/helm/message-scroller": ["./libs/spartan/message-scroller/src/index.ts"],
+      "@spartan-ng/helm/native-select": ["./libs/spartan/native-select/src/index.ts"],
+      "@spartan-ng/helm/navigation-menu": ["./libs/spartan/navigation-menu/src/index.ts"],
+      "@spartan-ng/helm/pagination": ["./libs/spartan/pagination/src/index.ts"],
+      "@spartan-ng/helm/popover": ["./libs/spartan/popover/src/index.ts"],
+      "@spartan-ng/helm/progress": ["./libs/spartan/progress/src/index.ts"],
+      "@spartan-ng/helm/questionnaire": ["./libs/spartan/questionnaire/src/index.ts"],
+      "@spartan-ng/helm/radio-group": ["./libs/spartan/radio-group/src/index.ts"],
+      "@spartan-ng/helm/resizable": ["./libs/spartan/resizable/src/index.ts"],
+      "@spartan-ng/helm/scroll-area": ["./libs/spartan/scroll-area/src/index.ts"],
+      "@spartan-ng/helm/select": ["./libs/spartan/select/src/index.ts"],
+      "@spartan-ng/helm/separator": ["./libs/spartan/separator/src/index.ts"],
+      "@spartan-ng/helm/sheet": ["./libs/spartan/sheet/src/index.ts"],
+      "@spartan-ng/helm/sidebar": ["./libs/spartan/sidebar/src/index.ts"],
+      "@spartan-ng/helm/skeleton": ["./libs/spartan/skeleton/src/index.ts"],
+      "@spartan-ng/helm/slider": ["./libs/spartan/slider/src/index.ts"],
+      "@spartan-ng/helm/sonner": ["./libs/spartan/sonner/src/index.ts"],
+      "@spartan-ng/helm/spinner": ["./libs/spartan/spinner/src/index.ts"],
+      "@spartan-ng/helm/switch": ["./libs/spartan/switch/src/index.ts"],
+      "@spartan-ng/helm/table": ["./libs/spartan/table/src/index.ts"],
+      "@spartan-ng/helm/tabs": ["./libs/spartan/tabs/src/index.ts"],
+      "@spartan-ng/helm/textarea": ["./libs/spartan/textarea/src/index.ts"],
+      "@spartan-ng/helm/toggle": ["./libs/spartan/toggle/src/index.ts"],
+      "@spartan-ng/helm/toggle-group": ["./libs/spartan/toggle-group/src/index.ts"],
+      "@spartan-ng/helm/tooltip": ["./libs/spartan/tooltip/src/index.ts"],
+      "@spartan-ng/helm/trace": ["./libs/spartan/trace/src/index.ts"],
+      "@spartan-ng/helm/typography": ["./libs/spartan/typography/src/index.ts"],
+      "@spartan-ng/helm/utils": ["./libs/spartan/utils/src/index.ts"],
+      "@org/auth-data-access": ["./libs/shared/auth/data-access/src/index.ts"],
+      "@org/layout": ["./libs/shared/layout/src/index.ts"],
+      "@org/auth-feature": ["./libs/shared/auth/feature/src/index.ts"],
+      "@org/auth-feature/ui": ["./libs/shared/auth/feature/src/ui.ts"],
+      "@org/ui-forms": ["./libs/shared/ui/forms/src/index.ts"]
     }
   },
-  "exclude": [
-    "node_modules",
-    "tmp"
-  ]
+  "exclude": ["node_modules", "tmp"]
 }

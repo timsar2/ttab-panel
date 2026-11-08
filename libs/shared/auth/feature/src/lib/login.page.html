@@ -1,0 +1,60 @@
+<lib-auth-layout>
+  <a authHeader class="wordmark" href="/" [attr.aria-label]="config.brandName">
+    <span class="brand-mark" aria-hidden="true">{{ config.brandName.slice(0, 1) }}</span>
+    <span class="brand-name" dir="auto">{{ config.brandName }}</span>
+    <span class="product-name">{{ copy().panel }}</span>
+  </a>
+  @if (appearance.toggleDirection || appearance.toggleTheme) {
+  <nav authActions class="preferences" [attr.aria-label]="copy().preferences">
+    @if (appearance.toggleDirection) {
+    <button
+      hlmBtn
+      variant="outline"
+      type="button"
+      class="preference-button"
+      [attr.aria-label]="copy().direction"
+      (click)="appearance.toggleDirection()"
+    >
+      <ng-icon name="lucideLanguages" aria-hidden="true" /><span
+        >{{ appearance.direction() === 'rtl' ? 'English' : 'فارسی' }}</span
+      >
+    </button>
+    } @if (appearance.toggleTheme) {
+    <button
+      hlmBtn
+      variant="outline"
+      type="button"
+      class="preference-button"
+      [attr.aria-label]="appearance.theme() === 'light' ? copy().darkTheme : copy().lightTheme"
+      [attr.aria-pressed]="appearance.theme() === 'dark'"
+      (click)="appearance.toggleTheme()"
+    >
+      <ng-icon
+        [name]="appearance.theme() === 'light' ? 'lucideMoon' : 'lucideSun'"
+        aria-hidden="true"
+      />
+      <span class="theme-label"
+        >{{ appearance.theme() === 'light' ? copy().dark : copy().light }}</span
+      >
+    </button>
+    }
+  </nav>
+  }
+  <aside authBrand class="brand-panel" aria-labelledby="brand-title">
+    <span class="brand-eyebrow">{{ copy().eyebrow }}</span>
+    <h2 id="brand-title">{{ copy().brandTitle }}</h2>
+    <p>{{ copy().brandDescription }}</p>
+    <div class="brand-rule" aria-hidden="true"></div>
+    <span class="brand-note">{{ copy().brandNote }}</span>
+    <span class="brand-index" aria-hidden="true" dir="auto"
+      >{{ config.brandName }} / {{ copy().panel }}</span
+    >
+  </aside>
+  <lib-login-form
+    [busy]="busy()"
+    [error]="error()"
+    [notice]="session.configured() ? null : copy().notice"
+    (credentialsSubmit)="onSubmit($event)"
+  />
+  <span authFooter>{{ config.footer ?? config.brandName }}</span>
+</lib-auth-layout>

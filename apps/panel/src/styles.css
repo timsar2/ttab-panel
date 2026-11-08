@@ -6,11 +6,14 @@
 @import './theme.css';
 
 @source './app';
+@source '../../../libs/shared';
 @source '../../../libs/spartan/alert';
 @source '../../../libs/spartan/button';
 @source '../../../libs/spartan/card';
 @source '../../../libs/spartan/input';
 @source '../../../libs/spartan/label';
+@source '../../../libs/spartan/field';
+@source '../../../libs/spartan/separator';
 
 @layer base {
   * {

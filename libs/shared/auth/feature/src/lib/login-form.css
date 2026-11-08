@@ -1,0 +1,91 @@
+:host {
+  display: block;
+  inline-size: 100%;
+}
+.login-card {
+  inline-size: 100%;
+  --card-spacing: 2rem;
+  box-shadow: var(--shadow-lg);
+}
+.card-header {
+  gap: 0.75rem;
+}
+.welcome {
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.card-header h1 {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 750;
+  line-height: 1.6;
+  letter-spacing: -0.025em;
+}
+.card-description {
+  line-height: 1.9;
+}
+.card-content form {
+  display: grid;
+  gap: 1.5rem;
+}
+.field {
+  display: grid;
+  gap: 0.65rem;
+}
+.field input {
+  block-size: 3rem;
+  font-size: 1rem;
+}
+.field input[aria-invalid='true'] {
+  border-color: var(--destructive);
+}
+.password-field {
+  position: relative;
+}
+.password-field input {
+  padding-inline-end: 3.5rem;
+}
+.password-toggle {
+  position: absolute;
+  inset-inline-end: 0.125rem;
+  inset-block-start: 0.125rem;
+  inline-size: 2.75rem;
+  block-size: 2.75rem;
+  color: var(--muted-foreground);
+}
+hlm-field-error {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+.submit-button {
+  inline-size: 100%;
+  block-size: 3rem;
+  font-size: 0.95rem;
+}
+.submission-feedback:empty {
+  display: none;
+}
+.submission-feedback p {
+  line-height: 1.8;
+}
+.card-footer {
+  padding-block: 1.25rem;
+  border-block-start: 1px solid var(--border);
+  background: var(--muted);
+}
+.card-footer p {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1.8;
+}
+@media (max-width: 760px) {
+  .login-card {
+    --card-spacing: 1.5rem;
+  }
+  .card-header h1 {
+    font-size: 1.4rem;
+  }
+}

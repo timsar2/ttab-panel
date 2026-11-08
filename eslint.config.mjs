@@ -1,15 +1,13 @@
-import nx from '@nx/eslint-plugin';
+import nx from '@nx/eslint-plugin'
+import sheriff from '@softarc/eslint-plugin-sheriff'
 
 export default [
   ...nx.configs['flat/base'],
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
+  sheriff.configs.all,
   {
-    ignores: [
-      '**/dist',
-      '**/vite.config.*.timestamp*',
-      '**/vitest.config.*.timestamp*',
-    ],
+    ignores: ['**/dist', '**/vite.config.*.timestamp*', '**/vitest.config.*.timestamp*'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
@@ -30,7 +28,7 @@ export default [
             },
             {
               sourceTag: 'scope:shared',
-              onlyDependOnLibsWithTags: ['scope:shared'],
+              onlyDependOnLibsWithTags: ['scope:shared', 'scope:ui'],
             },
             {
               sourceTag: 'scope:shop',
@@ -43,6 +41,10 @@ export default [
             {
               sourceTag: 'type:data',
               onlyDependOnLibsWithTags: ['type:data'],
+            },
+            {
+              sourceTag: 'layer:presentation',
+              onlyDependOnLibsWithTags: ['type:ui', 'type:util'],
             },
           ],
         },
@@ -63,4 +65,4 @@ export default [
     // Override or add rules here
     rules: {},
   },
-];
+]

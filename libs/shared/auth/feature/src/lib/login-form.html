@@ -1,0 +1,87 @@
+<section hlmCard class="login-card" aria-labelledby="login-title">
+  <header hlmCardHeader class="card-header">
+    <span class="welcome">{{ copy().welcome }}</span>
+    <h1 hlmCardTitle id="login-title">{{ copy().title }}</h1>
+    <p hlmCardDescription class="card-description">{{ copy().description }}</p>
+  </header>
+  <div hlmCardContent class="card-content">
+    <form
+      [formRoot]="loginForm"
+      (submit)="onSubmit($event)"
+      [attr.aria-busy]="busy() || loginForm().submitting()"
+    >
+      <div hlmField class="field">
+        <label hlmFieldLabel for="username">{{ copy().username }}</label>
+        <input
+          libSignalInput
+          #usernameInput
+          id="username"
+          type="text"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          [formField]="loginForm.username"
+          [placeholder]="copy().usernamePlaceholder"
+          [attr.aria-describedby]="loginForm.username().touched() && loginForm.username().invalid() ? 'username-error' : null"
+        />
+        @if (loginForm.username().touched() && loginForm.username().invalid()) {
+        <hlm-field-error id="username-error" forceShow
+          >{{ copy().usernameRequired }}</hlm-field-error
+        >
+        }
+      </div>
+      <div hlmField class="field">
+        <label hlmFieldLabel for="password">{{ copy().password }}</label>
+        <div class="password-field">
+          <input
+            libSignalInput
+            #passwordInput
+            id="password"
+            [type]="passwordVisible() ? 'text' : 'password'"
+            autocomplete="current-password"
+            [formField]="loginForm.password"
+            [placeholder]="copy().passwordPlaceholder"
+            [attr.aria-describedby]="loginForm.password().touched() && loginForm.password().invalid() ? 'password-error' : null"
+          />
+          <button
+            hlmBtn
+            variant="ghost"
+            size="icon"
+            type="button"
+            class="password-toggle"
+            aria-controls="password"
+            [attr.aria-pressed]="passwordVisible()"
+            [attr.aria-label]="passwordVisible() ? copy().hidePassword : copy().showPassword"
+            (click)="passwordVisible.set(!passwordVisible())"
+          >
+            <ng-icon [name]="passwordVisible() ? 'lucideEyeOff' : 'lucideEye'" aria-hidden="true" />
+          </button>
+        </div>
+        @if (loginForm.password().touched() && loginForm.password().invalid()) {
+        <hlm-field-error id="password-error" forceShow
+          >{{ copy().passwordRequired }}</hlm-field-error
+        >
+        }
+      </div>
+      <button
+        hlmBtn
+        type="submit"
+        class="submit-button hover:bg-primary-hover active:bg-primary-active"
+        [disabled]="!ready() || busy() || loginForm().submitting()"
+      >
+        {{ busy() || loginForm().submitting() ? copy().submitting : copy().submit }}
+      </button>
+      <div aria-live="polite" aria-atomic="true" class="submission-feedback">
+        @if (invalidSubmission() || error()) {
+        <section hlmAlert variant="destructive" role="status">
+          <h2 hlmAlertTitle>{{ invalidSubmission() ? copy().invalidTitle : copy().errorTitle }}</h2>
+          <p hlmAlertDescription>{{ invalidSubmission() ? copy().invalidDescription : error() }}</p>
+        </section>
+        }
+      </div>
+    </form>
+  </div>
+  @if (notice()) {
+  <footer hlmCardFooter class="card-footer"><p>{{ notice() }}</p></footer>
+  }
+</section>

@@ -4,13 +4,11 @@
   "sourceRoot": "libs/spartan/field/src",
   "prefix": "hlm",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:ui", "type:ui"],
   "targets": {
     "build": {
       "executor": "@nx/angular:ng-packagr-lite",
-      "outputs": [
-        "{workspaceRoot}/dist/{projectRoot}"
-      ],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
       "defaultConfiguration": "production",
       "options": {
         "project": "libs/spartan/field/ng-package.json",

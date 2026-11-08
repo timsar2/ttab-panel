@@ -1,0 +1,27 @@
+:host {
+  display: block;
+  min-block-size: 100dvh;
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-sans);
+}
+header {
+  padding: 1.5rem;
+  border-block-end: 1px solid var(--border);
+}
+.workspace {
+  display: flex;
+}
+aside {
+  flex: 0 0 auto;
+}
+main {
+  flex: 1;
+  min-inline-size: 0;
+  padding: clamp(1.25rem, 4vw, 3rem);
+}
+@media (max-width: 760px) {
+  .workspace {
+    flex-direction: column;
+  }
+}
