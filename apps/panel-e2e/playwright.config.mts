@@ -1,11 +1,11 @@
-import { defineConfig, devices } from '@playwright/test';
-import { nxE2EPreset } from '@nx/playwright/preset';
-import { getReadyUrl, workspaceRoot } from '@nx/devkit';
+import { defineConfig, devices } from '@playwright/test'
+import { nxE2EPreset } from '@nx/playwright/preset'
+import { getReadyUrl, workspaceRoot } from '@nx/devkit'
 
-const isCI = !!process.env['CI'];
+const isCI = !!process.env['CI']
 // For CI, you may want to set BASE_URL to the deployed application.
 // getReadyUrl moves the address to the port the dev server task reported.
-const baseURL = process.env['BASE_URL'] || getReadyUrl('http://localhost:4200');
+const baseURL = process.env['BASE_URL'] || getReadyUrl('http://localhost:4200')
 
 /**
  * Read environment variables from file.
@@ -34,9 +34,7 @@ export default defineConfig({
   webServer: process.env['BASE_URL']
     ? undefined
     : {
-        command: isCI
-          ? 'npx nx run panel:serve-static'
-          : 'npx nx run panel:serve',
+        command: isCI ? 'bun nx run panel:serve-static' : 'bun nx run panel:serve',
         url: getReadyUrl('http://localhost:4200'),
         reuseExistingServer: true,
         cwd: workspaceRoot,
@@ -80,4 +78,4 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], channel: 'chrome' },
     } */
   ],
-});
+})

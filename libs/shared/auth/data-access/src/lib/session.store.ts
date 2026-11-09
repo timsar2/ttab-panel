@@ -18,13 +18,21 @@ import {
   firstValueFrom,
   map,
   mergeMap,
+  of,
   shareReplay,
   takeUntil,
   throwError,
 } from 'rxjs'
 import { AUTH_CONFIG } from './auth.config'
-import { AuthBackend, AuthCredentials, AuthTokens, createDefaultAuthBackend } from './auth.backend'
-import { AuthUser, decodeUser } from './auth-user'
+import {
+  AuthBackend,
+  AuthCredentials,
+  AuthSession,
+  AuthTokens,
+  createDefaultAuthBackend,
+  validateAuthSession,
+} from './auth.backend'
+import { AuthUser, decodeUser } from '../claims'
 
 export type AuthStatus = 'anonymous' | 'authenticating' | 'authenticated' | 'refreshing'
 
@@ -74,6 +82,9 @@ export const SessionStore = signalStore(
     let tokens: AuthTokens | null = null
     let expiresAt = 0
     let flight: Observable<string> | null = null
+    let restoration: Observable<boolean> | null = null
+    let signedOut = false
+    let logoutFlight: Promise<void> | null = null
     const changes = store._changes
     const changes$ = store.changes$
     const cancelled = () => new Error('The authentication session changed.')
@@ -88,6 +99,7 @@ export const SessionStore = signalStore(
       tokens = null
       expiresAt = 0
       flight = null
+      restoration = null
       patchState(store, {
         status: 'anonymous',
         user: null,
@@ -101,8 +113,20 @@ export const SessionStore = signalStore(
       clear()
       changes.complete()
     })
-    const accept = (value: AuthTokens, version: number): string => {
+    const accept = (value: AuthTokens | AuthSession, version: number): string => {
       if (store.version() !== version) throw cancelled()
+      if (config.mode === 'cookie') {
+        const session = validateAuthSession(value)
+        expiresAt = session.expiresAt
+        patchState(store, {
+          user: session.user,
+          status: 'authenticated',
+          error: null,
+          errorCode: null,
+        })
+        return ''
+      }
+      if (!('token' in value)) throw new Error('Invalid bearer session.')
       if (
         !value?.refreshToken ||
         !Number.isFinite(Date.parse(value.refreshTokenExpiryTime)) ||
@@ -126,16 +150,20 @@ export const SessionStore = signalStore(
       const current = tokens
       const request = defer(() => {
         if (version !== store.version()) return throwError(cancelled)
+        if (config.mode === 'cookie' && signedOut) return throwError(cancelled)
         if (!config.configured)
           return throwError(
             () => new Error(config.configurationError ?? 'Authentication is unavailable.'),
           )
-        if (!current || Date.parse(current.refreshTokenExpiryTime) <= Date.now())
+        if (
+          config.mode !== 'cookie' &&
+          (!current || Date.parse(current.refreshTokenExpiryTime) <= Date.now())
+        )
           return throwError(() => new Error('Your session has expired. Please sign in again.'))
         patchState(store, { status: 'refreshing' })
         return backend.refresh(current)
       }).pipe(
-        untilChanged<AuthTokens>(version),
+        untilChanged<AuthTokens | AuthSession>(version),
         map(value => accept(value, version)),
         catchError(error => {
           if (store.version() === version) {
@@ -156,15 +184,46 @@ export const SessionStore = signalStore(
       flight = guarded
       return guarded
     }
+    const isAuthenticated = (): boolean =>
+      store.user() !== null && (config.mode === 'cookie' || !!tokens) && expiresAt > Date.now()
+    const restore = (): Observable<boolean> => {
+      // Navigation to login can run before the logout response clears its HttpOnly cookie.
+      if (signedOut) return of(false)
+      if (isAuthenticated()) return of(true)
+      const restoreSession = backend.restore?.bind(backend)
+      if (config.mode !== 'cookie' || !restoreSession || !config.configured) return of(false)
+      if (restoration) return restoration
+      const version = store.version()
+      const request = defer(restoreSession).pipe(
+        untilChanged<AuthSession | null>(version),
+        map(value => {
+          if (!value) return false
+          accept(value, version)
+          return true
+        }),
+        catchError(() => {
+          if (store.version() === version) clear()
+          return of(false)
+        }),
+        finalize(() => {
+          if (restoration === shared) restoration = null
+        }),
+      )
+      const shared = request.pipe(shareReplay({ bufferSize: 1, refCount: false }))
+      restoration = shared
+      return shared
+    }
     return {
       clear,
       refresh,
+      restore,
       untilChanged,
       // Deliberately evaluated at call time: computed(Date.now()) would cache expiry.
-      isAuthenticated: (): boolean => store.user() !== null && !!tokens && expiresAt > Date.now(),
+      isAuthenticated,
       accessToken: (): string | null => tokens?.token ?? null,
       async login(credentials: AuthCredentials): Promise<boolean> {
         clear()
+        signedOut = false
         const version = store.version()
         if (!config.configured) {
           patchState(store, { error: config.configurationError, errorCode: 'configuration' })
@@ -172,8 +231,13 @@ export const SessionStore = signalStore(
         }
         patchState(store, { status: 'authenticating' })
         try {
+          // A late logout response must not remove a newly issued login cookie.
+          if (logoutFlight) await logoutFlight
+          if (store.version() !== version) return false
           const value = await firstValueFrom(
-            defer(() => backend.login(credentials)).pipe(untilChanged<AuthTokens>(version)),
+            defer(() => backend.login(credentials)).pipe(
+              untilChanged<AuthTokens | AuthSession>(version),
+            ),
           )
           accept(value, version)
           return true
@@ -187,13 +251,18 @@ export const SessionStore = signalStore(
       },
       async logout(): Promise<void> {
         const token = tokens?.token
+        signedOut = true
         clear()
-        if (token && config.configured) {
-          try {
-            await firstValueFrom(backend.logout(token))
-          } catch {
-            /* Local logout is authoritative. */
-          }
+        if (logoutFlight) return logoutFlight
+        if (!(token || config.mode === 'cookie') || !config.configured) return
+        logoutFlight = firstValueFrom(backend.logout(token ?? '')).then(
+          () => undefined,
+          () => undefined, // Stay signed out locally even if the server is unavailable.
+        )
+        try {
+          await logoutFlight
+        } finally {
+          logoutFlight = null
         }
       },
     }

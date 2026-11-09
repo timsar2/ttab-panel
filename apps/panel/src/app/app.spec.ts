@@ -3,7 +3,7 @@ import { App } from './app'
 import { provideRouter } from '@angular/router'
 import { RouterTestingHarness } from '@angular/router/testing'
 import { appRoutes } from './app.routes'
-import { provideHttpClientTesting } from '@angular/common/http/testing'
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing'
 import { provideAuth } from '@org/auth-data-access'
 import { provideAuthFeature } from '@org/auth-feature'
 import { panelConfig } from './panel.config'
@@ -38,7 +38,22 @@ describe('App', () => {
   it.each(['/', '/login', '/unknown', '/workspace', '/auth/login'])(
     'routes %s to the login page',
     async url => {
-      const harness = await RouterTestingHarness.create(url)
+      const pending = RouterTestingHarness.create(url)
+      const controller = TestBed.inject(HttpTestingController)
+      await vi.waitFor(() => {
+        controller
+          .expectOne('/api/auth/session')
+          .flush({}, { status: 401, statusText: 'Unauthorized' })
+      })
+      // A protected-route redirect also runs the guest guard on the login route.
+      if (url === '/workspace') {
+        await vi.waitFor(() =>
+          controller
+            .expectOne('/api/auth/session')
+            .flush({}, { status: 401, statusText: 'Unauthorized' }),
+        )
+      }
+      const harness = await pending
       expect(
         harness.routeNativeElement?.querySelector('input[autocomplete="username"]'),
       ).not.toBeNull()

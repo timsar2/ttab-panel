@@ -13,6 +13,8 @@
 
 @source './app';
 @source '../../../libs/shared';
+@source '../../../libs/transport';
+@source '../../../libs/spartan/table';
 @source '../../../libs/spartan/alert';
 @source '../../../libs/spartan/button';
 @source '../../../libs/spartan/card';

@@ -16,6 +16,7 @@ export interface AuthConfig {
   loginUrl?: string
   afterLoginUrl?: string
   withCredentials?: boolean
+  mode?: 'bearer' | 'cookie'
 }
 
 export interface NormalizedAuthConfig extends Required<AuthConfig> {
@@ -91,6 +92,7 @@ function normalize(config?: AuthConfig): NormalizedAuthConfig {
     )
       throw new Error()
     const relative = raw.startsWith('/') && !raw.startsWith('//')
+    if (config?.mode === 'cookie' && !relative) throw new Error()
     if (!relative && !/^https?:\/\//i.test(raw)) throw new Error()
     if (relative) {
       path = raw.replace(/\/+$/, '')
@@ -120,6 +122,7 @@ function normalize(config?: AuthConfig): NormalizedAuthConfig {
     loginUrl: localUrl(config?.loginUrl) ? config.loginUrl : '/login',
     afterLoginUrl: safeReturnUrl(config?.afterLoginUrl, '/', config?.loginUrl),
     withCredentials: config?.withCredentials === true,
+    mode: config?.mode === 'cookie' ? 'cookie' : 'bearer',
   })
 }
 
@@ -170,5 +173,5 @@ export function apiRequestPath(url: string, config: NormalizedAuthConfig): strin
 }
 
 export function isAuthPath(path: string): boolean {
-  return /^\/tokens(?:\/|$)/i.test(path) || path.toLowerCase() === '/personal/logout'
+  return /^\/(?:tokens|auth)(?:\/|$)/i.test(path) || path.toLowerCase() === '/personal/logout'
 }

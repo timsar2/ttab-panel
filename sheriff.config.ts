@@ -17,11 +17,17 @@ export const config: SheriffConfig = {
     'apps/shop-e2e': ['scope:shop', 'type:e2e'],
 
     'libs/shared/auth/data-access/src': ['scope:shared', 'type:data'],
+    'libs/shared/auth/data-access/src/claims': ['scope:shared', 'type:data'],
+    'libs/shared/auth/data-access/src/server': ['scope:shared', 'type:data'],
     'libs/shared/auth/feature/src': ['scope:shared', 'type:feature'],
     'libs/shared/layout/src': ['scope:shared', 'type:ui'],
     'libs/shared/ui/forms/src': ['scope:shared', 'type:ui'],
+    'libs/shared/ui/data-table/src': ['scope:shared', 'type:ui'],
     'libs/shared/theme/data-access/src': ['scope:shared', 'type:data'],
     'libs/shared/theme/ui/src': ['scope:shared', 'type:feature'],
+    'libs/transport/http/src': ['scope:transport', 'type:data'],
+    'libs/transport/company/data-access/src': ['scope:transport', 'type:data'],
+    'libs/transport/company/feature/src': ['scope:transport', 'type:feature'],
 
     'packages/shop/feature-<feature>/src': ['scope:shop', 'type:feature'],
     'packages/shop/data/src': ['scope:shop', 'type:data'],
@@ -36,10 +42,11 @@ export const config: SheriffConfig = {
   depRules: {
     root: '*',
 
-    'scope:panel': [sameTag, 'scope:shared', 'scope:ui'],
+    'scope:panel': [sameTag, 'scope:shared', 'scope:ui', 'scope:transport'],
     'scope:shop': [sameTag, 'scope:shared'],
     'scope:api': [sameTag, 'scope:shared'],
     'scope:shared': [sameTag, 'scope:ui'],
+    'scope:transport': [sameTag, 'scope:shared', 'scope:ui'],
     'scope:ui': [sameTag],
 
     'type:app': ['type:feature', 'type:ui', 'type:data', 'type:models', 'type:util', 'type:state'],

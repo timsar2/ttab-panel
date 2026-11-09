@@ -1,8 +1,13 @@
 export { AUTH_CONFIG, provideAuth, safeReturnUrl } from './lib/auth.config'
 export type { AuthConfig, NormalizedAuthConfig } from './lib/auth.config'
 export { AUTH_BYPASS, AuthBackend } from './lib/auth.backend'
-export type { AuthCredentials, AuthTokens } from './lib/auth.backend'
-export type { AuthUser } from './lib/auth-user'
+export type {
+  AuthCredentials,
+  AuthTokens,
+  AuthSession,
+  AuthRequestContext,
+} from './lib/auth.backend'
+export type { AuthUser } from './claims'
 export { SessionStore } from './lib/session.store'
 export type { AuthStatus, AuthErrorCode } from './lib/session.store'
 export { authInterceptor } from './lib/auth.interceptor'

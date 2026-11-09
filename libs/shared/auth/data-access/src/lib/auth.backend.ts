@@ -1,7 +1,9 @@
 import { HttpClient, HttpContext, HttpContextToken } from '@angular/common/http'
-import { InjectionToken, inject } from '@angular/core'
-import { Observable, defer, map, throwError } from 'rxjs'
+import { InjectionToken, PLATFORM_ID, REQUEST_CONTEXT, inject } from '@angular/core'
+import { isPlatformServer } from '@angular/common'
+import { Observable, defer, map, of, throwError } from 'rxjs'
 import { AUTH_CONFIG } from './auth.config'
+import { AuthUser } from '../claims'
 
 export interface AuthCredentials {
   username: string
@@ -13,9 +15,54 @@ export interface AuthTokens {
   refreshTokenExpiryTime: string
 }
 export interface AuthBackend {
-  login(credentials: AuthCredentials): Observable<AuthTokens>
-  refresh(tokens: AuthTokens): Observable<AuthTokens>
+  login(credentials: AuthCredentials): Observable<AuthTokens | AuthSession>
+  refresh(tokens: AuthTokens | null): Observable<AuthTokens | AuthSession>
   logout(token: string): Observable<unknown>
+  restore?(): Observable<AuthSession | null>
+}
+
+/** Public metadata only. Credentials must never be included in this contract. */
+export interface AuthSession {
+  user: AuthUser
+  expiresAt: number
+}
+
+/** Supplied by the trusted SSR host per request, never serialized to browser state. */
+export interface AuthRequestContext {
+  authSession?: AuthSession | null
+  authApiOrigin?: string
+}
+
+export function validateAuthSession(value: unknown): AuthSession {
+  const session = value as AuthSession | null
+  const user = session?.user
+  if (
+    !session ||
+    !user ||
+    typeof user.id !== 'string' ||
+    !user.id.trim() ||
+    !Number.isFinite(session.expiresAt) ||
+    session.expiresAt <= Date.now() ||
+    typeof user.firstName !== 'string' ||
+    typeof user.lastName !== 'string' ||
+    !Array.isArray(user.roles) ||
+    !user.roles.every(role => typeof role === 'string') ||
+    ![user.businessEntityId, user.companyId].every(
+      id => id === null || (Number.isSafeInteger(id) && (id as number) > 0),
+    )
+  )
+    throw new Error('The authentication server returned an invalid session.')
+  return {
+    expiresAt: session.expiresAt,
+    user: {
+      id: user.id,
+      businessEntityId: user.businessEntityId,
+      companyId: user.companyId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      roles: [...user.roles],
+    },
+  }
 }
 
 export const AUTH_BYPASS = new HttpContextToken<boolean>(() => false)
@@ -55,6 +102,8 @@ export const AuthBackend = new InjectionToken<AuthBackend>('AuthBackend', {
 export function createDefaultAuthBackend(): AuthBackend {
   const http = inject(HttpClient)
   const config = inject(AUTH_CONFIG)
+  const server = isPlatformServer(inject(PLATFORM_ID))
+  const requestContext = inject(REQUEST_CONTEXT, { optional: true }) as AuthRequestContext | null
   const options = () => ({
     context: new HttpContext().set(AUTH_BYPASS, true),
     headers: { tenant: config.tenant },
@@ -72,6 +121,43 @@ export function createDefaultAuthBackend(): AuthBackend {
           ),
     )
   const base = config.apiUrl.replace(/\/$/, '')
+  if (config.mode === 'cookie') {
+    const cookieOptions = () => ({
+      ...options(),
+      withCredentials: true,
+      credentials: 'same-origin' as const,
+      headers: { 'X-Auth-Request': '1' },
+    })
+    return {
+      login: credentials =>
+        request(() =>
+          http
+            .post<unknown>(`${base}/auth/login`, credentials, cookieOptions())
+            .pipe(map(validateAuthSession)),
+        ),
+      refresh: () =>
+        request(() =>
+          server
+            ? throwError(() => new Error('Server session restoration is unavailable.'))
+            : http
+                .post<unknown>(`${base}/auth/refresh`, {}, cookieOptions())
+                .pipe(map(validateAuthSession)),
+        ),
+      restore: () =>
+        request(() =>
+          server
+            ? of(
+                requestContext?.authSession
+                  ? validateAuthSession(requestContext.authSession)
+                  : null,
+              )
+            : http
+                .get<unknown>(`${base}/auth/session`, cookieOptions())
+                .pipe(map(validateAuthSession)),
+        ),
+      logout: () => request(() => http.post(`${base}/auth/logout`, {}, cookieOptions())),
+    }
+  }
   return {
     login: ({ username, password }) =>
       request(() =>
@@ -79,10 +165,14 @@ export function createDefaultAuthBackend(): AuthBackend {
           .post<unknown>(`${base}/tokens/get-by-email`, { email: username, password }, options())
           .pipe(map(tokensFromEnvelope)),
       ),
-    refresh: ({ token, refreshToken }) =>
+    refresh: tokens =>
       request(() =>
         http
-          .post<unknown>(`${base}/tokens/refresh`, { token, refreshToken }, options())
+          .post<unknown>(
+            `${base}/tokens/refresh`,
+            { token: tokens?.token, refreshToken: tokens?.refreshToken },
+            options(),
+          )
           .pipe(map(tokensFromEnvelope)),
       ),
     logout: token =>

@@ -5,6 +5,7 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node'
 import express from 'express'
+import { createAuthBff, readAuthBffConfig } from '@org/auth-data-access/node'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -13,14 +14,25 @@ const browserDistFolder = resolve(serverDistFolder, '../browser')
 
 const app = express()
 app.disable('x-powered-by')
-const angularApp = new AngularNodeAppEngine()
-
-// A deployment proxy must forward /api to the backend before reaching this server.
-// Never render login HTML in response to an unconfigured API request.
-app.use('/api', (_req, res) => {
-  res.setHeader('Cache-Control', 'no-store')
-  res.status(503).json({ messages: ['The API upstream is not configured.'] })
+// Missing/invalid deployment configuration disables API access, never SSR-falls through.
+const authConfig = (() => {
+  try {
+    return readAuthBffConfig()
+  } catch {
+    return null
+  }
+})()
+const authBff = authConfig ? createAuthBff({ config: authConfig }) : null
+const angularApp = new AngularNodeAppEngine({
+  ...(authConfig ? { allowedHosts: [new URL(authConfig.publicOrigin).hostname] } : {}),
+  trustProxyHeaders: false,
 })
+if (authBff) app.use('/api', authBff)
+else
+  app.use('/api', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store')
+    res.status(503).json({ messages: ['Authentication is unavailable.'] })
+  })
 
 /**
  * Serve static files from /browser
@@ -41,9 +53,18 @@ app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store')
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-  angularApp
-    .handle(req)
-    .then(response => (response ? writeResponseToNodeResponse(response, res) : next()))
+  Promise.resolve(authBff?.resolveSession(req, res) ?? null)
+    .then(authSession =>
+      angularApp.handle(req, {
+        authSession,
+        authApiOrigin: authConfig?.publicOrigin,
+      }),
+    )
+    .then(response => {
+      if (!response) return next()
+      response.headers.set('Cache-Control', 'no-store')
+      return writeResponseToNodeResponse(response, res)
+    })
     .catch(next)
 })
 

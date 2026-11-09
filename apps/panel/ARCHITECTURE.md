@@ -37,29 +37,37 @@ this Nx workspace. Run the commands below from the `front` workspace root.
 
 ## Current Structure
 
-| Location / Public Entry                   | Responsibility                                                                                      |
-| ----------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `apps/panel/src/app/app.config.ts`        | Compose providers, hydration, routing, auth/theme adapters, and directionality.                     |
-| `apps/panel/src/app/panel.config.ts`      | App-owned API prefix, tenant, branding, and login/success paths.                                    |
-| `apps/panel/src/app/app.routes.ts`        | Mount reusable auth routes and protect the workspace.                                               |
-| `apps/panel/src/app/app.routes.server.ts` | Choose public SSR versus protected client rendering.                                                |
-| `apps/panel/src/app/core/preferences/`    | Panel's direction/language adapter; not a second theme store.                                       |
-| `@org/auth-data-access`                   | Configurable backend contract, in-memory SessionStore, HTTP interception, guards, and auth helpers. |
-| `@org/auth-feature`                       | Auth presentation providers and the lazy login route factory.                                       |
-| `@org/auth-feature/ui`                    | Explicit public entry for embedding `LoginForm` or `LoginPage`.                                     |
-| `@org/layout`                             | Projected `AuthLayout` and `AppLayout`, independent of auth/theme stores.                           |
-| `@org/ui-forms`                           | Reusable Spartan/Signal Forms input bridge.                                                         |
-| `@org/theme`                              | Validated theme model, NgRx ThemeStore, palette/token generation, persistence, and safe custom CSS. |
-| `@org/theme-ui`                           | Configurable Spartan customization sheet.                                                           |
-| `libs/spartan/*`                          | Existing owned Helm source; inspect its actual exports before adding controls.                      |
-| `libs/base-theme.css`                     | Shared semantic design tokens and base theme rules.                                                 |
-| `apps/panel/src/styles.css`               | Font/CSS imports and explicit Tailwind source discovery.                                            |
-| `apps/panel-e2e/`                         | Browser acceptance tests and reusable controlled API fixtures.                                      |
+| Location / Public Entry                   | Responsibility                                                                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `apps/panel/src/app/app.config.ts`        | Compose providers, hydration, routing, auth/theme adapters, and directionality.                                    |
+| `apps/panel/src/app/panel.config.ts`      | App-owned API prefix, tenant, branding, and login/success paths.                                                   |
+| `apps/panel/src/app/app.routes.ts`        | Mount reusable auth routes and protect the workspace.                                                              |
+| `apps/panel/src/app/app.routes.server.ts` | Render routes per request with validated, request-scoped authentication.                                           |
+| `apps/panel/src/app/core/preferences/`    | Panel's direction/language adapter; not a second theme store.                                                      |
+| `@org/auth-data-access`                   | Configurable backend contract, public session metadata, HTTP interception, guards, and auth helpers.               |
+| `@org/auth-data-access/node`              | Node-only cookie BFF, server-held tokens, session storage contract, and SSR restoration.                           |
+| `@org/auth-feature`                       | Auth presentation providers and the lazy login route factory.                                                      |
+| `@org/auth-feature/ui`                    | Explicit public entry for embedding `LoginForm` or `LoginPage`.                                                    |
+| `@org/layout`                             | Projected `AuthLayout` and `AppLayout`, independent of auth/theme stores.                                          |
+| `@org/ui-forms`                           | Reusable Spartan/Signal Forms input bridge.                                                                        |
+| `@org/transport-http`                     | Opt-in transport envelope/page/error decoders and safe configured requests through the existing scoped HttpClient. |
+| `@org/transport-company-data-access`      | Source-backed company read DTOs, API and feature-scoped search store; no inferred membership policy.               |
+| `@org/transport-company-feature`          | Configurable lazy company search routes with URL-owned filters/pages; CRUD/context acceptance remains pending.     |
+| `@org/ui-data-table`                      | Typed TanStack v9/Spartan server-page composition, stable row IDs and optional typed action intent.                |
+| `@org/theme`                              | Validated theme model, NgRx ThemeStore, palette/token generation, persistence, and safe custom CSS.                |
+| `@org/theme-ui`                           | Configurable Spartan customization sheet.                                                                          |
+| `libs/spartan/*`                          | Existing owned Helm source; inspect its actual exports before adding controls.                                     |
+| `libs/base-theme.css`                     | Shared semantic design tokens and base theme rules.                                                                |
+| `apps/panel/src/styles.css`               | Font/CSS imports and explicit Tailwind source discovery.                                                           |
+| `apps/panel-e2e/`                         | Browser acceptance tests and reusable controlled API fixtures.                                                     |
 
-Authentication, layouts, forms, and theme exist today. The protected workspace is
-a small authenticated composition, not completed company management. Company
-selection, reusable tables, business CRUD, scheduling, assignments, and realtime
-remain migration work. Do not present planned folders as implemented features.
+Authentication, layouts, forms, and theme exist today. A library-owned company
+search/table read slice is mounted at `/companies`, with private client rendering;
+its production/development table checks use controlled fixtures, not live-backend
+acceptance. The protected workspace is a
+small authenticated composition, not completed company management. Authorized
+company selection, business CRUD, scheduling, assignments, and realtime remain
+migration work. Do not present planned folders as implemented features.
 
 Read [BUSINESS_DOMAIN.md](../../docs/BUSINESS_DOMAIN.md) for business scope and
 evidence. Use [the main migration TODO](../../docs/migration/TODO.md) and its
@@ -146,9 +154,11 @@ disabled controls; retain the delayed-JavaScript browser regression when changin
 ### Tables
 
 Inspect the installed `@tanstack/angular-table` v9 declarations and examples before
-coding; do not copy a v8 adapter tutorial. There is no completed shared data-table
-library yet. Build the first real domain table, then extract its reusable typed
-composition using Spartan table, paging, selection, and menu primitives.
+coding; do not copy a v8 adapter tutorial. The first company read table consumes
+`@org/ui-data-table`, extracted as a typed server-page composition using existing
+Spartan table/button/alert primitives. It intentionally offers no implicit
+cross-page selection or local full-dataset filtering/sorting. Further controls and
+full feature/live-backend acceptance remain tracked in the migration checklist.
 
 Use server filtering/sorting/paging only when the endpoint supports it. Explicitly
 adapt table page indices to the backend convention. Never apply a full-dataset
@@ -169,10 +179,72 @@ must not restore a logged-out session. Unconfigured auth must not block unrelate
 HTTP. `requireRoles` denies navigation with `false` rather than assuming a safe
 redirect destination. Backend authorization remains mandatory.
 
-Sessions currently stay in memory, so reload requires login. No SSO, persistent
-token storage, or BFF cookie support is assumed. Public login uses SSR/hydration;
-the protected workspace uses client rendering. Disable private HTTP transfer
-caching. Add matching server-route policy when adding new protected routes.
+Panel uses `provideAuth({ apiUrl: '/api', mode: 'cookie', ... })`. Its browser
+stores no access or refresh tokens, including in local/session storage, Angular
+state, or transferred HTML. A persistent HttpOnly cookie contains only a random,
+HMAC-authenticated session handle. HTTPS uses `__Host-auth-session` with `Secure`,
+`SameSite=Lax`, `Path=/`, and no Domain. Plain HTTP is permitted only with an
+explicit loopback development origin and loopback connection. The existing
+default bearer mode remains available for already supported alternate consumers;
+it is in-memory only and is not used by panel.
+
+The Node-only entry must never be exported from the browser barrel. Sheriff
+tracks the server and pure claims entry points separately; keep both aliases and
+architecture registrations valid. The app mounts `createAuthBff` at `/api` before
+SSR and must not proxy that path directly to the bearer backend, including during
+development. The BFF sends the configured tenant and bearer credential upstream,
+not browser-supplied Authorization, Cookie, tenant, or proxy-host headers.
+
+Login, refresh, and logout are POST operations requiring the exact configured
+Origin and `X-Auth-Request: 1`; unsafe proxied operations have the same checks.
+Direct backend token/logout routes are blocked. Authentication responses contain
+validated metadata only; refresh is single-flight with bounded retries and logout
+cannot recreate a deleted server session. The browser also prevents a pending
+logout from restoring its still-present cookie or clearing a subsequent login.
+No SSO is assumed. Backend authorization remains mandatory on every operation.
+
+Both login and workspace use SSR/hydration. Before rendering, the BFF validates
+the session against the upstream permissions endpoint, refreshes expired access
+credentials when possible, and supplies metadata through Angular's request
+context. Guards wait for restoration instead of allowing SSR unconditionally.
+Authenticated SSR API reads forward only the session cookie to the fixed
+`AUTH_PUBLIC_ORIGIN` BFF, never to an origin inferred from request headers; SSR
+mutations are rejected. That public origin must be reachable from the SSR process.
+The browser independently restores through `/api/auth/session`. Do not transfer
+private HTTP responses; all API and SSR HTML responses use `Cache-Control: no-store`.
+
+### Cookie BFF Deployment
+
+Set server environment variables explicitly; missing/invalid configuration keeps
+the API unavailable with HTTP 503, never a production fallback:
+
+| Variable              | Contract                                                                                          |
+| --------------------- | ------------------------------------------------------------------------------------------------- |
+| `AUTH_API_URL`        | Fixed upstream API base including `/api`; HTTPS except explicit loopback development.             |
+| `AUTH_PUBLIC_ORIGIN`  | Exact frontend origin, without a route path; HTTPS in production. Also constrains SSR hosts.      |
+| `AUTH_SESSION_SECRET` | Strong random server-only secret of at least 32 bytes; never expose through Angular environments. |
+| `NODE_ENV`            | Explicit `production`, `development`, or `test`; production rejects an HTTP public origin.        |
+| `AUTH_TENANT`         | Optional server-owned tenant, default `root`.                                                     |
+
+Keep the external Host header when reverse proxying to this SSR server; forwarded
+host headers are deliberately not trusted. Terminate TLS at the deployment edge,
+do not cache authenticated HTML/API responses, protect the upstream from browser
+token access, and apply deployment-level login rate limiting.
+
+The default `createMemorySessionStorage` is bounded to 10,000 sessions and a
+12-hour absolute lifetime. Browser reloads retain login, but restarting the
+single server process signs users out and old cookies fail closed. Use one worker
+for this default. Before deploying multiple replicas or requiring restart
+persistence, supply shared TTL-enforcing `AuthSessionStorage` and distributed
+refresh coordination. Its `replace` must atomically update an existing live
+session only, never recreate one deleted by logout. Secure any external token
+store with restricted access and encryption at rest. The default does not claim
+multi-instance session continuity. Rotate the secret to invalidate existing handles.
+
+The current BFF is a bounded JSON API proxy (1 MiB requests, 2 MiB responses,
+10-second upstream timeout, no redirects). Binary downloads, streaming/realtime,
+larger uploads, and endpoint-specific field-error mapping require explicit future
+adapters; do not silently route them around cookie authentication.
 
 Use one ThemeStore per application/document and an app-specific storage key.
 ThemeStore alone owns palette/version variables, geometry, and the root dark
@@ -242,6 +314,7 @@ export const appConfig: ApplicationConfig = {
     provideTheme({ storageKey: 'another-app.theme.v1' }),
     provideAuth({
       apiUrl: '/api',
+      mode: 'cookie',
       tenant: 'root',
       loginUrl: '/sign-in',
       afterLoginUrl: '/home',
@@ -260,7 +333,7 @@ export const appConfig: ApplicationConfig = {
 ```
 
 This is a composition example, not a complete generated app: supply `HomePage`,
-SSR/hydration and private-cache policy if enabled, API proxy/deployment settings,
+SSR/hydration and private-cache policy if enabled, cookie BFF/deployment settings,
 theme/font CSS imports, Tailwind sources, and architecture registrations. Adapt
 `AUTH_APPEARANCE` when providing runtime language/theme controls. Project slots
 into `AuthLayout`/`AppLayout` instead of building a second shell implementation.

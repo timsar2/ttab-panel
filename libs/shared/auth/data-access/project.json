@@ -6,5 +6,20 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:data"],
   "// targets": "to see all targets run: nx show project shared-auth-data-access --web",
-  "targets": {}
+  "targets": {
+    "test-node": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/shared/auth/data-access",
+        "command": "vitest run --config vitest.node.config.mts"
+      }
+    },
+    "typecheck-node": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/shared/auth/data-access",
+        "command": "tsc -p tsconfig.node.json --noEmit"
+      }
+    }
+  }
 }

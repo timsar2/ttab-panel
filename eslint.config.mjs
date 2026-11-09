@@ -20,7 +20,12 @@ export default [
           depConstraints: [
             {
               sourceTag: 'scope:panel',
-              onlyDependOnLibsWithTags: ['scope:panel', 'scope:ui', 'scope:shared'],
+              onlyDependOnLibsWithTags: [
+                'scope:panel',
+                'scope:ui',
+                'scope:shared',
+                'scope:transport',
+              ],
             },
             {
               sourceTag: 'scope:ui',
@@ -29,6 +34,10 @@ export default [
             {
               sourceTag: 'scope:shared',
               onlyDependOnLibsWithTags: ['scope:shared', 'scope:ui'],
+            },
+            {
+              sourceTag: 'scope:transport',
+              onlyDependOnLibsWithTags: ['scope:transport', 'scope:shared', 'scope:ui'],
             },
             {
               sourceTag: 'scope:shop',

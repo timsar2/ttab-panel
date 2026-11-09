@@ -87,12 +87,17 @@
       "@spartan-ng/helm/typography": ["./libs/spartan/typography/src/index.ts"],
       "@spartan-ng/helm/utils": ["./libs/spartan/utils/src/index.ts"],
       "@org/auth-data-access": ["./libs/shared/auth/data-access/src/index.ts"],
+      "@org/auth-data-access/node": ["./libs/shared/auth/data-access/src/server/index.ts"],
       "@org/layout": ["./libs/shared/layout/src/index.ts"],
       "@org/auth-feature": ["./libs/shared/auth/feature/src/index.ts"],
       "@org/auth-feature/ui": ["./libs/shared/auth/feature/src/ui.ts"],
       "@org/ui-forms": ["./libs/shared/ui/forms/src/index.ts"],
       "@org/theme": ["./libs/shared/theme/data-access/src/index.ts"],
-      "@org/theme-ui": ["./libs/shared/theme/ui/src/index.ts"]
+      "@org/theme-ui": ["./libs/shared/theme/ui/src/index.ts"],
+      "@org/transport-http": ["./libs/transport/http/src/index.ts"],
+      "@org/transport-company-data-access": ["./libs/transport/company/data-access/src/index.ts"],
+      "@org/transport-company-feature": ["./libs/transport/company/feature/src/index.ts"],
+      "@org/ui-data-table": ["./libs/shared/ui/data-table/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

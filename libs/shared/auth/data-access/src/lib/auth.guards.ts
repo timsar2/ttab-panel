@@ -18,6 +18,8 @@ export const authGuard: CanActivateFn = (_route, state) => {
   }
   if (!session.configured()) return login()
   if (session.isAuthenticated()) return true
+  if (config.mode === 'cookie')
+    return session.restore().pipe(map(valid => (valid ? true : login())))
   if (!session.accessToken()) return login()
   return session.refresh().pipe(
     map(() => true),
@@ -34,6 +36,8 @@ export const guestGuard: CanActivateFn = route => {
       safeReturnUrl(route.queryParamMap.get('returnUrl'), config.afterLoginUrl, config.loginUrl),
     )
   if (session.isAuthenticated()) return destination()
+  if (config.mode === 'cookie')
+    return session.restore().pipe(map(valid => (valid ? destination() : true)))
   if (!session.accessToken()) return true
   return session.refresh().pipe(
     map(destination),

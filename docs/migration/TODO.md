@@ -73,7 +73,7 @@ Use the feature files as the task-status source of truth; the older
 ## Main Feature TODO List
 
 [ ] M00 Complete [foundation and shared controls](features/00-foundation-and-shared-controls.md), including typed transport adapters and TanStack/Spartan table primitives.
-[ ] M01 Complete [authentication](features/01-authentication.md), preserving delivered login/session guards and finishing recovery and acceptance gates.
+[ ] M01 Complete [authentication](features/01-authentication.md), preserving delivered cookie-BFF/SSR session guards and finishing recovery, deployment, and live acceptance gates.
 [X] M02 Preserve the delivered [theme and preferences](features/02-theme-and-preferences.md) baseline as reusable libraries.
 [ ] M03 Complete [company context and protected shell](features/03-company-context-and-shell.md) as reusable libraries with authorized route-owned scope.
 [ ] M04 Complete [company management](features/04-companies.md).

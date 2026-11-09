@@ -76,7 +76,9 @@ an authenticated workspace, shared layouts and form primitives, RTL/LTR support,
 and runtime theme customization. Its business routes are login and workspace;
 the workspace explicitly says company-management features will be migrated later.
 There are no implemented transportation CRUD modules, map, or live-location
-connection in this target app. Its session is in memory. `[S01, S02]`
+connection in this target app. Panel now uses an HttpOnly session-handle cookie
+with server-held tokens; browser reloads preserve authentication, while the
+default single-process server store signs users out on restart. `[S01, S02]`
 
 **LEGACY:** The sibling Angular frontend contains company-scoped administrative
 modules, people/driver/vehicle forms, route/line/station configuration, scheduling,

@@ -1,7 +1,6 @@
-import { environment } from '../environments/environment'
-
 export const panelConfig = {
-  apiUrl: environment.apiUrl,
+  apiUrl: '/api',
+  mode: 'cookie',
   tenant: 'root',
   loginUrl: '/login',
   afterLoginUrl: '/workspace',
