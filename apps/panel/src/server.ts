@@ -8,6 +8,7 @@ import express from 'express'
 import { createAuthBff, readAuthBffConfig } from '@org/auth-data-access/node'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { environment } from './environments/environment'
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url))
 const browserDistFolder = resolve(serverDistFolder, '../browser')
@@ -17,12 +18,27 @@ app.disable('x-powered-by')
 // Missing/invalid deployment configuration disables API access, never SSR-falls through.
 const authConfig = (() => {
   try {
-    return readAuthBffConfig()
+    return readAuthBffConfig(process.env, {
+      apiUrl: environment.apiUrl,
+      production: environment.production,
+      developmentOrigin: 'http://localhost:4200',
+    })
   } catch {
+    console.error(
+      'Authentication BFF is disabled: configure a valid API URL, public origin, and server-only session secret.',
+    )
     return null
   }
 })()
-const authBff = authConfig ? createAuthBff({ config: authConfig }) : null
+const authBff = authConfig
+  ? createAuthBff({
+      config: authConfig,
+      onDiagnostic: diagnostic => {
+        if (diagnostic.status && diagnostic.status >= 400) console.warn('[auth-bff]', diagnostic)
+        else console.info('[auth-bff]', diagnostic)
+      },
+    })
+  : null
 const angularApp = new AngularNodeAppEngine({
   ...(authConfig ? { allowedHosts: [new URL(authConfig.publicOrigin).hostname] } : {}),
   trustProxyHeaders: false,

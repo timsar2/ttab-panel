@@ -110,6 +110,9 @@ main {
     flex-basis: auto;
     inline-size: 100%;
   }
+  :host-context([data-sidebar-style='modern']) .theme-sidebar {
+    inline-size: auto;
+  }
   .theme-brand {
     display: none;
   }

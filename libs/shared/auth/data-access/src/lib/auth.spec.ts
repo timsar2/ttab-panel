@@ -24,6 +24,7 @@ import {
   provideRouter,
 } from '@angular/router'
 import { Observable, Subject, firstValueFrom, of } from 'rxjs'
+import { tenantFromEmail } from '../claims'
 import {
   AUTH_BYPASS,
   AUTH_CONFIG,
@@ -96,7 +97,7 @@ async function signIn(
   base = api,
 ) {
   const result = session.login(credentials)
-  controller.expectOne(`${base}/tokens/get-by-email`).flush(envelope(value))
+  controller.expectOne(`${base}/tokens/get-by-email/`).flush(envelope(value))
   expect(await result).toBe(true)
 }
 function route(returnUrl?: string): ActivatedRouteSnapshot {
@@ -109,6 +110,55 @@ function state(url = '/protected?tab=one'): RouterStateSnapshot {
 }
 
 describe('auth data access', () => {
+  it.each([
+    ['admin@root.com', 'root'],
+    ['user@Finance.example', 'finance'],
+    [' user@Team-One.co.uk ', 'team-one'],
+    ['user@branch.company.com', 'branch'],
+  ])('derives tenant from the first domain label of %s', (email, expected) => {
+    setup()
+    expect(tenantFromEmail(email)).toBe(expected)
+  })
+
+  it.each([
+    'admin',
+    'admin@root',
+    'a@@root.com',
+    'a@.root.com',
+    'a@root..com',
+    'a@-root.com',
+    'a@root.com\r\ntenant: victim',
+    'a@' + 'x'.repeat(64) + '.com',
+  ])('rejects invalid tenant email %s', email => {
+    setup()
+    expect(() => tenantFromEmail(email)).toThrow('valid email')
+  })
+
+  it('keeps the derived tenant on bearer refresh, API requests, and logout', async () => {
+    const { session, controller, http } = setup({ apiUrl: api, tenant: 'must-not-override-email' })
+    const login = session.login({ username: ' admin@Root.com ', password: 'secret' })
+    const request = controller.expectOne(`${api}/tokens/get-by-email/`)
+    expect(request.request.body).toEqual({ email: 'admin@Root.com', password: 'secret' })
+    expect(request.request.headers.get('tenant')).toBe('root')
+    request.flush(envelope())
+    expect(await login).toBe(true)
+    expect(session.tenant()).toBe('root')
+    const refreshing = firstValueFrom(session.refresh())
+    const refresh = controller.expectOne(`${api}/tokens/refresh`)
+    expect(refresh.request.headers.get('tenant')).toBe('root')
+    refresh.flush(envelope())
+    await refreshing
+    http.get(`${api}/companys`).subscribe()
+    const company = controller.expectOne(`${api}/companys`)
+    expect(company.request.headers.get('tenant')).toBe('root')
+    company.flush({})
+    const logout = session.logout()
+    const exit = controller.expectOne(`${api}/personal/logout`)
+    expect(exit.request.headers.get('tenant')).toBe('root')
+    exit.flush({})
+    await logout
+  })
+
   afterEach(() => {
     TestBed.inject(HttpTestingController).verify()
     vi.restoreAllMocks()
@@ -126,13 +176,13 @@ describe('auth data access', () => {
     })
     const login = session.login(credentials)
     expect(session.status()).toBe('authenticating')
-    const request = controller.expectOne(`${api}/tokens/get-by-email`)
+    const request = controller.expectOne(`${api}/tokens/get-by-email/`)
     expect(request.request.method).toBe('POST')
     expect(request.request.body).toEqual({
       email: credentials.username,
       password: credentials.password,
     })
-    expect(request.request.headers.get('tenant')).toBe('root')
+    expect(request.request.headers.get('tenant')).toBe('example')
     expect(request.request.headers.has('Authorization')).toBe(false)
     expect(request.request.withCredentials).toBe(false)
     expect(request.request.transferCache).toBe(false)
@@ -151,6 +201,17 @@ describe('auth data access', () => {
     expect(session.status()).toBe('authenticated')
     expect(session.error()).toBeNull()
     expect(session.errorCode()).toBeNull()
+  })
+
+  it('maps the real token namespaced SID before the legacy unqualified SID', async () => {
+    const { session, controller } = setup()
+    await signIn(
+      session,
+      controller,
+      tokens({ [`${identity}sid`]: '1', sid: '17', companyId: '0' }),
+    )
+    expect(session.user()?.businessEntityId).toBe(1)
+    expect(session.user()?.companyId).toBeNull()
   })
 
   it.each([
@@ -196,7 +257,7 @@ describe('auth data access', () => {
   ])('rejects malformed, failed, or expired session envelopes', async value => {
     const { session, controller } = setup()
     const result = session.login(credentials)
-    controller.expectOne(`${api}/tokens/get-by-email`).flush(value)
+    controller.expectOne(`${api}/tokens/get-by-email/`).flush(value)
     expect(await result).toBe(false)
     expect(session.isAuthenticated()).toBe(false)
     expect(session.user()).toBeNull()
@@ -214,7 +275,7 @@ describe('auth data access', () => {
     const { session, controller } = setup()
     const result = session.login(credentials)
     controller
-      .expectOne(`${api}/tokens/get-by-email`)
+      .expectOne(`${api}/tokens/get-by-email/`)
       .flush(body, { status: 401, statusText: 'Unauthorized' })
     expect(await result).toBe(false)
     expect(session.error()).toBe('Sign-in failed. Check your username and password.')
@@ -281,7 +342,7 @@ describe('auth data access', () => {
     expect(session.errorCode()).toBeNull()
     const login = session.login(credentials)
     controller
-      .expectOne(`${api}/tokens/get-by-email`)
+      .expectOne(`${api}/tokens/get-by-email/`)
       .flush({ messages: ['private server details'] }, { status, statusText: 'Failure' })
     expect(await login).toBe(false)
     expect(session.errorCode()).toBe(code)
@@ -294,13 +355,13 @@ describe('auth data access', () => {
   it('maps login network failure to unavailable and resets error state on a new login', async () => {
     const { session, controller } = setup()
     const login = session.login(credentials)
-    controller.expectOne(`${api}/tokens/get-by-email`).error(new ProgressEvent('error'))
+    controller.expectOne(`${api}/tokens/get-by-email/`).error(new ProgressEvent('error'))
     expect(await login).toBe(false)
     expect(session.errorCode()).toBe('unavailable')
     const retry = session.login(credentials)
     expect(session.errorCode()).toBeNull()
     expect(session.error()).toBeNull()
-    controller.expectOne(`${api}/tokens/get-by-email`).flush(envelope())
+    controller.expectOne(`${api}/tokens/get-by-email/`).flush(envelope())
     expect(await retry).toBe(true)
     expect(session.errorCode()).toBeNull()
   })
@@ -315,7 +376,7 @@ describe('auth data access', () => {
     http.get(`${api}/users?x=1`).subscribe()
     const request = controller.expectOne(`${api}/users?x=1`)
     expect(request.request.headers.get('Authorization')).toMatch(/^Bearer /)
-    expect(request.request.headers.get('tenant')).toBe('alternate')
+    expect(request.request.headers.get('tenant')).toBe('example')
     expect(request.request.withCredentials).toBe(true)
     expect(request.request.transferCache).toBe(false)
     request.flush({})
@@ -325,7 +386,7 @@ describe('auth data access', () => {
       'https://auth.example.test/apiculture',
       'http://auth.example.test/api/users',
       'https://auth.example.test:444/api/users',
-      `${api}/tokens/get-by-email`,
+      `${api}/tokens/get-by-email/`,
       `${api}/tokens/refresh`,
       `${api}/personal/logout/`,
       `${api}/%2fsecret`,
@@ -557,7 +618,7 @@ describe('session concurrency and guards', () => {
   it('cancels pending login on logout without resurrection', async () => {
     const { session, controller } = setup()
     const login = session.login(credentials)
-    const pending = controller.expectOne(`${api}/tokens/get-by-email`)
+    const pending = controller.expectOne(`${api}/tokens/get-by-email/`)
     await session.logout()
     expect(pending.cancelled).toBe(true)
     expect(await login).toBe(false)
@@ -606,14 +667,14 @@ describe('session concurrency and guards', () => {
   it('ignores an old login failure after a newer successful login', async () => {
     const { session, controller } = setup()
     const old = session.login(credentials)
-    const cancelled = controller.expectOne(`${api}/tokens/get-by-email`)
+    const cancelled = controller.expectOne(`${api}/tokens/get-by-email/`)
     const newer = session.login({
       username: 'new@example.test',
       password: 'new',
     })
     expect(cancelled.cancelled).toBe(true)
     controller
-      .expectOne(`${api}/tokens/get-by-email`)
+      .expectOne(`${api}/tokens/get-by-email/`)
       .flush(envelope(tokens({ [`${identity}nameidentifier`]: 'new-identity' })))
     expect(await newer).toBe(true)
     expect(await old).toBe(false)
@@ -670,8 +731,8 @@ describe('session concurrency and guards', () => {
       expect(a.get(AUTH_CONFIG).apiUrl).toBe('/first')
       expect(b.get(AUTH_CONFIG).tenant).toBe('two')
       const login = a.get(SessionStore).login(credentials)
-      const request = a.get(HttpTestingController).expectOne('/first/tokens/get-by-email')
-      expect(request.request.headers.get('tenant')).toBe('one')
+      const request = a.get(HttpTestingController).expectOne('/first/tokens/get-by-email/')
+      expect(request.request.headers.get('tenant')).toBe('example')
       request.flush(envelope())
       expect(await login).toBe(true)
       expect(b.get(SessionStore).isAuthenticated()).toBe(false)
@@ -706,7 +767,7 @@ describe('session concurrency and guards', () => {
         expect(childRequest.request.headers.get('Authorization')).toBe(
           `Bearer ${childTokens.token}`,
         )
-        expect(childRequest.request.headers.get('tenant')).toBe('child')
+        expect(childRequest.request.headers.get('tenant')).toBe('example')
         expect(childRequest.request.transferCache).toBe(false)
         parent.controller.expectNone(`${childApi}/private`)
         childRequest.flush({ scope: 'child' })
@@ -717,7 +778,7 @@ describe('session concurrency and guards', () => {
         expect(parentRequest.request.headers.get('Authorization')).toBe(
           `Bearer ${parentTokens.token}`,
         )
-        expect(parentRequest.request.headers.get('tenant')).toBe('parent')
+        expect(parentRequest.request.headers.get('tenant')).toBe('example')
         childController.expectNone(`${api}/private`)
         parentRequest.flush({ scope: 'parent' })
         expect(await parentResult).toEqual({ scope: 'parent' })

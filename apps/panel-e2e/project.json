@@ -13,6 +13,7 @@
         "^production",
         { "env": "BASE_URL" },
         { "env": "AUTH_BFF_E2E" },
+        { "env": "AUTH_FIXTURE_ORIGIN" },
         { "env": "PLAYWRIGHT_CHROMIUM_CHANNEL" },
         { "env": "CI" },
         { "externalDependencies": ["@playwright/test"] }

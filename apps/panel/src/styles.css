@@ -14,8 +14,11 @@
 @source './app';
 @source '../../../libs/shared';
 @source '../../../libs/transport';
+@source '../../../libs/panel';
 @source '../../../libs/spartan/table';
+@source '../../../libs/spartan/breadcrumb';
 @source '../../../libs/spartan/alert';
+@source '../../../libs/spartan/alert-dialog';
 @source '../../../libs/spartan/button';
 @source '../../../libs/spartan/card';
 @source '../../../libs/spartan/input';

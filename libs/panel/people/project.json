@@ -1,0 +1,10 @@
+{
+  "name": "panel-people",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/panel/people/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:panel", "type:feature"],
+  "// targets": "to see all targets run: nx show project panel-people --web",
+  "targets": {}
+}

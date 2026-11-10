@@ -9,10 +9,28 @@ import {
 } from '@org/transport-http'
 import { map } from 'rxjs'
 import { CompanySearch, decodeCompanyDetail, decodeCompanyRow } from './company.models'
+import { CompanyWrite } from './company-write.models'
 
 @Injectable()
 export class CompanyApi {
   private readonly http = inject(TransportHttp)
+
+  save(body: CompanyWrite) {
+    return this.http
+      .request('POST', 'companys', value => unwrapTransport(value, decodeCompanyDetail), body)
+      .pipe(
+        map(detail => {
+          if (body.id !== null && detail.id !== body.id) {
+            throw new TransportError(
+              'contract',
+              0,
+              'The saved company does not match the requested company.',
+            )
+          }
+          return detail
+        }),
+      )
+  }
 
   search(query: CompanySearch) {
     const paging = transportPageRequest(query.pageIndex, query.pageSize)

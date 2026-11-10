@@ -3,7 +3,7 @@ import { InjectionToken, PLATFORM_ID, REQUEST_CONTEXT, inject } from '@angular/c
 import { isPlatformServer } from '@angular/common'
 import { Observable, defer, map, of, throwError } from 'rxjs'
 import { AUTH_CONFIG } from './auth.config'
-import { AuthUser } from '../claims'
+import { AuthUser, tenantFromEmail } from '../claims'
 
 export interface AuthCredentials {
   username: string
@@ -13,6 +13,7 @@ export interface AuthTokens {
   token: string
   refreshToken: string
   refreshTokenExpiryTime: string
+  tenant?: string
 }
 export interface AuthBackend {
   login(credentials: AuthCredentials): Observable<AuthTokens | AuthSession>
@@ -104,9 +105,10 @@ export function createDefaultAuthBackend(): AuthBackend {
   const config = inject(AUTH_CONFIG)
   const server = isPlatformServer(inject(PLATFORM_ID))
   const requestContext = inject(REQUEST_CONTEXT, { optional: true }) as AuthRequestContext | null
+  let tenant = config.tenant
   const options = () => ({
     context: new HttpContext().set(AUTH_BYPASS, true),
-    headers: { tenant: config.tenant },
+    headers: { tenant },
     withCredentials: config.withCredentials,
     credentials: config.withCredentials ? ('include' as const) : ('omit' as const),
     transferCache: false as const,
@@ -160,21 +162,37 @@ export function createDefaultAuthBackend(): AuthBackend {
   }
   return {
     login: ({ username, password }) =>
-      request(() =>
-        http
-          .post<unknown>(`${base}/tokens/get-by-email`, { email: username, password }, options())
-          .pipe(map(tokensFromEnvelope)),
-      ),
+      request(() => {
+        const email = username.trim()
+        const loginTenant = tenantFromEmail(email)
+        return http
+          .post<unknown>(
+            `${base}/tokens/get-by-email/`,
+            { email, password },
+            {
+              ...options(),
+              headers: { tenant: loginTenant },
+            },
+          )
+          .pipe(
+            map(value => {
+              const tokens = tokensFromEnvelope(value)
+              tenant = loginTenant
+              return { ...tokens, tenant: loginTenant }
+            }),
+          )
+      }),
     refresh: tokens =>
-      request(() =>
-        http
+      request(() => {
+        const sessionTenant = tokens?.tenant ?? tenant
+        return http
           .post<unknown>(
             `${base}/tokens/refresh`,
             { token: tokens?.token, refreshToken: tokens?.refreshToken },
-            options(),
+            { ...options(), headers: { tenant: sessionTenant } },
           )
-          .pipe(map(tokensFromEnvelope)),
-      ),
+          .pipe(map(value => ({ ...tokensFromEnvelope(value), tenant: sessionTenant })))
+      }),
     logout: token =>
       request(() =>
         http.get<unknown>(`${base}/personal/logout`, {

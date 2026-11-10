@@ -1,0 +1,10 @@
+{
+  "name": "transport-shell-feature",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/transport/shell/feature/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:transport", "type:feature"],
+  "// targets": "to see all targets run: nx show project transport-shell-feature --web",
+  "targets": {}
+}

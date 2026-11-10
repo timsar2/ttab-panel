@@ -8,7 +8,8 @@ import {
 } from '@angular/core'
 import { toSignal } from '@angular/core/rxjs-interop'
 import { FormField, form } from '@angular/forms/signals'
-import { ActivatedRoute, Router } from '@angular/router'
+import { ActivatedRoute, Router, RouterLink } from '@angular/router'
+import { SessionStore } from '@org/auth-data-access'
 import { CompanyApi, CompanyRow, CompanySearchStore } from '@org/transport-company-data-access'
 import { DataTable, DataTableColumn, DataTablePage } from '@org/ui-data-table'
 import { SignalInput } from '@org/ui-forms'
@@ -32,12 +33,15 @@ function pageNumber(value: string | null) {
 @Component({
   selector: 'lib-company-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DataTable, FormField, SignalInput, HlmButton, HlmFieldImports],
+  imports: [DataTable, FormField, SignalInput, RouterLink, HlmButton, HlmFieldImports],
   providers: [CompanyApi, CompanySearchStore],
   host: { class: 'block min-w-0 p-4 md:p-8' },
   template: `
     <header class="mb-6 flex flex-col gap-2">
       <h1 class="text-2xl font-semibold">{{ config.heading ?? 'Companies' }}</h1>
+      @if (canCreate()) {
+        <a hlmBtn class="min-h-11" [routerLink]="['/' + config.path, 'new']">Create company</a>
+      }
       <p class="text-muted-foreground">
         Search company records. Viewing a record does not authorize a company workspace.
       </p>
@@ -56,6 +60,7 @@ function pageNumber(value: string | null) {
       <button hlmBtn variant="outline" type="submit" class="min-h-11 min-w-11">Search</button>
     </form>
     <lib-data-table
+      [rowActions]="config.editor ? editorActions : null"
       [rows]="rows()"
       [columns]="columns"
       [rowId]="rowId"
@@ -64,11 +69,25 @@ function pageNumber(value: string | null) {
       [loading]="store.loading()"
       [error]="error()"
       [page]="page()"
-      [actionLabel]="config.onAction ? (config.actionLabel ?? 'Open') : null"
-      (rowAction)="config.onAction?.($event)"
+      [actionLabel]="
+        config.onAction || config.actionCommands ? (config.actionLabel ?? 'Open') : null
+      "
+      (rowAction)="openCompany($event)"
       (pageChange)="changePage($event)"
       (retry)="store.load(query())"
     />
+    <ng-template #editorActions let-company>
+      @if (canEdit(company.id)) {
+        <a
+          hlmBtn
+          variant="outline"
+          class="min-h-11"
+          [routerLink]="['/' + config.path, company.id, 'edit']"
+          [attr.aria-label]="'Edit company: ' + company.name"
+          >Edit</a
+        >
+      }
+    </ng-template>
   `,
 })
 export class CompanyPage {
@@ -76,6 +95,13 @@ export class CompanyPage {
   protected readonly store = inject(CompanySearchStore)
   private readonly route = inject(ActivatedRoute)
   private readonly router = inject(Router)
+  private readonly session = inject(SessionStore)
+  protected readonly canCreate = computed(
+    () => this.config.editor?.canCreate(this.session.user()?.roles ?? []) ?? false,
+  )
+  protected canEdit(id: number) {
+    return this.config.editor?.canEdit(this.session.user()?.roles ?? [], id) ?? false
+  }
   private readonly params = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   })
@@ -131,5 +157,11 @@ export class CompanyPage {
       queryParams: { page: page.pageIndex + 1, size: page.pageSize },
       queryParamsHandling: 'merge',
     })
+  }
+
+  protected openCompany(company: CompanyRow) {
+    this.config.onAction?.(company)
+    const commands = this.config.actionCommands?.(company)
+    if (commands) void this.router.navigate([...commands])
   }
 }

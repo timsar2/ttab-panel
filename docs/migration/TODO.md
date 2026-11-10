@@ -24,6 +24,10 @@ applicable Angular, Nx, and Spartan skills before the affected work.
 - Generate every new feature, page, component, layout, service, guard, and utility
   within an appropriate Nx library. Reuse an existing library when it owns the
   capability; do not create an Nx project per trivial class without a real boundary.
+- Create new app features/pages under `libs/<app>/<feature>` (for example,
+  `libs/panel/dashboard` or `libs/panel/people`). Feature components belong in
+  `ui` folders owned by Nx libraries. Shared domain data can remain in reusable
+  transport libraries; older proposed feature paths do not override this placement.
 - Do not create new feature/page/component implementations under `apps/panel`.
   Applications own bootstrap, provider/configuration adapters, route mounting,
   deployment settings, branding, and styles/source registration only.

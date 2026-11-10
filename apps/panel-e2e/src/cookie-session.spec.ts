@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test'
 import { credentials } from './support/auth-fixture'
 
+const fixtureOrigin = process.env['AUTH_FIXTURE_ORIGIN'] ?? 'http://127.0.0.1:5101'
+
 test.describe('real cookie BFF with controlled upstream', () => {
   test.skip(
     process.env['AUTH_BFF_E2E'] !== '1',
@@ -66,5 +68,36 @@ test.describe('real cookie BFF with controlled upstream', () => {
     })
     expect(noHeader.status()).toBe(403)
     expect((await request.get('/api/tokens')).status()).toBe(404)
+  })
+
+  test('recovers backend token rejection during session restoration without exposing tokens', async ({
+    page,
+    request,
+  }) => {
+    const errors: string[] = []
+    page.on('pageerror', error => errors.push(error.message))
+    await page.goto('/login')
+    await page.getByRole('button', { name: /تغییر زبان/ }).click()
+    await page.getByLabel('Username', { exact: true }).fill(credentials.username)
+    await page.getByLabel('Password', { exact: true }).fill(credentials.password)
+    await page.getByRole('button', { name: 'Sign in to panel' }).click()
+    await expect(page).toHaveURL(/\/workspace$/)
+    const rejected = await request.post(`${fixtureOrigin}/__test/reject-access`)
+    expect(rejected.status()).toBe(200)
+    const before = await rejected.json()
+    const restored = await page.evaluate(async () => {
+      const response = await fetch('/api/auth/session', { credentials: 'same-origin' })
+      return { status: response.status, body: await response.json() }
+    })
+    expect(restored.status).toBe(200)
+    expect(restored.body.user.id).toBe('browser-fixture-user')
+    expect(restored.body.token).toBeUndefined()
+    expect(restored.body.refreshToken).toBeUndefined()
+    const stats = await (await request.get(`${fixtureOrigin}/__test/auth-stats`)).json()
+    expect(stats.refreshCount).toBe(before.refreshCount + 1)
+    await page.reload()
+    await expect(page).toHaveURL(/\/workspace$/)
+    await expect(page.getByText('Example User', { exact: true })).toBeVisible()
+    expect(errors).toEqual([])
   })
 })

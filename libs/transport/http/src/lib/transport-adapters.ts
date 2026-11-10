@@ -107,6 +107,23 @@ export function transportInteger(
   return value
 }
 
+/** Decimal coordinate parsing without map-provider or geofence assumptions. */
+export function transportCoordinate(value: string, minimum: number, maximum: number): number {
+  const trimmed = value.trim()
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(trimmed)) {
+    throw new TransportError('validation', 0, 'Enter a decimal coordinate.')
+  }
+  const number = Number(trimmed)
+  if (!Number.isFinite(number) || number < minimum || number > maximum) {
+    throw new TransportError(
+      'validation',
+      0,
+      `Coordinate must be between ${minimum} and ${maximum}.`,
+    )
+  }
+  return number
+}
+
 /** Explicit conversion from TanStack's zero-based index; no unconfirmed endpoint size limit. */
 export function transportPageRequest(pageIndex: number, pageSize: number) {
   return {

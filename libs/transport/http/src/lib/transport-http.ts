@@ -6,8 +6,7 @@ import { normalizeTransportError } from './transport-adapters'
 const TRANSPORT_API_URL = new InjectionToken<string>('TRANSPORT_API_URL')
 
 /** Uses the consumer's existing scoped/authenticated HttpClient, never a second chain. */
-export function provideTransportHttp(config: { apiUrl: string }) {
-  const raw = config.apiUrl
+function normalizeApiUrl(raw: string) {
   if (
     !raw ||
     /[\s\\%?#]/.test(raw) ||
@@ -21,8 +20,12 @@ export function provideTransportHttp(config: { apiUrl: string }) {
     if (url.username || url.password)
       throw new Error('Transport API URLs cannot contain credentials.')
   }
+  return raw.replace(/\/+$/, '')
+}
+
+export function provideTransportHttp(config: { apiUrl: string }) {
   return makeEnvironmentProviders([
-    { provide: TRANSPORT_API_URL, useValue: raw.replace(/\/+$/, '') },
+    { provide: TRANSPORT_API_URL, useValue: normalizeApiUrl(config.apiUrl) },
     TransportHttp,
   ])
 }
@@ -34,17 +37,19 @@ export class TransportHttp {
 
   /** A decoder is mandatory: raw, enveloped, and paged endpoints are distinct contracts. */
   request<T>(
-    method: 'GET' | 'POST' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
     path: string,
     decode: (value: unknown) => T,
     body?: unknown,
+    options?: { apiUrl: string },
   ) {
     return defer(() => {
       // Endpoint paths cannot escape the configured boundary or supply query credentials.
       if (!/^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(path)) {
         throw new Error('Invalid transport endpoint path.')
       }
-      return this.http.request<unknown>(method, `${this.apiUrl}/${path}`, {
+      const apiUrl = options ? normalizeApiUrl(options.apiUrl) : this.apiUrl
+      return this.http.request<unknown>(method, `${apiUrl}/${path}`, {
         body,
         transferCache: false,
         credentials: 'omit',

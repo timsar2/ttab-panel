@@ -4,7 +4,7 @@
   "sourceRoot": "libs/spartan/native-select/src",
   "prefix": "hlm",
   "projectType": "library",
-  "tags": ["scope:ui", "type:ui"],
+  "tags": ["scope:shared", "type:ui", "layer:presentation"],
   "targets": {
     "build": {
       "executor": "@nx/angular:ng-packagr-lite",

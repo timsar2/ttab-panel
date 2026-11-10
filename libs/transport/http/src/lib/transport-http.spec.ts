@@ -24,6 +24,7 @@ describe('TransportHttp public consumer API', () => {
           provide: SessionStore,
           useValue: {
             accessToken: () => 'private-token',
+            tenant: () => 'test-tenant',
             version: () => 1,
             isAuthenticated: () => true,
             untilChanged: () => identity,
@@ -107,6 +108,35 @@ describe('TransportHttp public consumer API', () => {
     const request = http.expectOne('/api/v1/companys/2')
     subscription.unsubscribe()
     expect(request.cancelled).toBe(true)
+  })
+
+  it('routes version-neutral and external bases through the same auth chain safely', async () => {
+    const client = TestBed.inject(TransportHttp)
+    const local = firstValueFrom(
+      client.request('GET', 'states', identity, undefined, { apiUrl: '/api' }),
+    )
+    const localRequest = http.expectOne('/api/states')
+    expect(localRequest.request.headers.get('Authorization')).toBe('Bearer private-token')
+    expect(localRequest.request.headers.get('tenant')).toBe('test-tenant')
+    localRequest.flush([])
+    expect(await local).toEqual([])
+    const external = firstValueFrom(
+      client.request('GET', 'states', identity, undefined, {
+        apiUrl: 'https://geography.example.test/api',
+      }),
+    )
+    const externalRequest = http.expectOne('https://geography.example.test/api/states')
+    expect(externalRequest.request.headers.has('Authorization')).toBe(false)
+    expect(externalRequest.request.headers.has('tenant')).toBe(false)
+    expect(externalRequest.request.credentials).toBe('omit')
+    externalRequest.flush([])
+    expect(await external).toEqual([])
+    await expect(
+      firstValueFrom(
+        client.request('GET', 'states', identity, undefined, { apiUrl: '//evil.test' }),
+      ),
+    ).rejects.toMatchObject({ kind: 'contract' })
+    http.expectNone(() => true)
   })
 
   it('normalizes HTTP validation errors and malformed success bodies', async () => {

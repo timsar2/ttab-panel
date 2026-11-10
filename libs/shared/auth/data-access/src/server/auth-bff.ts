@@ -1,6 +1,6 @@
 import express, { type Request, type Response, type Router } from 'express'
 import { createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto'
-import { decodeUser } from '../claims'
+import { decodeUser, tenantFromEmail } from '../claims'
 
 export interface AuthBffConfig {
   apiUrl: string
@@ -8,7 +8,12 @@ export interface AuthBffConfig {
   apiPublicOrigin: string
   secret: string
   production: boolean
-  tenant: string
+}
+
+export interface AuthBffHostDefaults {
+  apiUrl: string
+  production: boolean
+  developmentOrigin: string
 }
 
 export interface AuthBffSession {
@@ -32,6 +37,27 @@ export interface AuthBffOptions {
   config: AuthBffConfig
   fetch?: typeof globalThis.fetch
   storage?: AuthSessionStorage
+  onDiagnostic?: (diagnostic: AuthDiagnostic) => void
+}
+
+export interface AuthDiagnostic {
+  operation: 'login' | 'session' | 'refresh' | 'logout' | 'proxy' | 'ssr'
+  reason:
+    | 'request-failed'
+    | 'cookie-missing'
+    | 'cookie-invalid'
+    | 'session-missing'
+    | 'session-expired'
+    | 'session-invalid'
+    | 'session-changed'
+    | 'access-rejected'
+    | 'access-forbidden'
+    | 'refresh-rejected'
+    | 'invalid-token-response'
+    | 'upstream-unavailable'
+    | 'refresh-started'
+    | 'refresh-succeeded'
+  status?: number
 }
 
 export interface AuthStoredSession {
@@ -40,10 +66,14 @@ export interface AuthStoredSession {
   refreshToken: string
   refreshExpiresAt: number
   username: string
+  tenant: string
 }
 
 class Failure extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    readonly reason: AuthDiagnostic['reason'] = 'request-failed',
+  ) {
     super('Authentication request failed.')
   }
 }
@@ -52,17 +82,26 @@ function loopback(host: string): boolean {
   return host === 'localhost' || host === '127.0.0.1' || host === '[::1]'
 }
 
-export function readAuthBffConfig(env: NodeJS.ProcessEnv = process.env): AuthBffConfig {
+export function readAuthBffConfig(
+  env: NodeJS.ProcessEnv = process.env,
+  defaults?: AuthBffHostDefaults,
+): AuthBffConfig {
   try {
-    const api = new URL(env['AUTH_API_URL'] ?? '')
-    const origin = new URL(env['AUTH_PUBLIC_ORIGIN'] ?? '')
-    const secret = env['AUTH_SESSION_SECRET'] ?? ''
-    const mode = env['NODE_ENV']
-    const tenant = env['AUTH_TENANT'] ?? 'root'
+    // A production bundle must never inherit development defaults from its runtime.
+    const mode =
+      defaults?.production || env['NODE_ENV'] === 'production'
+        ? 'production'
+        : (env['NODE_ENV'] ?? (defaults ? 'development' : undefined))
+    const development = !!defaults && mode === 'development'
+    const api = new URL(env['AUTH_API_URL'] ?? defaults?.apiUrl ?? '')
+    const origin = new URL(
+      env['AUTH_PUBLIC_ORIGIN'] ?? (development ? defaults.developmentOrigin : ''),
+    )
+    const secret =
+      env['AUTH_SESSION_SECRET'] ?? (development ? randomBytes(32).toString('base64url') : '')
     if (
       !['production', 'development', 'test'].includes(mode ?? '') ||
       Buffer.byteLength(secret) < 32 ||
-      !/^[A-Za-z0-9_-]{1,64}$/.test(tenant) ||
       api.username ||
       api.password ||
       api.search ||
@@ -84,7 +123,6 @@ export function readAuthBffConfig(env: NodeJS.ProcessEnv = process.env): AuthBff
       apiPublicOrigin: `${origin.origin}/api`,
       secret,
       production: mode === 'production',
-      tenant,
     }
   } catch {
     throw new Error('Authentication BFF configuration is missing or invalid.')
@@ -130,10 +168,22 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     AUTH_PUBLIC_ORIGIN: options.config.publicOrigin,
     AUTH_SESSION_SECRET: options.config.secret,
     NODE_ENV: options.config.production ? 'production' : 'development',
-    AUTH_TENANT: options.config.tenant,
   })
   const fetcher = options.fetch ?? globalThis.fetch
   const storage = options.storage ?? createMemorySessionStorage()
+  const report = (diagnostic: AuthDiagnostic) => {
+    try {
+      options.onDiagnostic?.(diagnostic)
+    } catch {
+      /* Diagnostics must not affect authentication. */
+    }
+  }
+  const diagnose = (operation: AuthDiagnostic['operation'], error: unknown) =>
+    report(
+      error instanceof Failure
+        ? { operation, reason: error.reason, status: error.status }
+        : { operation, reason: 'upstream-unavailable', status: 502 },
+    )
   const secure = new URL(config.publicOrigin).protocol === 'https:'
   const cookieName = secure ? '__Host-auth-session' : 'auth-session-dev'
   const flights = new Map<string, { promise: Promise<AuthStoredSession>; expiresAt: number }>()
@@ -152,7 +202,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     })
   function sign(id: string): string {
     return createHmac('sha256', config.secret)
-      .update(`${config.publicOrigin}:${config.apiUrl}:${config.tenant}:${cookieName}:${id}`)
+      .update(`${config.publicOrigin}:${config.apiUrl}:${cookieName}:${id}`)
       .digest('base64url')
   }
   function write(res: Response, session: AuthStoredSession) {
@@ -171,6 +221,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         .split(';')
         .map(x => x.trim())
         .filter(x => x.startsWith(`${cookieName}=`))
+      if (matches.length === 0) throw new Failure(401, 'cookie-missing')
       if (matches.length !== 1) throw new Error()
       const value = matches[0].slice(cookieName.length + 1)
       if (!/^[a-f0-9]{64}\.[A-Za-z0-9_-]{43}$/.test(value)) throw new Error()
@@ -179,14 +230,21 @@ export function createAuthBff(options: AuthBffOptions): Router & {
       id = handle
     } catch (error) {
       if (error instanceof Failure) throw error
-      throw new Failure(401)
+      throw new Failure(401, 'cookie-invalid')
     }
     const session = await storage.get(id)
-    if (!session || session.refreshExpiresAt <= Date.now()) throw new Failure(401)
+    if (!session) throw new Failure(401, 'session-missing')
+    if (session.refreshExpiresAt <= Date.now()) throw new Failure(401, 'session-expired')
+    try {
+      if (session.tenant !== tenantFromEmail(session.username)) throw new Error()
+    } catch {
+      throw new Failure(401, 'session-invalid')
+    }
     return session
   }
   async function upstream(
     path: string,
+    tenant: string,
     method = 'GET',
     token?: string,
     body?: BodyInit,
@@ -195,7 +253,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 10_000)
     try {
-      const headers: Record<string, string> = { Accept: 'application/json', tenant: config.tenant }
+      const headers: Record<string, string> = { Accept: 'application/json', tenant }
       if (token) headers['Authorization'] = `Bearer ${token}`
       if (contentType) headers['Content-Type'] = contentType
       const response = await fetcher(`${config.apiUrl}${path}`, {
@@ -222,14 +280,15 @@ export function createAuthBff(options: AuthBffOptions): Router & {
       return { status: response.status, body: text ? JSON.parse(text) : null }
     } catch (error) {
       if (error instanceof Failure) throw error
-      throw new Failure(502)
+      throw new Failure(502, 'upstream-unavailable')
     } finally {
       clearTimeout(timeout)
     }
   }
   async function validate(session: AuthStoredSession): Promise<AuthBffSession> {
-    const response = await upstream('/personal/permissions', 'GET', session.token)
-    if (response.status === 401 || response.status === 403) throw new Failure(401)
+    const response = await upstream('/personal/permissions', session.tenant, 'GET', session.token)
+    if (response.status === 401) throw new Failure(401, 'access-rejected')
+    if (response.status === 403) throw new Failure(403, 'access-forbidden')
     const envelope = response.body as { code?: unknown; result?: unknown } | null
     const permissions = Array.isArray(response.body)
       ? response.body
@@ -255,7 +314,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         },
       }
     } catch {
-      throw new Failure(401)
+      throw new Failure(401, 'invalid-token-response')
     }
   }
   function tokens(
@@ -280,13 +339,14 @@ export function createAuthBff(options: AuthBffOptions): Router & {
       !Number.isFinite(expiry) ||
       expiry <= Date.now()
     )
-      throw new Failure(401)
+      throw new Failure(401, 'invalid-token-response')
     return {
       id,
       token: result['token'],
       refreshToken: result['refreshToken'],
       refreshExpiresAt: Math.min(expiry, Date.now() + 12 * 60 * 60 * 1000),
       username,
+      tenant: tenantFromEmail(username),
     }
   }
   async function refresh(session: AuthStoredSession): Promise<AuthStoredSession> {
@@ -300,23 +360,38 @@ export function createAuthBff(options: AuthBffOptions): Router & {
       for (const [id, item] of flights) if (item.expiresAt <= Date.now()) flights.delete(id)
       if (flights.size >= 256) throw new Failure(503)
       const promise = (async () => {
-        if (!(await storage.get(session.id))) throw new Failure(401)
+        const latest = await storage.get(session.id)
+        if (!latest) throw new Failure(401, 'session-missing')
+        // A late 401 must not rotate an already-replaced refresh token a second time.
+        if (latest.token !== session.token || latest.refreshToken !== session.refreshToken)
+          return latest
+        report({ operation: 'refresh', reason: 'refresh-started' })
         const response = await upstream(
           '/tokens/refresh',
+          session.tenant,
           'POST',
           undefined,
           JSON.stringify({ token: session.token, refreshToken: session.refreshToken }),
           'application/json',
         )
-        if (response.status !== 200) throw new Failure(response.status === 401 ? 401 : 502)
+        if (response.status !== 200)
+          throw new Failure(
+            [400, 401, 403].includes(response.status) ? 401 : 502,
+            'refresh-rejected',
+          )
         const next = tokens(response.body, session.username, session.id)
         // Refresh cannot extend the absolute login lifetime.
         next.refreshExpiresAt = Math.min(next.refreshExpiresAt, session.refreshExpiresAt)
         await validate(next)
         // Atomic replace must never recreate a session deleted by a concurrent logout.
-        if (!(await storage.replace(next))) throw new Failure(401)
+        if (!(await storage.replace(next))) throw new Failure(401, 'session-changed')
+        report({ operation: 'refresh', reason: 'refresh-succeeded' })
         return next
-      })()
+      })().catch(async error => {
+        diagnose('refresh', error)
+        if (error instanceof Failure && error.status === 401) await storage.remove(session.id)
+        throw error
+      })
       entry = { promise, expiresAt: Infinity }
       flights.set(hash, entry)
       const retained = entry
@@ -342,21 +417,32 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     } catch {
       expired = true
     }
-    if (forceRefresh || expired) {
+    let refreshed = forceRefresh || expired
+    if (refreshed) {
       session = await refresh(session)
     }
-    const metadata = await validate(session)
-    if (!(await storage.get(session.id))) throw new Failure(401)
-    if (forceRefresh || expired) write(res, session)
-    return { session, metadata }
+    let metadata: AuthBffSession
+    try {
+      metadata = await validate(session)
+    } catch (error) {
+      if (!(error instanceof Failure) || error.reason !== 'access-rejected' || refreshed)
+        throw error
+      session = await refresh(session)
+      refreshed = true
+      metadata = await validate(session)
+    }
+    if (!(await storage.get(session.id))) throw new Failure(401, 'session-changed')
+    if (refreshed) write(res, session)
+    return { session, metadata, refreshed }
   }
   router.resolveSession = async (req, res) => {
     if (!allowedConnection(req)) return null
     if (!(req.headers.cookie ?? '').includes(`${cookieName}=`)) return null
     try {
       return (await current(req, res)).metadata
-    } catch {
-      clear(res)
+    } catch (error) {
+      diagnose('ssr', error)
+      if (error instanceof Failure && error.status === 401) clear(res)
       return null
     }
   }
@@ -381,8 +467,18 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   })
   router.use(express.raw({ type: () => true, limit: '1mb' }))
   router.use((req, res) => {
+    const rawPath = req.url.split('?')[0]
+    const operation: AuthDiagnostic['operation'] =
+      rawPath === '/auth/login'
+        ? 'login'
+        : rawPath === '/auth/session'
+          ? 'session'
+          : rawPath === '/auth/refresh'
+            ? 'refresh'
+            : rawPath === '/auth/logout'
+              ? 'logout'
+              : 'proxy'
     void (async () => {
-      const rawPath = req.url.split('?')[0]
       // Reject encoded paths altogether: no normalization, traversal or endpoint aliases.
       if (
         !/^\/(?:[A-Za-z0-9_-]+\/?)*$/.test(rawPath) ||
@@ -407,15 +503,23 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         ) {
           throw new Failure(400)
         }
+        const email = body.username.trim()
+        let tenant: string
+        try {
+          tenant = tenantFromEmail(email)
+        } catch {
+          throw new Failure(400)
+        }
         const response = await upstream(
-          '/tokens/get-by-email',
+          '/tokens/get-by-email/',
+          tenant,
           'POST',
           undefined,
-          JSON.stringify({ email: body.username, password: body.password }),
+          JSON.stringify({ email, password: body.password }),
           'application/json',
         )
         if (response.status !== 200) throw new Failure(response.status === 401 ? 401 : 502)
-        const session = tokens(response.body, body.username)
+        const session = tokens(response.body, email)
         const metadata = await validate(session)
         // Reauthentication replaces this browser's previous session, not just its cookie.
         try {
@@ -441,7 +545,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         }
         await storage.remove(session.id)
         try {
-          await upstream('/personal/logout', 'GET', session.token)
+          await upstream('/personal/logout', session.tenant, 'GET', session.token)
         } catch {
           /* Local logout wins. */
         }
@@ -455,16 +559,35 @@ export function createAuthBff(options: AuthBffOptions): Router & {
       } else {
         if (!['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method))
           throw new Failure(405)
-        const { session } = await current(req, res)
+        const authenticated = await current(req, res)
+        let { session } = authenticated
         const body =
           Buffer.isBuffer(req.body) && req.body.length ? new Uint8Array(req.body) : undefined
-        const response = await upstream(
+        let response = await upstream(
           req.url,
+          session.tenant,
           req.method,
           session.token,
           body,
           body ? req.get('content-type') : undefined,
         )
+        if (response.status === 401 && !authenticated.refreshed) {
+          session = await refresh(session)
+          if (!(await storage.get(session.id))) throw new Failure(401, 'session-changed')
+          write(res, session)
+          response = await upstream(
+            req.url,
+            session.tenant,
+            req.method,
+            session.token,
+            body,
+            body ? req.get('content-type') : undefined,
+          )
+        }
+        if (response.status === 401) {
+          await storage.remove(session.id)
+          throw new Failure(401, 'access-rejected')
+        }
         const code = (response.body as { code?: unknown } | null)?.code
         if (response.status >= 400 || (typeof code === 'string' && code !== '2000')) {
           throw new Failure(response.status >= 400 ? response.status : 502)
@@ -474,6 +597,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         else res.json(response.body)
       }
     })().catch(error => {
+      diagnose(operation, error)
       const status = error instanceof Failure ? error.status : 502
       if (status === 401) clear(res)
       res

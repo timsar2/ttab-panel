@@ -23,6 +23,10 @@ this Nx workspace. Run the commands below from the `front` workspace root.
 - Generate every new feature/page/component implementation inside an appropriate
   Nx library, reusing an existing library where it owns the capability. Do not add
   new feature components under `apps/panel`; app files are composition only.
+- New application features/pages live under `libs/<app>/<feature>` (for example,
+  `libs/panel/people`). Their component implementations live in feature `ui`
+  folders within Nx libraries; shared domain data remains in transport libraries.
+  Preserve existing library APIs when extending earlier migration work.
 - Separate generic capabilities from transport business rules. Authentication,
   layouts, form primitives, and theme are generic; company and assignment rules
   belong to reusable transport-domain libraries.
@@ -37,37 +41,70 @@ this Nx workspace. Run the commands below from the `front` workspace root.
 
 ## Current Structure
 
-| Location / Public Entry                   | Responsibility                                                                                                     |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `apps/panel/src/app/app.config.ts`        | Compose providers, hydration, routing, auth/theme adapters, and directionality.                                    |
-| `apps/panel/src/app/panel.config.ts`      | App-owned API prefix, tenant, branding, and login/success paths.                                                   |
-| `apps/panel/src/app/app.routes.ts`        | Mount reusable auth routes and protect the workspace.                                                              |
-| `apps/panel/src/app/app.routes.server.ts` | Render routes per request with validated, request-scoped authentication.                                           |
-| `apps/panel/src/app/core/preferences/`    | Panel's direction/language adapter; not a second theme store.                                                      |
-| `@org/auth-data-access`                   | Configurable backend contract, public session metadata, HTTP interception, guards, and auth helpers.               |
-| `@org/auth-data-access/node`              | Node-only cookie BFF, server-held tokens, session storage contract, and SSR restoration.                           |
-| `@org/auth-feature`                       | Auth presentation providers and the lazy login route factory.                                                      |
-| `@org/auth-feature/ui`                    | Explicit public entry for embedding `LoginForm` or `LoginPage`.                                                    |
-| `@org/layout`                             | Projected `AuthLayout` and `AppLayout`, independent of auth/theme stores.                                          |
-| `@org/ui-forms`                           | Reusable Spartan/Signal Forms input bridge.                                                                        |
-| `@org/transport-http`                     | Opt-in transport envelope/page/error decoders and safe configured requests through the existing scoped HttpClient. |
-| `@org/transport-company-data-access`      | Source-backed company read DTOs, API and feature-scoped search store; no inferred membership policy.               |
-| `@org/transport-company-feature`          | Configurable lazy company search routes with URL-owned filters/pages; CRUD/context acceptance remains pending.     |
-| `@org/ui-data-table`                      | Typed TanStack v9/Spartan server-page composition, stable row IDs and optional typed action intent.                |
-| `@org/theme`                              | Validated theme model, NgRx ThemeStore, palette/token generation, persistence, and safe custom CSS.                |
-| `@org/theme-ui`                           | Configurable Spartan customization sheet.                                                                          |
-| `libs/spartan/*`                          | Existing owned Helm source; inspect its actual exports before adding controls.                                     |
-| `libs/base-theme.css`                     | Shared semantic design tokens and base theme rules.                                                                |
-| `apps/panel/src/styles.css`               | Font/CSS imports and explicit Tailwind source discovery.                                                           |
-| `apps/panel-e2e/`                         | Browser acceptance tests and reusable controlled API fixtures.                                                     |
+| Location / Public Entry                      | Responsibility                                                                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/panel/src/app/app.config.ts`           | Compose providers, hydration, routing, auth/theme adapters, and directionality.                                                                   |
+| `apps/panel/src/app/panel.config.ts`         | App-owned API prefix, tenant, branding, and login/success paths.                                                                                  |
+| `apps/panel/src/app/app.routes.ts`           | Mount reusable auth routes and protect the workspace.                                                                                             |
+| `apps/panel/src/app/app.routes.server.ts`    | Render routes per request with validated, request-scoped authentication.                                                                          |
+| `apps/panel/src/app/core/preferences/`       | Panel's direction/language adapter; not a second theme store.                                                                                     |
+| `@org/auth-data-access`                      | Configurable backend contract, public session metadata, HTTP interception, guards, and auth helpers.                                              |
+| `@org/auth-data-access/node`                 | Node-only cookie BFF, server-held tokens, session storage contract, and SSR restoration.                                                          |
+| `@org/auth-feature`                          | Auth presentation providers and the lazy login route factory.                                                                                     |
+| `@org/auth-feature/ui`                       | Explicit public entry for embedding `LoginForm` or `LoginPage`.                                                                                   |
+| `@org/layout`                                | Projected `AuthLayout` and `AppLayout`, independent of auth/theme stores.                                                                         |
+| `@org/ui-forms`                              | Reusable Signal Forms input/lookup/coordinate bridges, typed local file selection/preview and accessible confirmation.                            |
+| `@org/transport-http`                        | Opt-in transport envelope/page/error decoders and safe configured requests through the existing scoped HttpClient.                                |
+| `@org/transport-company-data-access`         | Typed company read/write/lookup APIs, scoped search/editor stores and navigation-committed context; no inferred membership policy.                |
+| `@org/transport-company-feature`             | Configurable lazy search/create/edit route and provider entry; media/delete/approved-policy acceptance remains open.                              |
+| `@org/transport-company-feature/ui`          | Explicit component entry for embedding CompanyPage/CompanyEditor without eagerly loading UI from the route entry.                                 |
+| `@org/transport-shell-feature`               | Configurable lazy landing/company shell, navigation-committed context, breadcrumbs/account/navigation and explicit error states.                  |
+| `@org/transport-people-data-access`          | Explicit company/access-configured Person adapters, API and cancellable search state; live access/mutation policy remains gated.                  |
+| `@org/panel-people`                          | Lazy configurable company-scoped Person search/page and typed selection intent, with UI under `libs/panel/people/src/lib/ui`.                     |
+| `@org/panel-people/ui`                       | Explicit embedding entry, separate from the light provider/route entry.                                                                           |
+| `@org/transport-departure-times-data-access` | Source-backed bounded-list, TimeSpan and scoped list/detail/upsert state; deletion and live policy acceptance remain open.                        |
+| `@org/panel-departure-times`                 | Configurable lazy bounded-list/create/edit pages, with library-owned `ui` components, explicit access and guarded local drafts.                   |
+| `@org/panel-departure-times/ui`              | Separate entry for embedding departure-time page/editor components without eager UI in route configuration.                                       |
+| `@org/transport-support-data-access`         | Explicit-scope read-only search/detail/case-file adapters and independent cancellable stores; no messages, mutations or inferred applicant types. |
+| `@org/ui-data-table`                         | Typed TanStack v9/Spartan server-page composition, stable row IDs and optional typed action intent.                                               |
+| `@org/theme`                                 | Validated theme model, NgRx ThemeStore, palette/token generation, persistence, and safe custom CSS.                                               |
+| `@org/theme-ui`                              | Configurable Spartan customization sheet.                                                                                                         |
+| `libs/spartan/*`                             | Existing owned Helm source; inspect its actual exports before adding controls.                                                                    |
+| `libs/base-theme.css`                        | Shared semantic design tokens and base theme rules.                                                                                               |
+| `apps/panel/src/styles.css`                  | Font/CSS imports and explicit Tailwind source discovery.                                                                                          |
+| `apps/panel-e2e/`                            | Browser acceptance tests and reusable controlled API fixtures.                                                                                    |
 
 Authentication, layouts, forms, and theme exist today. A library-owned company
-search/table read slice is mounted at `/companies`, with private client rendering;
-its production/development table checks use controlled fixtures, not live-backend
-acceptance. The protected workspace is a
-small authenticated composition, not completed company management. Authorized
-company selection, business CRUD, scheduling, assignments, and realtime remain
-migration work. Do not present planned folders as implemented features.
+search/table and basic create/edit forms are mounted at `/companies`,
+`/companies/new` and `/companies/:companyId/edit`, with private client rendering.
+Production/development acceptance uses controlled fixtures, not live DB approval.
+Legacy `/companys`, `/companys/add` and `/companys/detail/:companyId` deliberately
+redirect to those new routes. `/client/:companyId` mounts the company shell with
+route-validated, matching server detail and no browser-stored selected company.
+The authenticated `/workspace` landing is now library-owned with an app-provided
+reactive text adapter and company-selection link. Company reads are prepared in
+guards and committed only after successful navigation; canceled/error navigation
+cannot publish another company's context. Approved membership/action policy,
+media/delete semantics, complete business CRUD, scheduling,
+assignments and realtime remain migration work. Do not present planned folders as
+implemented features.
+
+The lazy `/client/:companyId/people` page is mounted, but its app-owned access
+adapter deliberately denies live Person reads pending approved membership/read
+permissions. Controlled alternate-consumer unit tests verify real search/paging
+and selection through the API; panel browser tests verify the fail-closed gate,
+responsive controls, private reload and logout. Neither is live ownership proof.
+
+Departure-time list/create/edit pages are mounted at
+`/client/:companyId/departure-times`, `/new` and `/:id/edit`, with deliberate
+redirects from the legacy `shift-time` list/add/detail paths. App-owned access
+remains denied pending company/entity permission approval. The feature itself
+supports explicitly enabled alternate consumers, preserving exact TimeSpan input,
+field errors, dirty-navigation confirmation and safe unconfirmed-save handling.
+Its bounded collection has no fabricated paging, total count or exhaustive-lookup
+claim. Delete and schedule-calendar semantics remain gated. Protected outlet
+teardown may precede route deactivation on logout; editor guards accept a null
+component without preventing local-first sign-out.
 
 Read [BUSINESS_DOMAIN.md](../../docs/BUSINESS_DOMAIN.md) for business scope and
 evidence. Use [the main migration TODO](../../docs/migration/TODO.md) and its
@@ -192,7 +229,10 @@ The Node-only entry must never be exported from the browser barrel. Sheriff
 tracks the server and pure claims entry points separately; keep both aliases and
 architecture registrations valid. The app mounts `createAuthBff` at `/api` before
 SSR and must not proxy that path directly to the bearer backend, including during
-development. The BFF sends the configured tenant and bearer credential upstream,
+development. The BFF derives the tenant from the first DNS label of the entered
+email domain (`admin@root.com` becomes `root`), validates it, and binds it to the
+server session. Login sends `{ email, password }` with that tenant header. The BFF
+sends the session-bound tenant and bearer credential upstream,
 not browser-supplied Authorization, Cookie, tenant, or proxy-host headers.
 
 Login, refresh, and logout are POST operations requiring the exact configured
@@ -207,6 +247,13 @@ Both login and workspace use SSR/hydration. Before rendering, the BFF validates
 the session against the upstream permissions endpoint, refreshes expired access
 credentials when possible, and supplies metadata through Angular's request
 context. Guards wait for restoration instead of allowing SSR unconditionally.
+Backend permissions rejection with 401 also triggers one server-side refresh even
+when JWT expiry still looks valid locally. A proxied endpoint's 401 can use that
+same one-refresh budget and retry its original request once; a 403 never triggers
+refresh. Concurrent refreshes share one flight and late stale requests reuse
+already-rotated stored credentials. Temporary upstream failures do not clear the
+HttpOnly cookie, including during SSR; rejected refresh credentials invalidate
+the stored session and require a new login.
 Authenticated SSR API reads forward only the session cookie to the fixed
 `AUTH_PUBLIC_ORIGIN` BFF, never to an origin inferred from request headers; SSR
 mutations are rejected. That public origin must be reachable from the SSR process.
@@ -215,16 +262,27 @@ private HTTP responses; all API and SSR HTML responses use `Cache-Control: no-st
 
 ### Cookie BFF Deployment
 
-Set server environment variables explicitly; missing/invalid configuration keeps
-the API unavailable with HTTP 503, never a production fallback:
+Panel's SSR host uses `environment.apiUrl` as its upstream API base; an explicit
+`AUTH_API_URL` overrides it. The browser still calls same-origin `/api/auth/login`;
+the BFF forwards to the transport backend's `/api/tokens/get-by-email/` endpoint.
+The backend URL is therefore not expected in the browser's Network request URL.
 
-| Variable              | Contract                                                                                          |
-| --------------------- | ------------------------------------------------------------------------------------------------- |
-| `AUTH_API_URL`        | Fixed upstream API base including `/api`; HTTPS except explicit loopback development.             |
-| `AUTH_PUBLIC_ORIGIN`  | Exact frontend origin, without a route path; HTTPS in production. Also constrains SSR hosts.      |
-| `AUTH_SESSION_SECRET` | Strong random server-only secret of at least 32 bytes; never expose through Angular environments. |
-| `NODE_ENV`            | Explicit `production`, `development`, or `test`; production rejects an HTTP public origin.        |
-| `AUTH_TENANT`         | Optional server-owned tenant, default `root`.                                                     |
+Local development defaults to `http://localhost:4200` with a cryptographically
+random, server-only secret generated on startup. No manual server variables are
+needed for the standard development command. For another port/origin, explicitly
+set `AUTH_PUBLIC_ORIGIN` to match it. The random development secret is never built
+into browser JavaScript. Production bundles never use these development defaults,
+even if their runtime mistakenly sets `NODE_ENV=development`.
+
+In production, set the public origin and stable server secret explicitly;
+missing/invalid configuration keeps the API unavailable with HTTP 503:
+
+| Variable              | Contract                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `AUTH_API_URL`        | Optional override of `environment.apiUrl`, including `/api`; HTTPS except explicit loopback upstreams.       |
+| `AUTH_PUBLIC_ORIGIN`  | Exact frontend origin; defaults to `http://localhost:4200` in development, required HTTPS in production.     |
+| `AUTH_SESSION_SECRET` | Strong server-only secret of at least 32 bytes; ephemeral in development, required explicitly in production. |
+| `NODE_ENV`            | Runtime mode; the Angular production environment always enforces production restrictions.                    |
 
 Keep the external Host header when reverse proxying to this SSR server; forwarded
 host headers are deliberately not trusted. Terminate TLS at the deployment edge,
@@ -240,6 +298,18 @@ refresh coordination. Its `replace` must atomically update an existing live
 session only, never recreate one deleted by logout. Secure any external token
 store with restricted access and encryption at rest. The default does not claim
 multi-instance session continuity. Rotate the secret to invalidate existing handles.
+
+The panel SSR terminal emits `[auth-bff]` diagnostics through the optional
+`onDiagnostic` adapter. Only fixed operation/reason codes and HTTP status are
+logged, never tokens, cookies, session IDs, email addresses, or upstream bodies.
+`refresh-started`/`refresh-succeeded` indicate server-side rotation (not visible in
+browser Network). `refresh-rejected` identifies a failed refresh;
+`session-missing` identifies a cookie whose server-side entry is gone, such as
+after restart or expiry; `cookie-invalid` can indicate tampering or a regenerated
+development signing secret. Missing/invalid sessions cannot be refreshed because
+their server-held credentials are unavailable. A reload alone does not recreate
+them; sign in again. Surviving process restarts still requires the shared/durable
+storage adapter and stable production signing secret described above.
 
 The current BFF is a bounded JSON API proxy (1 MiB requests, 2 MiB responses,
 10-second upstream timeout, no redirects). Binary downloads, streaming/realtime,
@@ -363,6 +433,13 @@ consumer. Use zoneless TestBed, HTTP fixtures, RouterTestingHarness, and real
 browser tests. For an already-running production SSR preview, set `BASE_URL`;
 set `PLAYWRIGHT_CHROMIUM_CHANNEL=chrome` to use installed Chrome when necessary.
 The production host/cache/API-policy check is intentionally skipped in development.
+
+For isolated verification, set `PANEL_E2E_SERVER=development` or `production`
+with an HTTP loopback `BASE_URL` containing an explicit port. Playwright then
+starts and tears down the matching local server and refuses existing listeners;
+production mode requires the matching `panel:build` output first. Omitting the
+option retains external `BASE_URL` and existing default-server behavior. Managed
+mode rejects remote origins, credentials and non-origin paths.
 
 A feature is done only when its real reusable implementation, consumer wiring,
 contract tests, permissions, error/empty/loading behavior, RTL/mobile behavior,

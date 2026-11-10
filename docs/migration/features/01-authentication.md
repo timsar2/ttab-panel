@@ -92,3 +92,95 @@ session but does not claim to fix backend JWT revocation or account-policy check
   proxy, distributed session adapter, backend authorization policy, and other browser
   engines remain separate acceptance gates. Required variables are documented in
   the architecture contract; no production endpoint or account was used.
+
+## API Configuration Follow-Up
+
+- Panel's SSR adapter now reads its upstream URL from `environment.apiUrl`, with
+  `AUTH_API_URL` retained as an explicit server deployment override. Standard
+  localhost:4200 development initializes a random server-only secret automatically;
+  production still requires an explicit HTTPS origin and server secret.
+- Login forwards to the legacy panel's exact `/api/tokens/get-by-email/` endpoint
+  with `{email,password}` and a tenant header derived from the entered email's
+  first domain label, as confirmed by the user's corrected deployed API curl.
+  `/api/auth/login`
+  remains only the local cookie-BFF
+  facade; it is not an endpoint expected on the transport backend.
+- Configuration precedence, default local initialization, and production fail-closed
+  behavior are covered by four additional Node tests (26 total). Existing auth
+  tests remain 104 passing; auth/panel lint, Node typecheck, and production build pass.
+- A development-server smoke check without `AUTH_API_URL` or `AUTH_SESSION_SECRET`
+  returned 401 for an anonymous session and 400 for an invalid login body instead
+  of 503. Neither request contacted the upstream or submitted real credentials.
+- Compared all implemented request adapters against the legacy panel services and
+  transport backend controllers. Only email login's trailing slash differed; both
+  cookie-BFF and alternate bearer callers now preserve it. Verified upstream
+  contracts: `POST /api/tokens/get-by-email/`, `POST /api/tokens/refresh`,
+  `GET /api/personal/logout`, `GET /api/personal/permissions`,
+  `POST /api/v1/companys/search`, and `GET /api/v1/companys/{id}`. The company
+  search paging/filter payload matches. Tenant selection now follows the user's
+  confirmed per-email rule rather than a fixed `root` header.
+  Cookie facade routes intentionally differ from upstream routes to hide tokens
+  and protect state-changing operations; unimplemented legacy APIs were not fabricated.
+- Follow-up transport contract regressions passed: 45 HTTP/adapter tests, 25 company
+  data/context tests, 2 company feature tests, and 4 shell tests (76 total). Existing
+  jsdom CSS-layer diagnostics remain non-failing; this is fixture/source validation,
+  not a login against a real production account.
+
+## Email-Derived Tenant Follow-Up
+
+[X] AUTH-17 Recover session validation/backend 401 with one server-side refresh,
+preserve transient-failure cookies, and add safe diagnostics and race regressions.
+
+- User explicitly selected keeping the HttpOnly SSR proxy after reviewing the
+  direct-browser token exposure tradeoff. `/api/auth/login` is a frontend-server
+  adapter, not an upstream API endpoint; its metadata is derived from the actual
+  returned JWT and server session. Real tokens stay on the server.
+- Corrected business entity claim mapping to prefer the real token's namespaced
+  `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/sid`, preserving existing
+  unqualified-SID token support. A `companyId` claim of `0` still means no company.
+  The claim regression passes with 118 browser-side unit tests and 31 Node tests.
+
+- `admin@root.com` sends `tenant: root`; `user@finance.com` sends `tenant: finance`.
+  Domain labels are lowercased and validated before use as headers. Invalid email
+  domains and header-injection inputs fail before contacting the backend.
+- Cookie sessions retain the derived tenant server-side for permissions checks,
+  SSR restoration, refresh, proxy requests, and logout. Browser tenant headers and
+  login-body tenant overrides are ignored. `AUTH_TENANT` no longer selects a BFF
+  tenant; simultaneous users in different tenants do not share mutable tenant state.
+- The alternate bearer adapter also sends `{email,password}`, derives its login
+  tenant from the email, and retains it for subsequent requests and token rotation.
+- Tests cover root/non-root domains, case/whitespace normalization, invalid domains,
+  tenant-header overrides, concurrent sessions, refresh and logout. Auth browser
+  tests: 117 passed; Node tests: 31 passed. No real credentials were submitted.
+- Auth/panel/browser-test lint and browser/Node typechecks pass. The follow-up
+  application build and browser smoke are blocked by unrelated concurrent forms
+  compilation: `lookup-select.ts:29` combines `[disabled]` with `[formField]`
+  (NG8022). This does not supersede the earlier build evidence; it records the
+  current worktree's integration gap, and that forms change was not modified here.
+
+## Refresh Recovery: 2026-11-10
+
+- Session restore now tries one refresh when backend permissions validation returns
+  401 before local JWT expiry; expired JWTs retain their existing refresh path.
+  The same budget covers a proxied business endpoint's 401 and one retry. A 403
+  is an authorization failure, not a refresh trigger.
+- Coalesced refresh protects rotation across concurrent session requests; delayed
+  requests use the latest stored credentials instead of replaying a consumed
+  refresh token. Logout cannot be undone by late refresh results.
+- Temporary upstream errors preserve session cookies, including SSR failures.
+  Rejected refresh credentials remove the stored session and clear the cookie.
+  Missing sessions remain fail-closed; restart persistence was not added.
+- Safe terminal diagnostics distinguish cookie/session loss, upstream access
+  rejection, refresh start/success/rejection, and temporary upstream failures.
+  Diagnostic consumers cannot break authentication, and no credentials, identifiers,
+  raw errors, or upstream bodies are passed to them.
+- Node integration tests: 43 passed, including the new recovery/race/diagnostic
+  cases. Browser auth unit tests, login feature tests, panel tests, Node typecheck,
+  auth/panel lint, and the production SSR build also pass. Existing jsdom CSS-layer
+  warnings are non-failing. The earlier forms compilation blocker no longer
+  reproduces in the current worktree. Controlled fixtures were used, not live accounts.
+- Headed Chrome cookie-BFF acceptance: all three tests pass against the development
+  SSR server, including intentional backend rejection of an unexpired token,
+  exactly one counted upstream refresh, metadata-only restoration, and an
+  authenticated reload. Test control routes are confined to the loopback fixture,
+  never mounted in the deployed application. Temporary servers were stopped.

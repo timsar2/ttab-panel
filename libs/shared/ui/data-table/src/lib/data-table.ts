@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core'
+import {
+  ChangeDetectionStrategy,
+  Component,
+  TemplateRef,
+  computed,
+  input,
+  output,
+} from '@angular/core'
+import { NgTemplateOutlet } from '@angular/common'
 import { HlmAlertImports } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmTableImports } from '@spartan-ng/helm/table'
@@ -25,7 +33,7 @@ export interface DataTablePage {
 @Component({
   selector: 'lib-data-table',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FlexRender, HlmTableImports, HlmButton, HlmAlertImports],
+  imports: [FlexRender, NgTemplateOutlet, HlmTableImports, HlmButton, HlmAlertImports],
   host: { class: 'block min-w-0' },
   template: `
     @if (error(); as error) {
@@ -64,7 +72,7 @@ export interface DataTablePage {
                   <ng-container *flexRenderHeader="header; let value">{{ value }}</ng-container>
                 </th>
               }
-              @if (actionLabel()) {
+              @if (actionLabel() || rowActions()) {
                 <th hlmTh scope="col">{{ actionHeading() }}</th>
               }
             </tr>
@@ -83,18 +91,26 @@ export interface DataTablePage {
                     <ng-container *flexRenderCell="cell; let value">{{ value }}</ng-container>
                   </td>
                 }
-                @if (actionLabel(); as label) {
+                @if (actionLabel() || rowActions()) {
                   <td hlmTd>
-                    <button
-                      hlmBtn
-                      class="min-h-11 min-w-11"
-                      variant="outline"
-                      type="button"
-                      [attr.aria-label]="label + ': ' + rowLabel()(row.original)"
-                      (click)="rowAction.emit(row.original)"
-                    >
-                      {{ label }}
-                    </button>
+                    <div class="flex flex-wrap gap-2">
+                      @if (actionLabel(); as label) {
+                        <button
+                          hlmBtn
+                          class="min-h-11 min-w-11"
+                          variant="outline"
+                          type="button"
+                          [attr.aria-label]="label + ': ' + rowLabel()(row.original)"
+                          (click)="rowAction.emit(row.original)"
+                        >
+                          {{ label }}
+                        </button>
+                      }
+                      <ng-container
+                        [ngTemplateOutlet]="rowActions()"
+                        [ngTemplateOutletContext]="{ $implicit: row.original }"
+                      />
+                    </div>
                   </td>
                 }
               </tr>
@@ -107,32 +123,34 @@ export interface DataTablePage {
         </tbody>
       </table>
     </div>
-    <nav
-      class="mt-4 flex flex-wrap items-center justify-end gap-3"
-      [attr.aria-label]="pagingLabel()"
-    >
-      <span aria-live="polite">{{ pageLabel() }} {{ page().pageIndex + 1 }}</span>
-      <button
-        hlmBtn
-        class="min-h-11 min-w-11"
-        variant="outline"
-        type="button"
-        [disabled]="loading() || !!error() || !page().hasPreviousPage"
-        (click)="pageChange.emit({ pageIndex: page().pageIndex - 1, pageSize: page().pageSize })"
+    @if (showPagination()) {
+      <nav
+        class="mt-4 flex flex-wrap items-center justify-end gap-3"
+        [attr.aria-label]="pagingLabel()"
       >
-        {{ previousLabel() }}
-      </button>
-      <button
-        hlmBtn
-        class="min-h-11 min-w-11"
-        variant="outline"
-        type="button"
-        [disabled]="loading() || !!error() || !page().hasNextPage"
-        (click)="pageChange.emit({ pageIndex: page().pageIndex + 1, pageSize: page().pageSize })"
-      >
-        {{ nextLabel() }}
-      </button>
-    </nav>
+        <span aria-live="polite">{{ pageLabel() }} {{ page().pageIndex + 1 }}</span>
+        <button
+          hlmBtn
+          class="min-h-11 min-w-11"
+          variant="outline"
+          type="button"
+          [disabled]="loading() || !!error() || !page().hasPreviousPage"
+          (click)="pageChange.emit({ pageIndex: page().pageIndex - 1, pageSize: page().pageSize })"
+        >
+          {{ previousLabel() }}
+        </button>
+        <button
+          hlmBtn
+          class="min-h-11 min-w-11"
+          variant="outline"
+          type="button"
+          [disabled]="loading() || !!error() || !page().hasNextPage"
+          (click)="pageChange.emit({ pageIndex: page().pageIndex + 1, pageSize: page().pageSize })"
+        >
+          {{ nextLabel() }}
+        </button>
+      </nav>
+    }
   `,
 })
 export class DataTable<T extends object> {
@@ -141,10 +159,12 @@ export class DataTable<T extends object> {
   readonly rowId = input.required<(row: T) => string>()
   readonly rowLabel = input<(row: T) => string>(() => '')
   readonly page = input.required<DataTablePage>()
+  readonly showPagination = input(true)
   readonly caption = input.required<string>()
   readonly loading = input(false)
   readonly error = input<string | null>(null)
   readonly actionLabel = input<string | null>(null)
+  readonly rowActions = input<TemplateRef<{ $implicit: T }> | null>(null)
   readonly actionHeading = input('Actions')
   readonly loadingLabel = input('Loading records...')
   readonly emptyLabel = input('No records found.')
@@ -158,7 +178,7 @@ export class DataTable<T extends object> {
   readonly rowAction = output<T>()
   readonly retry = output<void>()
   protected readonly columnCount = computed(
-    () => this.columns().length + (this.actionLabel() ? 1 : 0),
+    () => this.columns().length + (this.actionLabel() || this.rowActions() ? 1 : 0),
   )
   protected readonly table = injectTable(() => ({
     features: serverTableFeatures,

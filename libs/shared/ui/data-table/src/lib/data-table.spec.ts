@@ -58,6 +58,13 @@ describe('DataTable public composition', () => {
     expect(fixture.nativeElement.textContent).toContain('ABC')
     expect(fixture.nativeElement.textContent).not.toContain('Company Two')
   })
+  it('omits page claims and paging controls for bounded unpaged server lists', async () => {
+    const fixture = await setup()
+    fixture.componentRef.setInput('showPagination', false)
+    await fixture.whenStable()
+    expect(fixture.nativeElement.querySelector('nav')).toBeNull()
+    expect(fixture.nativeElement.textContent).toContain('Company Two')
+  })
   it('renders mutually exclusive loading, empty, error and retry states', async () => {
     const fixture = await setup()
     fixture.componentRef.setInput('loading', true)

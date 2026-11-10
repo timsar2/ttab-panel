@@ -8,6 +8,7 @@ const identity = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/'
 const role = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
 const issued = new Set<string>()
 const refreshTokens = new Set<string>()
+let refreshCount = 0
 const key = randomBytes(32)
 function issue() {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
@@ -20,6 +21,7 @@ function issue() {
       sid: '1',
       companyId: '1',
       exp: Math.floor(Date.now() / 1000) + 300,
+      jti: randomBytes(8).toString('hex'),
     }),
   ).toString('base64url')
   const input = `${header}.${payload}`
@@ -38,7 +40,7 @@ function issue() {
 }
 app.post('/api/tokens/get-by-email', (req, res) => {
   if (
-    req.get('tenant') !== 'root' ||
+    req.get('tenant') !== 'example' ||
     req.body.email !== 'example@example.test' ||
     req.body.password !== 'example-password'
   ) {
@@ -48,10 +50,11 @@ app.post('/api/tokens/get-by-email', (req, res) => {
   res.json(issue())
 })
 app.post('/api/tokens/refresh', (req, res) => {
-  if (req.get('tenant') !== 'root' || !refreshTokens.delete(req.body.refreshToken)) {
+  if (req.get('tenant') !== 'example' || !refreshTokens.delete(req.body.refreshToken)) {
     res.status(401).json({})
     return
   }
+  refreshCount++
   res.json(issue())
 })
 app.get('/api/personal/permissions', (req, res) => {
@@ -62,6 +65,12 @@ app.get('/api/personal/permissions', (req, res) => {
   res.json(['fixture.read'])
 })
 app.get('/api/personal/logout', (_req, res) => res.json({ code: '2000', result: 'Signed out' }))
+// Test control endpoints exist only in this isolated loopback fixture process.
+app.post('/__test/reject-access', (_req, res) => {
+  issued.clear()
+  res.json({ refreshCount })
+})
+app.get('/__test/auth-stats', (_req, res) => res.json({ refreshCount }))
 app.listen(Number(process.env['AUTH_FIXTURE_PORT'] ?? 5101), '127.0.0.1', () =>
   console.log('Auth upstream fixture ready'),
 )

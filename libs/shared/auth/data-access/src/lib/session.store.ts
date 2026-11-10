@@ -128,6 +128,11 @@ export const SessionStore = signalStore(
       }
       if (!('token' in value)) throw new Error('Invalid bearer session.')
       if (
+        value.tenant !== undefined &&
+        !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(value.tenant)
+      )
+        throw new Error('Invalid session tenant.')
+      if (
         !value?.refreshToken ||
         !Number.isFinite(Date.parse(value.refreshTokenExpiryTime)) ||
         Date.parse(value.refreshTokenExpiryTime) <= Date.now()
@@ -221,6 +226,7 @@ export const SessionStore = signalStore(
       // Deliberately evaluated at call time: computed(Date.now()) would cache expiry.
       isAuthenticated,
       accessToken: (): string | null => tokens?.token ?? null,
+      tenant: (): string => tokens?.tenant ?? config.tenant,
       async login(credentials: AuthCredentials): Promise<boolean> {
         clear()
         signedOut = false

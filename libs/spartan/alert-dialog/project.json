@@ -4,13 +4,11 @@
   "sourceRoot": "libs/spartan/alert-dialog/src",
   "prefix": "hlm",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:shared", "type:ui", "layer:presentation"],
   "targets": {
     "build": {
       "executor": "@nx/angular:ng-packagr-lite",
-      "outputs": [
-        "{workspaceRoot}/dist/{projectRoot}"
-      ],
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
       "defaultConfiguration": "production",
       "options": {
         "project": "libs/spartan/alert-dialog/ng-package.json",

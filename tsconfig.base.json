@@ -97,7 +97,18 @@
       "@org/transport-http": ["./libs/transport/http/src/index.ts"],
       "@org/transport-company-data-access": ["./libs/transport/company/data-access/src/index.ts"],
       "@org/transport-company-feature": ["./libs/transport/company/feature/src/index.ts"],
-      "@org/ui-data-table": ["./libs/shared/ui/data-table/src/index.ts"]
+      "@org/transport-company-feature/ui": ["./libs/transport/company/feature/src/ui.ts"],
+      "@org/ui-data-table": ["./libs/shared/ui/data-table/src/index.ts"],
+      "@org/transport-shell-feature": ["./libs/transport/shell/feature/src/index.ts"],
+      "@org/transport-people-data-access": ["./libs/transport/people/data-access/src/index.ts"],
+      "@org/panel-people": ["./libs/panel/people/src/index.ts"],
+      "@org/panel-people/ui": ["./libs/panel/people/src/ui.ts"],
+      "@org/transport-departure-times-data-access": [
+        "./libs/transport/departure-times/data-access/src/index.ts"
+      ],
+      "@org/transport-support-data-access": ["./libs/transport/support/data-access/src/index.ts"],
+      "@org/panel-departure-times": ["./libs/panel/departure-times/src/index.ts"],
+      "@org/panel-departure-times/ui": ["./libs/panel/departure-times/src/ui.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

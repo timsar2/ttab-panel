@@ -25,21 +25,59 @@ can use numeric entry before [maps](17-maps-and-geography.md) is approved.
 [ ] FND-06 Implement reusable typed error, pagination, ID, date-only/time, numeric, and money adapters only where domain contracts agree.
 [X] FND-07 Build the first real company table and extract a typed TanStack v9/Spartan composition with columns, stable row IDs, actions, paging, and loading/empty/error states.
 [X] FND-08 Define local versus server filtering/sorting and cross-page selection explicitly; never treat one server page as the full dataset.
-[ ] FND-09 Generate reusable confirmation and page/action compositions where existing Helm/layout exports do not already cover the need.
+[X] FND-09 Generate reusable confirmation and page/action compositions where existing Helm/layout exports do not already cover the need.
 [ ] FND-10 Generate reusable scoped company/person/driver and province/city lookup components with cancellation and dependent-selection reset.
-[ ] FND-11 Generate reusable image/document controls with preview, MIME/size validation, replacement/removal contracts, and resource cleanup.
+[X] FND-11 Generate reusable image/document controls with preview, MIME/size validation, replacement/removal contracts, and resource cleanup.
 [ ] FND-12 Generate reusable date-only/Jalali display and time controls with tested calendar/timezone conversion, not silent UTC shifting.
-[ ] FND-13 Generate reusable coordinate input with range validation and map-adapter hooks without embedding a provider key or imposing unapproved geofences.
+[X] FND-13 Generate reusable coordinate input with range validation and map-adapter hooks without embedding a provider key or imposing unapproved geofences.
 [ ] FND-14 Extract shared phone/mobile/email/plate validation functions only after confirming their intended requirements; keep domain-specific validators within the owning library.
 [X] FND-15 Register every new library in Nx/Sheriff and every consumed Helm source in Tailwind; repair metadata from actual imports rather than blanket exclusions.
-[ ] FND-16 Test each public UI/utility API with more than one configuration or domain consumer, including pristine/disabled/touched Signal Forms behavior.
-[ ] FND-17 Verify real table/forms/dialog behavior, RTL/LTR, mobile, hydration, keyboard interaction, and production bundle budgets in consuming apps.
+[X] FND-16 Test each public UI/utility API with more than one configuration or domain consumer, including pristine/disabled/touched Signal Forms behavior.
+[X] FND-17 Verify real table/forms/dialog behavior, RTL/LTR, mobile, hydration, keyboard interaction, and production bundle budgets in consuming apps.
 
 ## Evidence
 
 Baseline: `CORE-THEME-TASKS.md` and the root migration plan record prior foundation
 validation. Add new target names, consumer tests, backend decisions, and browser
 results here as shared controls are delivered. Do not mark proposed controls done.
+
+### 2026-11-10: Media Control and Real Logo Consumer
+
+- Generated `FileUploadControl` in existing `@org/ui-forms`, with a public typed
+  keep/reading/invalid/replace/remove model. Image/document consumers configure
+  MIME, dotted extensions, positive integer byte budget, context reset key and
+  explicit removal permission. Documents get local information/download intent,
+  never embedded active content. No remote image origin is inferred.
+- Accepted files use guarded FileReader and owned blob previews. Superseded/
+  canceled/context-reset reads are aborted and epoch-checked; blob URLs are revoked
+  on replacement, reset, external keep, removal and destruction. Inputs/actions
+  stay disabled until browser render ownership; SSR reads no FileReader/URL APIs.
+- Real company forms support keep/replace, reject unsupported removal, protect
+  image-only dirty drafts and clear local drafts/data URLs on destruction/session
+  change. Current server paths are neither posted as uploads nor used for automatic
+  remote previews. The configurable panel byte budget is UI resource policy, not
+  a claimed backend business limit.
+- DTOs match `LocalFileStorageService.cs` and `FileType.Image`: full image data
+  URL, `.jpg/.jpeg/.png/.webp`, `deleteCurrentImage: false`, no writable Name
+  assumption (server GUID). MIME/extension/header/base64 mismatches are rejected.
+  Client checks are not a replacement for server validation or malware scanning.
+- Mobile acceptance found intrinsic file/policy text overflow; min-width bounds
+  and token/filename wrapping fix it without hiding document overflow. Widget and
+  consumer checks cover invalid/oversized selection, real canvas PNG preview,
+  exact upload body, acceptance reset, unchanged/no-file payload and 44px RTL/LTR.
+- Shared forms 51 tests (26 media), company data 56 and company UI 9 pass, with
+  affected lint/typechecks and production AOT/budgets. An independent read-only
+  review found no concrete lifecycle/security defects in the media slice.
+- Managed browser evidence: `PANEL_E2E_SERVER=development` with loopback BASE_URL
+  4201 passes 3 company tests; `PANEL_E2E_SERVER=production` with BASE_URL 4000
+  passes 14, with 3 explicit environment-dependent BFF skips. Set installed Chrome
+  via PLAYWRIGHT_CHROMIUM_CHANNEL and run the existing headed Chromium Nx target.
+  Playwright now owns readiness/cleanup and refuses to reuse unrelated listeners.
+  Existing development auth emits NG02819 for duplicated credential options; that
+  concurrent auth implementation was not changed here. No live backend is claimed.
+- Generic removal is an explicit owner-handled intent. Company delete-only removal
+  remains disabled due to the confirmed stale-path backend defect; FND-11 does not
+  assert that COMPANY-08's backend-removal gate has been resolved.
 
 ### 2026-11-08: Authoritative Transport Contract Review (FND-04)
 
@@ -131,3 +169,40 @@ was used for this review.
   FND-14 await concrete mutation/form consumers and their stated contract gates;
   no empty lookup/upload/date/coordinate boundaries were generated. FND-16 and
   FND-17 remain open for the full shared-control set, beyond this verified table.
+
+### 2026-11-09: Verified Real Company Forms and Shared Controls
+
+- Added `LookupSelect`, `CoordinateFields`, and `ConfirmDialog` within existing
+  `@org/ui-forms`, not projects per component. FieldTree-backed lookups preserve
+  exact string/current IDs and disabled/readonly/touched behavior. Owner state
+  cancels superseded province/city reads and clears dependent values. No global
+  cache was added; session changes clear records, options and local drafts.
+- Coordinates retain zero, use tested decimal/range adapters in the owning
+  domain and support optional map intent without an SDK/key or geofence rule.
+  No calendar, timezone, money or phone business validation was invented.
+- Confirmation composes actual Helm/Brain title/description, focus trap/restore,
+  Escape/cancel and busy behavior. Editor CanDeactivate protects dirty navigation
+  and pristine in-flight saves; successful queued navigation waits for the known
+  save result. Client cancellation is not claimed as server-write rollback.
+- AOT caught NG8022 for combining FormField and disabled on one select. The
+  adapter now bridges Helm value output to FieldTree with supported dirty/touched
+  APIs and one disabled binding, not native-disabled DOM overrides. Focused ngc
+  and panel AOT pass. Forms use novalidate so Signal Forms owns error feedback.
+- Transport HTTP validates explicit alternative bases for version-neutral states
+  without duplicating the scoped HttpClient chain. Tests prove token/tenant scope
+  and no credential forwarding to unrelated origins.
+- Tests: shared forms 25, transport HTTP 46, company data 44, company UI 8, table
+  4, plus shell/landing and panel regressions. Public consumers vary mount/API/
+  branding/labels, field locks, and create/edit state. AOT, lint/typecheck and
+  unchanged budgets pass. Every future control must retain FND-15/16/17 checks.
+- Headed Chrome: production company suite 3 passed; full production suite 14
+  passed with 2 explicit environment-dependent BFF skips. Clean development
+  company suite passed 3 on 4201: occupied 4200 returned an unrelated 404 and was
+  not killed. Checks cover edit/create, keyboard submission, required/server
+  feedback, parent reset, duplicate saves, full DTO/zero preservation, no implicit
+  workspace switch, legacy redirect, unsaved cancel/Escape/discard, modal focus,
+  and real 44px mobile fields/dialog controls in RTL/LTR layout.
+- Fixtures are not live DB or approved membership policy. FND-10 is partial:
+  generic/geography controls are delivered, but person/driver owning adapters
+  await real consumers. FND-06/11/12/14 retain date/money, media and domain-policy
+  gates. Unsupported logo removal and inline type creation are not exposed.

@@ -89,7 +89,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const authenticated = (token: string) =>
     next(
       request.clone({
-        setHeaders: { Authorization: `Bearer ${token}`, tenant: config.tenant },
+        setHeaders: { Authorization: `Bearer ${token}`, tenant: session.tenant() },
         withCredentials: config.withCredentials,
         credentials: config.withCredentials ? 'include' : 'omit',
         transferCache: false,

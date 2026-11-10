@@ -6,6 +6,24 @@ const isCI = !!process.env['CI']
 // For CI, you may want to set BASE_URL to the deployed application.
 // getReadyUrl moves the address to the port the dev server task reported.
 const baseURL = process.env['BASE_URL'] || getReadyUrl('http://localhost:4200')
+const managedServer = process.env['PANEL_E2E_SERVER']
+if (managedServer && managedServer !== 'development' && managedServer !== 'production') {
+  throw new Error('PANEL_E2E_SERVER must be development or production.')
+}
+const managedURL = managedServer ? new URL(baseURL) : null
+if (
+  managedURL &&
+  (managedURL.protocol !== 'http:' ||
+    !['localhost', '127.0.0.1', '[::1]'].includes(managedURL.hostname) ||
+    !managedURL.port ||
+    Number(managedURL.port) < 1 ||
+    managedURL.username ||
+    managedURL.password ||
+    managedURL.pathname !== '/' ||
+    managedURL.search ||
+    managedURL.hash)
+)
+  throw new Error('Managed E2E servers require an HTTP loopback origin with an explicit port.')
 
 /**
  * Read environment variables from file.
@@ -31,14 +49,26 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
-  webServer: process.env['BASE_URL']
-    ? undefined
-    : {
-        command: isCI ? 'bun nx run panel:serve-static' : 'bun nx run panel:serve',
-        url: getReadyUrl('http://localhost:4200'),
-        reuseExistingServer: true,
+  webServer: managedURL
+    ? {
+        command:
+          managedServer === 'production'
+            ? 'node dist/apps/panel/server/server.mjs'
+            : `bun nx run panel:serve --port=${managedURL.port}`,
+        env: { PORT: managedURL.port },
+        url: baseURL,
+        reuseExistingServer: false,
+        timeout: 120_000,
         cwd: workspaceRoot,
-      },
+      }
+    : process.env['BASE_URL']
+      ? undefined
+      : {
+          command: isCI ? 'bun nx run panel:serve-static' : 'bun nx run panel:serve',
+          url: getReadyUrl('http://localhost:4200'),
+          reuseExistingServer: true,
+          cwd: workspaceRoot,
+        },
   projects: [
     {
       name: 'chromium',
