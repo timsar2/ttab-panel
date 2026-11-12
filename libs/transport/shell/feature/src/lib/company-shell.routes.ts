@@ -29,6 +29,7 @@ export interface CompanyShellConfig {
   readonly loginUrl: string
   readonly links?: readonly CompanyShellLink[]
   readonly labels?: Partial<CompanyShellLabels>
+  readonly translations?: () => Signal<Readonly<Record<string, string | undefined>>>
   readonly navigation?: () => Signal<readonly LayoutNavItem[]>
 }
 

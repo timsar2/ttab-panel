@@ -82,7 +82,7 @@ Use the feature files as the task-status source of truth; the older
 [ ] M03 Complete [company context and protected shell](features/03-company-context-and-shell.md) as reusable libraries with authorized route-owned scope.
 [ ] M04 Complete [company management](features/04-companies.md).
 [ ] M05 Complete [people management](features/05-people.md), distinct from login-account permissions and passenger allocation.
-[ ] M06 Complete [driver management](features/06-drivers.md). Angular 22 library implementation and controlled verification are recorded; live authorization, document-removal/retention policy and backend acceptance remain gated.
+[ ] M06 Complete [driver management](features/06-drivers.md). Angular 22 list, detail, add/edit flows and controlled verification are implemented; Operator entity scoping, document removal/deletion policy and live backend acceptance remain gated.
 [ ] M07 Complete [vehicle management](features/07-vehicles.md).
 [ ] M08 Complete [departure-time management](features/08-departure-times.md).
 [ ] M09 Complete [shift groups and shifts](features/09-shift-groups-and-shifts.md), with agreed fixed/rotating schedule semantics.

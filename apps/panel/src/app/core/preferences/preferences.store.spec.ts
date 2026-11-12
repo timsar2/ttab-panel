@@ -36,6 +36,20 @@ describe('PreferencesStore', () => {
     expect(root.lang).toBe('fa')
   })
 
+  it('applies a selected language with its matching direction', () => {
+    const store = TestBed.inject(PreferencesStore)
+    const root = TestBed.inject(DOCUMENT).documentElement
+    store.setLanguage('en')
+    expect(store.language()).toBe('en')
+    expect(store.direction()).toBe('ltr')
+    expect(root.lang).toBe('en')
+    expect(root.dir).toBe('ltr')
+    store.setLanguage('fa')
+    expect(store.language()).toBe('fa')
+    expect(root.lang).toBe('fa')
+    expect(root.dir).toBe('rtl')
+  })
+
   it('does not overwrite the shared theme when synchronizing direction', () => {
     const store = TestBed.inject(PreferencesStore)
     const root = TestBed.inject(DOCUMENT).documentElement

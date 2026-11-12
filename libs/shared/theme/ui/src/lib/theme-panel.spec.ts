@@ -102,8 +102,9 @@ describe('ThemePanel', () => {
     ).toContain('Customize colors')
     expect(document.querySelectorAll('button[aria-pressed]').length).toBe(60)
     expect([...document.querySelectorAll('select')].map(select => select.options.length)).toEqual([
-      2, 4, 5, 2, 3, 3, 2, 3,
+      2, 2, 4, 5, 2, 3, 3, 2, 3,
     ])
+    expect(element<HTMLSelectElement>('select[id$="-language"]').value).toBe('en')
     expect(element<HTMLSelectElement>('select[id$="-typography"]').value).toBe('poppins')
     expect(element<HTMLButtonElement>('button[aria-label="Close"]')).toBeTruthy()
   })
@@ -125,6 +126,14 @@ describe('ThemePanel', () => {
       expect(store.set).toHaveBeenCalledWith(key, value)
     }
     expect(store.applyCustomCss).not.toHaveBeenCalled()
+  })
+
+  it('emits selected languages from the settings control', async () => {
+    const languageChange = vi.fn()
+    fixture.componentInstance.languageChange.subscribe(languageChange)
+    await open()
+    await change('language', 'fa')
+    expect(languageChange).toHaveBeenCalledExactlyOnceWith('fa')
   })
 
   it('matches stored hex colors and applies swatches for all four rows', async () => {

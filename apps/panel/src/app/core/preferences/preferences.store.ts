@@ -27,6 +27,10 @@ export const PreferencesStore = signalStore(
         patchState(store, { direction })
         syncDocument()
       },
+      setLanguage(language: 'fa' | 'en'): void {
+        patchState(store, { direction: language === 'fa' ? 'rtl' : 'ltr' })
+        syncDocument()
+      },
       toggleDirection(): void {
         patchState(store, { direction: store.isRtl() ? 'ltr' : 'rtl' })
         syncDocument()

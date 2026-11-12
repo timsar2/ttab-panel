@@ -5,14 +5,17 @@ export const credentials = {
   password: 'example-password',
 } as const
 
-export async function mockAuthentication(page: Page): Promise<void> {
+export async function mockAuthentication(
+  page: Page,
+  roles: readonly string[] = ['Admin', 'Client'],
+): Promise<void> {
   let authenticated = false
   const session = {
     user: {
       id: 'e2e-user',
       firstName: 'Example',
       lastName: 'User',
-      roles: ['Admin', 'Client'],
+      roles,
       businessEntityId: 1,
       companyId: 1,
     },

@@ -98,11 +98,12 @@ import { COMPANY_SHELL_CONFIG } from './company-shell.routes'
             @for (crumb of breadcrumbs(); track $index; let last = $last) {
               <li hlmBreadcrumbSeparator></li>
               <li hlmBreadcrumbItem>
-                @if (last) {
-                  <span hlmBreadcrumbPage>{{ crumb }}</span>
-                } @else {
-                  <span>{{ crumb }}</span>
-                }
+                <a
+                  hlmBreadcrumbLink
+                  [routerLink]="crumb.url"
+                  [attr.aria-current]="last ? 'page' : null"
+                  >{{ crumb.label }}</a
+                >
               </li>
             }
           </ol>
@@ -152,34 +153,47 @@ export class CompanyShell {
   protected readonly config = inject(COMPANY_SHELL_CONFIG)
   protected readonly context = inject(CompanyContextStore)
   protected readonly navigationItems = this.config.navigation?.() ?? computed(() => [])
+  private readonly translations =
+    this.config.translations?.() ??
+    computed<Readonly<Record<string, string | undefined>>>(() => ({}))
   private readonly session = inject(SessionStore)
   private readonly router = inject(Router)
   private readonly route = inject(ActivatedRoute)
   private readonly navigation = toSignal(
     this.router.events.pipe(filter(event => event instanceof NavigationEnd)),
   )
-  protected readonly labels = computed(() => ({
-    navigation: 'Company navigation',
-    companies: 'Companies',
-    chooseCompany: 'Choose a company',
-    switchCompany: 'Switch company',
-    workspace: 'Company workspace',
-    signOut: 'Sign out',
-    breadcrumbs: 'Breadcrumbs',
-    account: 'Signed-in account',
-    ...this.config.labels,
-  }))
+  protected readonly labels = computed(() => {
+    const translations = this.translations()
+    return {
+      navigation: translations['Company navigation'] ?? 'Company navigation',
+      companies: translations['Companies'] ?? 'Companies',
+      chooseCompany: translations['Choose a company'] ?? 'Choose a company',
+      switchCompany: translations['Switch company'] ?? 'Switch company',
+      workspace: translations['Company workspace'] ?? 'Company workspace',
+      signOut: translations['Sign out'] ?? 'Sign out',
+      breadcrumbs: translations['Breadcrumbs'] ?? 'Breadcrumbs',
+      account: translations['Signed-in account'] ?? 'Signed-in account',
+      ...this.config.labels,
+    }
+  })
   protected readonly displayName = computed(() => {
     const user = this.session.user()
     return [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.id || ''
   })
   protected readonly breadcrumbs = computed(() => {
     this.navigation()
-    const labels: string[] = []
+    const labels: { label: string; url: string }[] = []
+    const url = this.route.snapshot.url.map(segment => segment.path)
     let child = this.route.snapshot.firstChild
     while (child) {
-      const label = child.data['breadcrumb']
-      if (typeof label === 'string' && label.trim()) labels.push(label)
+      url.push(...child.url.map(segment => segment.path))
+      const key = child.data['breadcrumb']
+      if (typeof key === 'string' && key.trim()) {
+        const crumb = { label: this.translations()[key] ?? key, url: '/' + url.join('/') }
+        if (labels.length && labels[labels.length - 1].label === crumb.label)
+          labels[labels.length - 1] = crumb
+        else labels.push(crumb)
+      }
       child = child.firstChild
     }
     return labels

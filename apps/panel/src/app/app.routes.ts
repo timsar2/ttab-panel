@@ -28,6 +28,10 @@ import {
   lucideLifeBuoy,
 } from '@ng-icons/lucide'
 
+function canManageDrivers(roles: readonly string[] | undefined): boolean {
+  return roles?.some(role => role === 'Admin' || role === 'Manager') ?? false
+}
+
 function navigationFor(companyId: number | null, rtl: boolean): readonly LayoutNavItem[] {
   const choose = rtl ? 'ابتدا یک شرکت انتخاب کنید' : 'Choose a company first'
   const planned = rtl ? 'به‌زودی' : 'Not implemented yet'
@@ -151,6 +155,29 @@ function panelNavigation() {
   )
 }
 
+function companyShellTranslations() {
+  const preferences = inject(PreferencesStore)
+  return computed<Readonly<Record<string, string | undefined>>>(() =>
+    preferences.isRtl()
+      ? {
+          'Company navigation': 'ناوبری شرکت',
+          Companies: 'شرکت‌ها',
+          'Choose a company': 'انتخاب شرکت',
+          'Switch company': 'تغییر شرکت',
+          'Company workspace': 'فضای کاری شرکت',
+          'Sign out': 'خروج',
+          Breadcrumbs: 'مسیر راهنما',
+          'Signed-in account': 'حساب واردشده',
+          Drivers: 'رانندگان',
+          People: 'افراد',
+          'Departure times': 'زمان‌های حرکت',
+          Create: 'ایجاد',
+          Edit: 'ویرایش',
+        }
+      : {},
+  )
+}
+
 export const appRoutes: Route[] = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   ...createAuthRoutes({ path: 'login', title: 'Panel | Sign in' }),
@@ -184,6 +211,7 @@ export const appRoutes: Route[] = [
       companiesCommands: ['/companies'],
       loginUrl: '/login',
       navigation: panelNavigation,
+      translations: companyShellTranslations,
       links: [
         { path: 'people', label: 'People' },
         { path: 'drivers', label: 'Drivers' },
@@ -247,21 +275,34 @@ export const appRoutes: Route[] = [
                     : null
                 })
               },
-              // Search is additionally constrained server-side to the user's company.
-              // Keep entity detail and role-promoting writes closed until ownership checks exist.
+              // Detail and upsert require privileged roles because backend entity ownership
+              // checks are not yet implemented for company operators.
               access: () => {
                 const context = inject(CompanyContextStore)
                 const session = inject(SessionStore)
-                return request =>
-                  of(
-                    request.action === 'search' &&
-                      !!session.user() &&
-                      context.status() === 'ready' &&
-                      context.company()?.id === request.companyId,
+                return request => {
+                  const user = session.user()
+                  const roleAllowed =
+                    !!user &&
+                    (request.action === 'search'
+                      ? user.roles.some(role => ['Admin', 'Manager', 'Oprator'].includes(role))
+                      : canManageDrivers(user.roles))
+                  const companyAllowed = Boolean(
+                    context.status() === 'ready' &&
+                    context.company()?.id === request.companyId &&
+                    (canManageDrivers(user?.roles) || user?.companyId === request.companyId),
                   )
+                  return of(roleAllowed && companyAllowed)
+                }
               },
-              canManage: () => signal(false),
-              canRegisterPerson: () => signal(false),
+              canManage: () => {
+                const session = inject(SessionStore)
+                return computed(() => canManageDrivers(session.user()?.roles))
+              },
+              canRegisterPerson: () => {
+                const session = inject(SessionStore)
+                return computed(() => canManageDrivers(session.user()?.roles))
+              },
               people: {
                 apiUrl: '/api',
                 company: () => {
@@ -273,10 +314,19 @@ export const appRoutes: Route[] = [
                       : null
                   })
                 },
-                access: () => () => of(false),
+                access: () => {
+                  const context = inject(CompanyContextStore)
+                  const session = inject(SessionStore)
+                  return request =>
+                    of(
+                      canManageDrivers(session.user()?.roles) &&
+                        context.status() === 'ready' &&
+                        context.company()?.id === request.companyId,
+                    )
+                },
               },
               deniedMessage:
-                'Driver access is not enabled until company membership and driver permissions are approved.',
+                'Driver management requires an Admin or Manager role and an authorized company context.',
             }),
           ),
       },

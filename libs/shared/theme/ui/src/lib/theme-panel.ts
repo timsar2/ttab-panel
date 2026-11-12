@@ -5,6 +5,7 @@ import {
   computed,
   inject,
   input,
+  output,
   signal,
 } from '@angular/core'
 import { NgIcon, provideIcons } from '@ng-icons/core'
@@ -47,6 +48,7 @@ const LABELS = {
   description: ['شخصی‌سازی رنگ، تایپوگرافی و چیدمان', 'Customize colors, typography and layout'],
   trigger: ['شخصی‌سازی پوسته', 'Customize theme'],
   close: ['بستن', 'Close'],
+  language: ['زبان', 'Language'],
   version: ['نسخه پوسته', 'Theme version'],
   primary: ['رنگ اصلی', 'Primary color'],
   navHeaderBg: ['پس‌زمینه هدر ناوبری', 'Navigation header background'],
@@ -113,6 +115,7 @@ let nextPanelId = 0
 })
 export class ThemePanel {
   readonly locale = input<'fa' | 'en'>('fa')
+  readonly languageChange = output<'fa' | 'en'>()
   readonly side = input<'left' | 'right'>('left')
   readonly floating = input(true)
 
@@ -155,6 +158,10 @@ export class ThemePanel {
 
   protected label(key: keyof typeof LABELS): string {
     return LABELS[key][this.locale() === 'fa' ? 0 : 1]
+  }
+
+  protected setLanguage(language: string | null | undefined): void {
+    if (language === 'fa' || language === 'en') this.languageChange.emit(language)
   }
 
   protected optionLabel(key: KnobKey, value: string | number): string {

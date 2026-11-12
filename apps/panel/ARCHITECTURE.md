@@ -113,13 +113,14 @@ Driver list, onboarding, detail and edit pages are mounted lazily at
 `/client/:companyId/drivers`, `/new`, `/:id` and `/:id/edit`; legacy `add` and
 `detail/:id` paths deliberately redirect. Driver records use persisted business
 Person IDs, with separately authorized People detail and mutation operations.
-The panel enables authenticated driver-list searches only while the resolved
-route company matches the request scope; the backend overrides non-admin company
-IDs from the authenticated user's company claim. Driver detail and mutation
-remain fail-closed until entity/company ownership policy is approved. Explicitly
-configured consumers can select/register a Person and upsert licence/documents.
-Upsert assigns the linked Identity Driver role; Person creation
-has account/message side effects, so UI affordances are not authorization.
+The panel enables driver-list searches for Admin/Manager and company Operators;
+the resolved route company must match the request, and Operators must also match
+their authenticated company claim. The backend overrides non-admin company IDs
+from that claim. Driver detail and Person-backed create/edit are enabled for
+Admin/Manager only because the backend's Operator detail/update paths do not yet
+enforce per-entity company ownership. Those writes use the independently scoped
+People API. Driver upsert assigns the linked Identity Driver role; Person creation
+has account/message side effects, so the app limits them to Admin/Manager roles.
 Document replacement is bounded by the cookie-BFF aggregate request limit.
 Document removal and driver deletion are not exposed pending backend semantics
 and retention decisions. See the driver checklist for controlled verification

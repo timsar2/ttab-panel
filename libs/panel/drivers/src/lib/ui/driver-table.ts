@@ -32,26 +32,30 @@ import { HlmButton } from '@spartan-ng/helm/button'
       (retry)="retry.emit()"
     />
     <ng-template #name let-cell>
-      <a
-        hlmBtn
-        variant="link"
-        class="min-h-11"
-        [routerLink]="[cell.row.original.id]"
-        queryParamsHandling="preserve"
-        >{{ cell.row.original.fullName ?? 'Driver ' + cell.row.original.id }}</a
-      >
+      @if (canManage()) {
+        <a
+          hlmBtn
+          variant="link"
+          class="min-h-11"
+          [routerLink]="[cell.row.original.id]"
+          queryParamsHandling="preserve"
+          >{{ cell.row.original.fullName ?? 'Driver ' + cell.row.original.id }}</a
+        >
+      } @else {
+        <span>{{ cell.row.original.fullName ?? 'Driver ' + cell.row.original.id }}</span>
+      }
     </ng-template>
     <ng-template #driverActions let-driver>
-      <a
-        hlmBtn
-        variant="outline"
-        class="min-h-11 min-w-11"
-        [routerLink]="[driver.id]"
-        queryParamsHandling="preserve"
-        [attr.aria-label]="viewLabel() + ': ' + rowLabel(driver)"
-        >{{ viewLabel() }}</a
-      >
       @if (canManage()) {
+        <a
+          hlmBtn
+          variant="outline"
+          class="min-h-11 min-w-11"
+          [routerLink]="[driver.id]"
+          queryParamsHandling="preserve"
+          [attr.aria-label]="viewLabel() + ': ' + rowLabel(driver)"
+          >{{ viewLabel() }}</a
+        >
         <a
           hlmBtn
           variant="outline"

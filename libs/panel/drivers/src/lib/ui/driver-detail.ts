@@ -146,7 +146,7 @@ export class DriverDetailPage {
   })
   protected readonly id = computed(() => routeDriverId(this.params().get('id')))
   protected readonly canRead = computed(
-    () => !!this.session.user() && this.api.companyId() !== null,
+    () => this.canManage() && !!this.session.user() && this.api.companyId() !== null,
   )
   protected readonly documents = driverDocuments
   constructor() {
@@ -156,7 +156,7 @@ export class DriverDetailPage {
       this.session.version()
       untracked(() => {
         this.store.clear()
-        if (id) this.store.loadDetail(id)
+        if (id && this.canRead()) this.store.loadDetail(id)
       })
     })
   }

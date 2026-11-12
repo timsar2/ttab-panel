@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http'
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing'
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core'
+import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core'
 import { TestBed } from '@angular/core/testing'
 import { Router, provideRouter } from '@angular/router'
 import { RouterTestingHarness } from '@angular/router/testing'
@@ -66,6 +66,7 @@ describe('company shell route factory', () => {
         id: 'identity',
         roles: ['Admin'],
       })
+      const rtl = signal(false)
       TestBed.configureTestingModule({
         providers: [
           provideAuth({ apiUrl: '/api', tenant: 'test' }),
@@ -90,6 +91,10 @@ describe('company shell route factory', () => {
                 ...config,
                 companiesCommands: ['/choose'],
                 loginUrl: '/sign-in',
+                translations: () =>
+                  computed(() =>
+                    rtl() ? { Companies: 'شرکت‌ها', [config.recordLabel]: 'سوابق' } : {},
+                  ),
                 labels: { navigation: config.recordLabel + ' navigation' },
                 links: [
                   {
@@ -163,6 +168,31 @@ describe('company shell route factory', () => {
         harness.routeNativeElement?.querySelector('[data-slot=breadcrumb] [aria-current=page]')
           ?.textContent,
       ).toContain(config.recordLabel)
+      const breadcrumbLinks = [
+        ...harness.routeNativeElement!.querySelectorAll<HTMLAnchorElement>(
+          '[data-slot=breadcrumb] a',
+        ),
+      ]
+      expect(breadcrumbLinks.map(link => link.textContent?.trim())).toEqual([
+        'Companies',
+        'Company 6',
+        config.recordLabel,
+      ])
+      expect(breadcrumbLinks.map(link => link.getAttribute('href'))).toEqual([
+        '/choose',
+        `${config.url}/6`,
+        `${config.url}/6/records`,
+      ])
+      rtl.set(true)
+      harness.detectChanges()
+      expect(
+        harness.routeNativeElement
+          ?.querySelector('[data-slot=breadcrumb]')
+          ?.textContent?.replace(/\s+/g, ' '),
+      ).toContain('شرکت‌ها')
+      expect(
+        harness.routeNativeElement?.querySelector('[data-slot=breadcrumb]')?.textContent,
+      ).toContain('سوابق')
       const canceled = harness.navigateByUrl(`${config.url}/8/restricted`)
       await vi.waitFor(() => http.expectOne(`${config.apiUrl}/companys/8`).flush(detail(8)))
       await canceled

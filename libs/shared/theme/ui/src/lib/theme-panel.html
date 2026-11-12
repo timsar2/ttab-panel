@@ -38,6 +38,24 @@
     </hlm-sheet-header>
 
     <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-5 overflow-x-hidden overflow-y-auto p-4">
+      <div hlmField>
+        <label hlmFieldLabel [for]="id + '-language'">{{ label('language') }}</label>
+        <hlm-native-select
+          class="w-full"
+          selectClass="min-h-11"
+          [selectId]="id + '-language'"
+          [value]="locale()"
+          (valueChange)="setLanguage($event)"
+        >
+          <option hlmNativeSelectOption value="fa">
+            {{ locale() === 'fa' ? 'فارسی' : 'Persian' }}
+          </option>
+          <option hlmNativeSelectOption value="en">
+            {{ locale() === 'fa' ? 'انگلیسی' : 'English' }}
+          </option>
+        </hlm-native-select>
+      </div>
+
       @for (knob of knobs; track knob.key) {
       <div hlmField>
         <label hlmFieldLabel [for]="id + '-' + knob.key">{{ label(knob.key) }}</label>

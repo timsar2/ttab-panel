@@ -14,6 +14,7 @@ appearance compatibility and release checks remain in [release acceptance](22-re
 
 ## Completed Baseline
 
+[X] THEME-11 Allow users to select Persian or English from theme settings and apply the matching document language and direction.
 [X] THEME-01 Port the updated Press ID theme model, palettes, typography, chrome, geometry, density, and shadows into a reusable NgRx ThemeStore.
 [X] THEME-02 Port the Spartan customization sheet with accessible swatches, selectors, custom CSS editor, Save, Reset, and focus restoration.
 [X] THEME-03 Persist validated preferences under an app-configured key and restore after hydration with malformed/denied-storage protection.
@@ -27,6 +28,10 @@ appearance compatibility and release checks remain in [release acceptance](22-re
 
 ## Evidence and Maintenance
 
+THEME-11 verified with `bun nx run shared-theme-ui:test`, `bun nx run panel:test`,
+`bun nx run shared-theme-ui:lint`, `bun nx run panel:lint`, and
+`bun nx run panel:build`. The selection updates the app-owned direction/language
+preference and document `lang`/`dir`; the theme library emits the selected language.
 See `CORE-THEME-TASKS.md` for the preceding delivery's tests and browser evidence.
 These completed tasks describe that baseline only. For a newly requested theme
 capability, add a pending task here before implementation and reopen the main

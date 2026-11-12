@@ -19,6 +19,7 @@ capability from [companies](04-companies.md), not all company CRUD.
 
 ## Tasks
 
+[ ] CONTEXT-16 Make every company-shell breadcrumb segment navigate to its ancestor route and localize shell/route labels from the active language.
 [X] CONTEXT-01 Deliver auth-independent projected authentication/application layout primitives and current CDK directionality compatibility.
 [ ] CONTEXT-02 Confirm authorized company membership, tenant distinctions, actor permissions, and the authoritative company lookup contract.
 [X] CONTEXT-03 Generate reusable company-context and protected-shell libraries with public configuration and no panel imports.
@@ -40,6 +41,10 @@ capability from [companies](04-companies.md), not all company CRUD.
 Record approved membership/permission decisions, route-context tests, consumer
 configurations, and browser results. The existing authenticated placeholder does
 not complete this workstream.
+
+CONTEXT-16 implementation has passing `transport-shell-feature` tests, lint, and
+typecheck. The panel production build remains blocked by a TypeScript error in the
+existing driver authorization callback in `apps/panel/src/app/app.routes.ts`.
 
 ### 2026-11-12: Spartan Side Menu and Theme Integration
 

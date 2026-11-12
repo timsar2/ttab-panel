@@ -1,4 +1,7 @@
 <router-outlet></router-outlet>
 @defer (on idle) {
-<lib-theme-panel [locale]="preferences.language()" />
+<lib-theme-panel
+  [locale]="preferences.language()"
+  (languageChange)="preferences.setLanguage($event)"
+/>
 }

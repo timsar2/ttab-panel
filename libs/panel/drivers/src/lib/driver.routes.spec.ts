@@ -249,6 +249,49 @@ describe('reusable driver routes', () => {
     expect(root(harness).textContent).toContain('Save driver')
     http.expectNone(request => request.method === 'POST' && request.url === '/fleet/v1/drivers')
   })
+  it('creates a driver from a persisted Person and navigates to the hydrated detail view', async () => {
+    const { harness, http } = await setup('/new')
+    root(harness)
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    TestBed.tick()
+    http
+      .expectOne('/directory/users/search')
+      .flush(
+        page([{ id: 12, fullName: 'Sam Driver', nationalId: '0012345678', profileImage: null }]),
+      )
+    harness.detectChanges()
+    present(
+      Array.from(root(harness).querySelectorAll('button')).find(button =>
+        button.textContent?.includes('Select person'),
+      ),
+    ).click()
+    flushNewDriverCheck(http)
+    TestBed.tick()
+    harness.detectChanges()
+    const licence = present(root(harness).querySelector<HTMLSelectElement>('#driver-licence'))
+    licence.value = '2'
+    licence.dispatchEvent(new Event('change', { bubbles: true }))
+    TestBed.tick()
+    harness.detectChanges()
+    const forms = root(harness).querySelectorAll('form')
+    forms[forms.length - 1].dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    TestBed.tick()
+    await Promise.resolve()
+    http.expectOne('/directory/users/12').flush(envelope(person()))
+    const save = http.expectOne('/fleet/v1/drivers')
+    expect(save.request.body).toEqual({ id: 12, companyId: 7, driverLicenceLevelId: 2 })
+    save.flush(envelope(driver()))
+    TestBed.tick()
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/operators/12'))
+    TestBed.tick()
+    flushDetail(http)
+    TestBed.tick()
+    harness.detectChanges()
+    expect(root(harness).textContent).toContain('Driver details')
+    expect(root(harness).textContent).toContain('Sam Driver')
+    expect(root(harness).querySelector('a[href="/operators/12/edit"]')).not.toBeNull()
+  })
   it('clears drafts and private documents when company scope changes', async () => {
     const { harness, http, company } = await setup('/12/edit')
     flushDetail(http)
@@ -464,6 +507,30 @@ describe('reusable driver routes', () => {
       '1',
     )
     expect(upload.value().kind).toBe('replace')
+    submitForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    TestBed.tick()
+    await Promise.resolve()
+    http.expectOne('/directory/users/12').flush(envelope(person()))
+    const retry = http.expectOne('/fleet/v1/drivers')
+    expect(retry.request.body).toEqual({
+      id: 12,
+      companyId: 7,
+      driverLicenceLevelId: 1,
+      nationalCardFrontImage: {
+        extension: '.png',
+        data: 'data:image/png;base64,YQ==',
+        deleteCurrentImage: false,
+      },
+    })
+    retry.flush(envelope(driver()))
+    TestBed.tick()
+    await vi.waitFor(() => expect(TestBed.inject(Router).url).toBe('/operators/12'))
+    TestBed.tick()
+    flushDetail(http)
+    TestBed.tick()
+    harness.detectChanges()
+    expect(root(harness).textContent).toContain('Driver details')
+    expect(root(harness).textContent).toContain('Sam Driver')
   })
   it('guards dirty navigation and releases the guard on logout', async () => {
     const { harness, http, user, version, changes } = await setup('/12/edit')
