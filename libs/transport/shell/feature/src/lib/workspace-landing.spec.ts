@@ -55,7 +55,9 @@ describe('workspace landing public routes', () => {
     await harness.fixture.whenStable()
     expect(harness.routeNativeElement?.textContent).toContain('Localized welcome')
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true)
-    harness.routeNativeElement?.querySelector<HTMLButtonElement>('header button')?.click()
+    harness.routeNativeElement
+      ?.querySelector<HTMLButtonElement>('header [layoutHeader] button')
+      ?.click()
     expect(logout).toHaveBeenCalledOnce()
     expect(navigate).toHaveBeenCalledWith(config.loginUrl)
     user.set(null)

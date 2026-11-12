@@ -17,6 +17,8 @@
 @source '../../../libs/panel';
 @source '../../../libs/spartan/table';
 @source '../../../libs/spartan/breadcrumb';
+@source '../../../libs/spartan/sidebar';
+@source '../../../libs/spartan/tooltip';
 @source '../../../libs/spartan/alert';
 @source '../../../libs/spartan/alert-dialog';
 @source '../../../libs/spartan/button';

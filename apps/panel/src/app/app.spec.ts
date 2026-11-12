@@ -35,31 +35,38 @@ describe('App', () => {
     expect(compiled.querySelector('app-nx-welcome')).toBeNull()
   })
 
-  it.each(['/', '/login', '/unknown', '/workspace', '/auth/login'])(
-    'routes %s to the login page',
-    async url => {
-      const pending = RouterTestingHarness.create(url)
-      const controller = TestBed.inject(HttpTestingController)
-      await vi.waitFor(() => {
+  it.each([
+    '/',
+    '/login',
+    '/unknown',
+    '/workspace',
+    '/auth/login',
+    '/client/2/drivers',
+    '/client/2/drivers/new',
+    '/client/2/drivers/3',
+    '/client/2/drivers/3/edit',
+  ])('routes %s to the login page', async url => {
+    const pending = RouterTestingHarness.create(url)
+    const controller = TestBed.inject(HttpTestingController)
+    await vi.waitFor(() => {
+      controller
+        .expectOne('/api/auth/session')
+        .flush({}, { status: 401, statusText: 'Unauthorized' })
+    })
+    // A protected-route redirect also runs the guest guard on the login route.
+    if (url === '/workspace' || url.startsWith('/client/')) {
+      await vi.waitFor(() =>
         controller
           .expectOne('/api/auth/session')
-          .flush({}, { status: 401, statusText: 'Unauthorized' })
-      })
-      // A protected-route redirect also runs the guest guard on the login route.
-      if (url === '/workspace') {
-        await vi.waitFor(() =>
-          controller
-            .expectOne('/api/auth/session')
-            .flush({}, { status: 401, statusText: 'Unauthorized' }),
-        )
-      }
-      const harness = await pending
-      expect(
-        harness.routeNativeElement?.querySelector('input[autocomplete="username"]'),
-      ).not.toBeNull()
-      expect(
-        harness.routeNativeElement?.querySelector('input[autocomplete="current-password"]'),
-      ).not.toBeNull()
-    },
-  )
+          .flush({}, { status: 401, statusText: 'Unauthorized' }),
+      )
+    }
+    const harness = await pending
+    expect(
+      harness.routeNativeElement?.querySelector('input[autocomplete="username"]'),
+    ).not.toBeNull()
+    expect(
+      harness.routeNativeElement?.querySelector('input[autocomplete="current-password"]'),
+    ).not.toBeNull()
+  })
 })

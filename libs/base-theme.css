@@ -494,6 +494,12 @@
     background: var(--sidebar-accent);
     color: var(--sidebar-accent-foreground);
   }
+  .theme-nav-link[aria-current='page'] ng-icon {
+    color: var(--sidebar-primary-foreground);
+    background: var(--sidebar-primary);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-primary);
+  }
 
   [data-layout='vertical'][data-sidebar-style='mini'] .theme-nav-link [data-nav-label],
   [data-layout='vertical'][data-sidebar-style='icon-hover'] .theme-nav-link [data-nav-label] {
@@ -506,6 +512,15 @@
 
   [data-sidebar-style='icon-hover'] .theme-sidebar:is(:hover, :focus-within) [data-nav-label] {
     display: initial;
+  }
+
+  @media (max-width: 767px) {
+    [data-layout='vertical'][data-sidebar-style] .theme-nav-link [data-nav-label] {
+      display: initial;
+    }
+    [data-layout='vertical'][data-sidebar-style] .theme-nav-link {
+      justify-content: flex-start;
+    }
   }
 
   .page-title {

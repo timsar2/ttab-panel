@@ -58,7 +58,11 @@ export type UploadSelection =
         (change)="selectFile($event)"
       />
       <p hlmFieldDescription class="wrap-anywhere" [id]="id() + '-policy'">
-        Allowed: {{ accept() || 'No file types configured' }}. Maximum: {{ maxBytes() }} bytes.
+        @if (policyDescription(); as description) {
+          {{ description }}
+        } @else {
+          Allowed: {{ accept() || 'No file types configured' }}. Maximum: {{ maxBytes() }} bytes.
+        }
       </p>
       <p hlmFieldDescription [id]="id() + '-status'" role="status" aria-live="polite">
         @switch (value().kind) {
@@ -142,6 +146,7 @@ export class FileUploadControl {
   readonly allowedTypes =
     input.required<readonly { mime: string; extensions: readonly string[] }[]>()
   readonly maxBytes = input.required<number>()
+  readonly policyDescription = input<string | null>(null)
   readonly existingName = input<string | null>(null)
   readonly disabled = input(false)
   readonly allowRemove = input(false)

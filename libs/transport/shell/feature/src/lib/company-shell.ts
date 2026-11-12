@@ -39,7 +39,7 @@ import { COMPANY_SHELL_CONFIG } from './company-shell.routes'
     HlmBreadcrumbImports,
   ],
   template: `
-    <lib-app-layout>
+    <lib-app-layout [items]="navigationItems()" [navigationLabel]="labels().navigation">
       <span layoutBrand class="truncate font-semibold">{{ config.brand }}</span>
       <nav layoutNavigation [attr.aria-label]="labels().navigation">
         <a
@@ -107,7 +107,7 @@ import { COMPANY_SHELL_CONFIG } from './company-shell.routes'
             }
           </ol>
         </nav>
-        <section hlmCard>
+        <!-- <section hlmCard>
           <div hlmCardHeader>
             <h1 hlmCardTitle>{{ context.company()?.name }}</h1>
             <p hlmCardDescription>{{ labels().workspace }}</p>
@@ -128,7 +128,7 @@ import { COMPANY_SHELL_CONFIG } from './company-shell.routes'
               </div>
             </dl>
           </div>
-        </section>
+        </section> -->
         <router-outlet />
       } @else if (context.status() === 'loading') {
         <p role="status">Loading company...</p>
@@ -151,6 +151,7 @@ import { COMPANY_SHELL_CONFIG } from './company-shell.routes'
 export class CompanyShell {
   protected readonly config = inject(COMPANY_SHELL_CONFIG)
   protected readonly context = inject(CompanyContextStore)
+  protected readonly navigationItems = this.config.navigation?.() ?? computed(() => [])
   private readonly session = inject(SessionStore)
   private readonly router = inject(Router)
   private readonly route = inject(ActivatedRoute)

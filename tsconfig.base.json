@@ -108,7 +108,10 @@
       ],
       "@org/transport-support-data-access": ["./libs/transport/support/data-access/src/index.ts"],
       "@org/panel-departure-times": ["./libs/panel/departure-times/src/index.ts"],
-      "@org/panel-departure-times/ui": ["./libs/panel/departure-times/src/ui.ts"]
+      "@org/panel-departure-times/ui": ["./libs/panel/departure-times/src/ui.ts"],
+      "@org/panel-drivers": ["./libs/panel/drivers/src/index.ts"],
+      "@org/panel-drivers/ui": ["./libs/panel/drivers/src/ui.ts"],
+      "@org/transport-drivers-data-access": ["./libs/transport/drivers/data-access/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

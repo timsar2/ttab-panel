@@ -51,7 +51,10 @@ export class LoginForm {
   readonly notice = input<string | null>(null)
   readonly credentialsSubmit = output<Credentials>()
   protected readonly ready = signal(false)
-  private readonly model = signal<Credentials>({ username: '', password: '' })
+  private readonly model = signal<Credentials>({
+    username: 'admin@root.com',
+    password: '@tLine!402*',
+  })
   readonly credentials = this.model.asReadonly()
   readonly loginForm = form(this.model, path => {
     required(path.username)

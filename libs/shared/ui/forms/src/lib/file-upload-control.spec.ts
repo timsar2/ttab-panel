@@ -36,6 +36,7 @@ class ControlledReader {
       label="Logo"
       [allowedTypes]="imageTypes()"
       [maxBytes]="limit()"
+      [policyDescription]="policyDescription()"
       [existingName]="existingName()"
       [disabled]="locked()"
       [resetKey]="contextKey()"
@@ -60,6 +61,7 @@ class Consumer {
   readonly documentTypes = [{ mime: 'application/pdf', extensions: ['.pdf'] }] as const
   readonly existingName = signal<string | null>('existing.png')
   readonly limit = signal(10)
+  readonly policyDescription = signal<string | null>(null)
   readonly locked = signal(false)
   readonly removal = signal(false)
   readonly contextKey = signal<string | number>(0)
@@ -120,6 +122,24 @@ describe('FileUploadControl consumers', () => {
       button,
     }
   }
+
+  it('supports a readable policy description without changing file constraints or default hints', async () => {
+    const { fixture, consumer, imageRoot, imageInput, choose } = await setup()
+    const policy = imageRoot.querySelector('#logo-policy')
+    expect(policy?.textContent).toContain('image/png,.png')
+    expect(policy?.textContent).toContain('10 bytes')
+    consumer.policyDescription.set('PNG images. Up to 10 bytes.')
+    await fixture.whenStable()
+    expect(policy?.textContent?.trim()).toBe('PNG images. Up to 10 bytes.')
+    expect(imageInput.accept).toBe('image/png,.png')
+    expect(imageInput.getAttribute('aria-describedby')).toContain('logo-policy')
+    await choose(new File(['too large for this input'], 'large.png', { type: 'image/png' }))
+    expect(consumer.image().kind).toBe('invalid')
+    expect(ControlledReader.instances).toHaveLength(0)
+    consumer.policyDescription.set(null)
+    await fixture.whenStable()
+    expect(policy?.textContent).toContain('10 bytes')
+  })
   const png = (name = 'logo.PNG', contents = 'image') =>
     new File([contents], name, { type: 'image/png' })
 

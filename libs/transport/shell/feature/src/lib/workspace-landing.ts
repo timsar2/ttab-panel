@@ -30,7 +30,7 @@ const defaultText: WorkspaceText = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [AppLayout, RouterLink, HlmButton, HlmCardImports],
   template: `
-    <lib-app-layout>
+    <lib-app-layout [items]="navigation()" [navigationLabel]="text().navigation">
       <span layoutBrand class="truncate font-semibold">{{ config.brand }}</span>
       <nav layoutNavigation [attr.aria-label]="text().navigation">
         <a
@@ -69,6 +69,7 @@ export class WorkspaceLanding {
   private readonly session = inject(SessionStore)
   private readonly router = inject(Router)
   protected readonly text = this.config.text?.() ?? computed(() => defaultText)
+  protected readonly navigation = this.config.navigation?.() ?? computed(() => [])
   protected readonly displayName = computed(() => {
     const user = this.session.user()
     return [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.id || ''

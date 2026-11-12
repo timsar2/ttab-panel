@@ -1,4 +1,5 @@
-import { InjectionToken, inject, provideEnvironmentInitializer } from '@angular/core'
+import { InjectionToken, inject, provideEnvironmentInitializer, type Signal } from '@angular/core'
+import type { LayoutNavItem } from '@org/layout'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop'
 import {
   ActivatedRouteSnapshot,
@@ -28,6 +29,7 @@ export interface CompanyShellConfig {
   readonly loginUrl: string
   readonly links?: readonly CompanyShellLink[]
   readonly labels?: Partial<CompanyShellLabels>
+  readonly navigation?: () => Signal<readonly LayoutNavItem[]>
 }
 
 export interface CompanyShellLabels {

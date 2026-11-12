@@ -2,6 +2,7 @@ import { InjectionToken, Signal } from '@angular/core'
 import { Routes } from '@angular/router'
 import { authGuard } from '@org/auth-data-access'
 import type { WorkspaceText } from './workspace-landing'
+import type { LayoutNavItem } from '@org/layout'
 
 export interface WorkspaceConfig {
   readonly path: string
@@ -10,6 +11,7 @@ export interface WorkspaceConfig {
   readonly loginUrl: string
   /** Runs in the component injection context; may read the consumer's locale/preferences. */
   readonly text?: () => Signal<WorkspaceText>
+  readonly navigation?: () => Signal<readonly LayoutNavItem[]>
 }
 
 export const WORKSPACE_CONFIG = new InjectionToken<WorkspaceConfig>('WORKSPACE_CONFIG')

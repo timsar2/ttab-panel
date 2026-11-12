@@ -46,6 +46,83 @@ async function openEnglishSettings(page: Page) {
   await expect(page.getByRole('heading', { name: 'Theme settings', exact: true })).toBeVisible()
 }
 
+test('Spartan transport sidebar follows theme modes and opens an accessible mobile menu', async ({
+  page,
+}) => {
+  test.setTimeout(90_000)
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await mockAuthentication(page)
+  await page.goto('/login')
+  await page.getByRole('button', { name: /تغییر زبان/ }).click()
+  await page.getByLabel('Username', { exact: true }).fill(credentials.username)
+  await page.getByLabel('Password', { exact: true }).fill(credentials.password)
+  await page.getByRole('button', { name: 'Sign in to panel' }).click()
+  await expect(page).toHaveURL(/\/workspace$/)
+  page.on('console', message => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
+  const menu = page.locator('hlm-sidebar nav')
+  await expect(menu.getByRole('link', { name: 'Workspace', exact: true })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  await expect(menu.getByRole('link', { name: 'Companies', exact: true })).toHaveAttribute(
+    'href',
+    '/companies',
+  )
+  await expect(
+    menu.getByRole('button', { name: 'Vehicles: Not implemented yet', exact: true }),
+  ).toBeDisabled()
+  await expect(
+    menu.getByRole('button', { name: 'People: Choose a company first', exact: true }),
+  ).toBeDisabled()
+  for (const style of ['full', 'mini', 'compact', 'modern', 'icon-hover']) {
+    await openEnglishSettings(page)
+    await page.getByRole('combobox', { name: 'Sidebar style', exact: true }).selectOption(style)
+    await page.getByRole('button', { name: 'Sidebar background: Color 14', exact: true }).click()
+    await page.getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.locator('html')).toHaveAttribute('data-sidebar-style', style)
+    await expect(menu.getByRole('link', { name: 'Companies', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+  await openEnglishSettings(page)
+  await page.getByRole('combobox', { name: 'Layout', exact: true }).selectOption('horizontal')
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(menu.getByRole('link', { name: 'Companies', exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.setViewportSize({ width: 375, height: 812 })
+  await page.locator('button[hlmSidebarTrigger]').click()
+  await expect(
+    page.getByRole('dialog').getByRole('link', { name: 'Companies', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('dialog').locator('nav ul')).toHaveCSS('flex-direction', 'column')
+  await page.keyboard.press('Escape')
+  await page.setViewportSize({ width: 1280, height: 720 })
+  await openEnglishSettings(page)
+  await page.getByRole('combobox', { name: 'Layout', exact: true }).selectOption('vertical')
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await page.reload()
+  await expect(page.locator('html')).toHaveAttribute('data-sidebar-style', 'icon-hover')
+  await page.setViewportSize({ width: 375, height: 812 })
+  const trigger = page.locator('button[hlmSidebarTrigger]')
+  await expect(trigger).toBeVisible()
+  await trigger.click()
+  await expect(page.getByRole('dialog')).toHaveAttribute('aria-modal', 'true')
+  await expect(
+    page.getByRole('dialog').getByRole('link', { name: 'شرکت‌ها', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('dialog').locator('[data-nav-label]').first()).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  await trigger.click()
+  await page.getByRole('dialog').getByRole('link', { name: 'فضای کاری', exact: true }).click()
+  await expect(page).toHaveURL(/\/workspace$/)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
 test('customizes live tokens, persists after reload, removes custom overrides, and resets', async ({
   page,
 }) => {
@@ -147,7 +224,13 @@ test('applies chrome, sidebar, container, and layout settings to the protected s
     await page.locator('.theme-sidebar').evaluate(node => getComputedStyle(node).backgroundColor),
   ).toBe('rgb(52, 58, 64)')
   await page.getByRole('combobox', { name: 'Sidebar style', exact: true }).selectOption('mini')
-  await expect(page.locator('[data-nav-label]')).toBeHidden()
+  await expect
+    .poll(() =>
+      page
+        .locator('[data-nav-label]')
+        .evaluateAll(nodes => nodes.every(node => getComputedStyle(node).display === 'none')),
+    )
+    .toBe(true)
   await expect
     .poll(() => page.locator('.theme-sidebar').evaluate(node => node.getBoundingClientRect().width))
     .toBeCloseTo(91.2, 0)

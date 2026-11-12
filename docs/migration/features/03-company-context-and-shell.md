@@ -33,12 +33,43 @@ capability from [companies](04-companies.md), not all company CRUD.
 [X] CONTEXT-12 Test two consumers with different mount paths, branding, navigation configuration, and company defaults.
 [ ] CONTEXT-13 Verify login -> company selection -> authorized company workspace -> logout, including direct links and context switches.
 [X] CONTEXT-14 Verify library boundaries, RTL/mobile keyboard navigation, theme/sidebar modes, overlay direction, and production build budgets.
+[ ] CONTEXT-15 Compose the transport side menu from Spartan sidebar primitives, expose unfinished modules without dead links, and verify theme settings and responsive navigation without implementing destination pages.
 
 ## Evidence
 
 Record approved membership/permission decisions, route-context tests, consumer
 configurations, and browser results. The existing authenticated placeholder does
 not complete this workstream.
+
+### 2026-11-12: Spartan Side Menu and Theme Integration
+
+- `AppLayout` now composes the existing owned Spartan sidebar, menu buttons and
+  mobile sheet. Its optional `LayoutNavItem` input keeps route commands, SVG icons,
+  section labels and unavailable-item hints consumer-owned; projected navigation
+  remains supported for existing alternate consumers. No theme/auth store was
+  introduced into the generic layout.
+- Panel supplies grouped Persian/English transport navigation to the workspace
+  and company shell. Company-scoped links derive from ready route-owned context;
+  future modules have disabled buttons, not invented routes or destination pages.
+  Existing child/API authorization gates remain unchanged.
+- Existing semantic theme variables control surfaces, active icons, typography,
+  widths, full/mini/compact/modern/icon-hover modes and horizontal layout. Mobile
+  retains readable labels, a direction-aware sheet, Escape/focus return and
+  close-on-selection. Registered the consumed sidebar/tooltip Tailwind sources,
+  Nx UI tags and sidebar package peers.
+- Shared layout and transport-shell tests pass (7 tests), with lint/typechecks.
+  Browser-definition typecheck and panel lint pass. Headed Chrome against the
+  existing development server on 4200 passes the focused Spartan regression:
+  five sidebar modes, horizontal layout, disabled items, live chrome colors,
+  persisted settings, RTL mobile labels, Escape/focus return and menu selection.
+  Four of five full theme-suite tests pass on the final run; the existing token
+  Save/reset test was interrupted by a development-page navigation. Earlier runs
+  passed that test, but this is not a clean full-suite acceptance claim.
+- CONTEXT-15 remains pending production/integration acceptance: `panel:test` and
+  `panel:build` are blocked by concurrent unfinished driver imports/detail/editor
+  types, including `@org/transport-drivers-data-access`. The consumed Spartan
+  sidebar and tooltip production package builds passed. Driver implementation
+  changes were not reverted or included in this side-menu scope.
 
 ### 2026-11-09: Route Context and Protected Company Shell
 

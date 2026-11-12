@@ -29,11 +29,13 @@ export const config: SheriffConfig = {
     'libs/transport/company/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/people/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/departure-times/data-access/src': ['scope:transport', 'type:data'],
+    'libs/transport/drivers/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/support/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/company/feature/src': ['scope:transport', 'type:feature'],
     'libs/transport/shell/feature/src': ['scope:transport', 'type:feature'],
     'libs/panel/people/src': ['scope:panel', 'type:feature'],
     'libs/panel/departure-times/src': ['scope:panel', 'type:feature'],
+    'libs/panel/drivers/src': ['scope:panel', 'type:feature'],
 
     'packages/shop/feature-<feature>/src': ['scope:shop', 'type:feature'],
     'packages/shop/data/src': ['scope:shop', 'type:data'],
