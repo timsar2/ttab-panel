@@ -232,6 +232,7 @@ export const appRoutes: Route[] = [
             createDriverRoutes({
               path: '',
               apiUrl: '/api',
+              language: () => inject(PreferencesStore).language,
               endpoints: {
                 collection: 'v1/drivers',
                 search: 'v1/drivers/search',

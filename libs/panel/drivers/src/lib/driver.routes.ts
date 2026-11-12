@@ -3,12 +3,14 @@ import { Routes } from '@angular/router'
 import { authGuard } from '@org/auth-data-access'
 import { DriversDataConfig, provideDriversData } from '@org/transport-drivers-data-access'
 import { PeopleDataConfig, providePeopleData } from '@org/transport-people-data-access'
+import type { AutocompleteLanguage } from '@org/ui-forms'
 import type { DriverEditor } from './ui/driver-editor'
 
 export interface DriverFeatureConfig extends DriversDataConfig {
   readonly path: string
   readonly heading?: string
   readonly deniedMessage?: string
+  readonly language?: () => Signal<AutocompleteLanguage>
   readonly people: PeopleDataConfig
   readonly canManage?: () => Signal<boolean>
   /** Opt in only after approving account creation and welcome-message side effects. */
@@ -23,6 +25,7 @@ export const DRIVER_REGISTER = new InjectionToken<Signal<boolean>>('DRIVER_REGIS
 export const DRIVER_PERSON_CITIES = new InjectionToken<
   Signal<readonly { value: string; label: string }[]>
 >('DRIVER_PERSON_CITIES')
+export const DRIVER_LANGUAGE = new InjectionToken<Signal<AutocompleteLanguage>>('DRIVER_LANGUAGE')
 export function provideDriverFeature(config: DriverFeatureConfig) {
   return makeEnvironmentProviders([
     provideDriversData(config),
@@ -31,6 +34,10 @@ export function provideDriverFeature(config: DriverFeatureConfig) {
     { provide: DRIVER_MANAGE, useFactory: config.canManage ?? (() => signal(false)) },
     { provide: DRIVER_REGISTER, useFactory: config.canRegisterPerson ?? (() => signal(false)) },
     { provide: DRIVER_PERSON_CITIES, useFactory: config.personCities ?? (() => signal([])) },
+    {
+      provide: DRIVER_LANGUAGE,
+      useFactory: config.language ?? (() => signal<AutocompleteLanguage>('en')),
+    },
   ])
 }
 export function createDriverRoutes(config: DriverFeatureConfig): Routes {

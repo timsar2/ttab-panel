@@ -39,7 +39,7 @@ const json = (value: unknown, status = 200) =>
     status,
     headers: { 'Content-Type': 'application/json', 'Set-Cookie': 'upstream=leak' },
   })
-function fixture(storage?: AuthSessionStorage) {
+function fixture(storage?: AuthSessionStorage, refreshLifetime = 86_400_000) {
   let token = jwt()
   const diagnostics = vi.fn()
   const fetcher = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
@@ -51,7 +51,7 @@ function fixture(storage?: AuthSessionStorage) {
           result: {
             token,
             refreshToken: 'upstream-refresh-secret',
-            refreshTokenExpiryTime: new Date(Date.now() + 86_400_000).toISOString(),
+            refreshTokenExpiryTime: new Date(Date.now() + refreshLifetime).toISOString(),
           },
         })
       }
@@ -744,17 +744,51 @@ describe('Node cookie authentication BFF', () => {
     expect(response.headers['set-cookie'][0]).not.toContain('padding')
   })
 
-  it('caps cookie and metadata lifetime at 12 hours even with very long upstream token lifetimes', async () => {
-    const f = fixture()
+  it('allows a seven-day development session with a long upstream token lifetime', async () => {
+    const f = fixture(undefined, 90 * 86_400_000)
     const now = Date.now()
     f.setToken(jwt(now + 90 * 86_400_000))
     const logged = await f.login().expect(200)
-    expect(logged.body.expiresAt).toBeLessThanOrEqual(Date.now() + 12 * 60 * 60 * 1000)
+    expect(logged.body.expiresAt).toBeLessThanOrEqual(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    const maxAge = Number(/Max-Age=(\d+)/.exec(logged.headers['set-cookie'][0])?.[1])
+    expect(maxAge).toBeGreaterThanOrEqual(604_798)
+    expect(maxAge).toBeLessThanOrEqual(604_800)
+    vi.spyOn(Date, 'now').mockReturnValue(now + 8 * 24 * 60 * 60 * 1000)
+    await request(f.app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(401)
+  })
+
+  it('keeps production sessions capped at 12 hours', async () => {
+    const productionOrigin = 'https://panel.example.test'
+    const productionConfig = readAuthBffConfig({
+      AUTH_API_URL: 'https://api.example.test',
+      AUTH_PUBLIC_ORIGIN: productionOrigin,
+      AUTH_SESSION_SECRET: secret,
+      NODE_ENV: 'production',
+    })
+    const fetcher = vi.fn(async (input: string | URL | Request) => {
+      if (String(input).endsWith('/personal/permissions')) return json(['Permissions.Read'])
+      return json({
+        code: '2000',
+        result: {
+          token: jwt(Date.now() + 90 * 86_400_000),
+          refreshToken: 'upstream-refresh-secret',
+          refreshTokenExpiryTime: new Date(Date.now() + 90 * 86_400_000).toISOString(),
+        },
+      })
+    })
+    const app = express().use(
+      '/api',
+      createAuthBff({ config: productionConfig, fetch: fetcher as typeof fetch }),
+    )
+    const logged = await request(app)
+      .post('/api/auth/login')
+      .set('Origin', productionOrigin)
+      .set('X-Auth-Request', '1')
+      .send({ username: 'test@example.com', password: 'password-secret' })
+      .expect(200)
     const maxAge = Number(/Max-Age=(\d+)/.exec(logged.headers['set-cookie'][0])?.[1])
     expect(maxAge).toBeGreaterThanOrEqual(43_198)
     expect(maxAge).toBeLessThanOrEqual(43_200)
-    vi.spyOn(Date, 'now').mockReturnValue(now + 13 * 60 * 60 * 1000)
-    await request(f.app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(401)
   })
 
   it('sanitizes HTTP and application-envelope proxy errors', async () => {

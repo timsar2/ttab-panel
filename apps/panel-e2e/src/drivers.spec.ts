@@ -87,7 +87,7 @@ test('driver list loads scoped server results and keeps detail routes protected'
   await page.locator('button[type=submit]').click()
   await expect(page).toHaveURL(/\/workspace$/)
   await page.goto('/client/2/drivers')
-  await expect(page.getByRole('heading', { name: 'Drivers', exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Drivers' })).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Sam Driver', exact: true })).toBeVisible()
   await expect.poll(() => searchBodies.length).toBe(1)
   expect(searchBodies[0]).toEqual({
@@ -97,7 +97,10 @@ test('driver list loads scoped server results and keeps detail routes protected'
     pageNumber: 1,
     pageSize: 10,
   })
-  const search = page.getByRole('combobox', { name: 'Driver name or national ID', exact: true })
+  const search = page.getByRole('combobox', { name: 'نام یا کد ملی راننده', exact: true })
+  const desktopSearch = await search.boundingBox()
+  expect(desktopSearch?.width).toBeGreaterThan(0)
+  expect(desktopSearch?.width).toBeLessThanOrEqual(512)
   await search.fill('Sample')
   await expect(page).toHaveURL(/Sample/)
   await expect(page.getByRole('cell', { name: 'Sample Driver', exact: true })).toBeVisible()
@@ -105,12 +108,14 @@ test('driver list loads scoped server results and keeps detail routes protected'
     await page.evaluate(dir => document.documentElement.setAttribute('dir', dir), direction)
     await page.setViewportSize({ width: 375, height: 812 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    expect((await search.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+    const mobileSearch = await search.boundingBox()
+    expect(mobileSearch?.width).toBeGreaterThanOrEqual(300)
+    expect(mobileSearch?.height).toBeGreaterThanOrEqual(44)
   }
   const reload = await page.reload()
   expect(reload).not.toBeNull()
   expect(await reload?.text()).not.toContain('Private driver company')
-  await expect(page.getByRole('heading', { name: 'Drivers', exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Drivers' })).toBeVisible()
   await expect(page.getByRole('cell', { name: 'Sample Driver', exact: true })).toBeVisible()
   for (const path of ['new', '3', '3/edit', 'add', 'detail/3']) {
     await page.goto('/client/2/drivers/' + path)

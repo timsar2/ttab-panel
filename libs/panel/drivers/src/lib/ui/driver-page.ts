@@ -17,10 +17,19 @@ import {
   DriverSearch,
 } from '@org/transport-drivers-data-access'
 import { DataTablePage } from '@org/ui-data-table'
-import { AutocompleteSearch } from '@org/ui-forms'
+import { AutocompleteSearch, type BilingualText } from '@org/ui-forms'
 import { HlmButton } from '@spartan-ng/helm/button'
-import { DRIVER_FEATURE, DRIVER_MANAGE } from '../driver.routes'
+import { DRIVER_FEATURE, DRIVER_LANGUAGE, DRIVER_MANAGE } from '../driver.routes'
 import { DriverTable } from './driver-table'
+
+const searchLabel: BilingualText = {
+  en: 'Driver name or national ID',
+  fa: 'نام یا کد ملی راننده',
+}
+const searchPlaceholder: BilingualText = {
+  en: 'Enter at least 2 characters',
+  fa: 'حداقل ۲ نویسه وارد کنید',
+}
 
 export function driverQuery(text: string, page: string | null, size: string | null): DriverSearch {
   const number = page && /^[1-9]\d*$/.test(page) ? Number(page) : 1
@@ -55,9 +64,14 @@ export function driverQuery(text: string, page: string | null, size: string | nu
     <lib-autocomplete-search
       class="mb-6"
       id="driver-search"
-      label="Driver name or national ID"
-      placeholder="Enter at least 2 characters"
-      clearLabel="Clear driver search"
+      [language]="language()"
+      [label]="searchLabel"
+      [placeholder]="searchPlaceholder"
+      [clearLabel]="clearLabel"
+      [clearText]="clearText"
+      [loadingLabel]="loadingLabel"
+      [minimumQueryLabel]="minimumQueryLabel"
+      [emptyLabel]="emptyLabel"
       [(query)]="searchText"
       [options]="suggestions()"
       [loading]="suggestionLoading()"
@@ -82,6 +96,9 @@ export function driverQuery(text: string, page: string | null, size: string | nu
 export class DriverPage {
   protected readonly config = inject(DRIVER_FEATURE)
   protected readonly canManage = inject(DRIVER_MANAGE)
+  protected readonly language = inject(DRIVER_LANGUAGE)
+  protected readonly searchLabel = searchLabel
+  protected readonly searchPlaceholder = searchPlaceholder
   protected readonly store = inject(DriversStore)
   private readonly api = inject(DriversApi)
   private readonly session = inject(SessionStore)
@@ -99,8 +116,26 @@ export class DriverPage {
     return this.params().get('q') ?? ''
   })
   protected readonly rowId = (row: DriverRow) => String(row.id)
-  protected readonly rowLabel = (row: DriverRow) => row.fullName ?? `Driver ${row.id}`
-  protected readonly optionDescription = (row: DriverRow) => row.nationalId
+  protected readonly rowLabel = (row: DriverRow): BilingualText => ({
+    en: row.fullName ?? `Driver ${row.id}`,
+    fa: row.fullName ?? `راننده ${row.id}`,
+  })
+  protected readonly optionDescription = (row: DriverRow): BilingualText | null =>
+    row.nationalId === null ? null : { en: row.nationalId, fa: row.nationalId }
+  protected readonly clearLabel: BilingualText = {
+    en: 'Clear driver search',
+    fa: 'پاک کردن جستجوی راننده',
+  }
+  protected readonly clearText: BilingualText = { en: 'Clear', fa: 'پاک کردن' }
+  protected readonly loadingLabel: BilingualText = { en: 'Searching...', fa: 'در حال جستجو...' }
+  protected readonly minimumQueryLabel: BilingualText = {
+    en: 'Enter at least 2 characters to search.',
+    fa: 'برای جستجو حداقل ۲ نویسه وارد کنید.',
+  }
+  protected readonly emptyLabel: BilingualText = {
+    en: 'No matching drivers found.',
+    fa: 'راننده‌ای با این مشخصات پیدا نشد.',
+  }
   protected readonly suggestions = computed(() => {
     const text = this.searchText().trim()
     const current = this.store.query()

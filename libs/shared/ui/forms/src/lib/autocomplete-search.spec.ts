@@ -12,10 +12,32 @@ describe('AutocompleteSearch', () => {
     await TestBed.configureTestingModule({ imports: [AutocompleteSearch] }).compileComponents()
     const fixture = TestBed.createComponent(AutocompleteSearch<Result>)
     fixture.componentRef.setInput('id', 'driver-search')
-    fixture.componentRef.setInput('label', 'Driver name or national ID')
+    fixture.componentRef.setInput('label', {
+      en: 'Driver name or national ID',
+      fa: 'نام یا کد ملی راننده',
+    })
+    fixture.componentRef.setInput('placeholder', {
+      en: 'Type a name or national ID',
+      fa: 'نام یا کد ملی را وارد کنید',
+    })
+    fixture.componentRef.setInput('clearLabel', { en: 'Clear search', fa: 'پاک کردن جستجو' })
+    fixture.componentRef.setInput('clearText', { en: 'Clear', fa: 'پاک کردن' })
+    fixture.componentRef.setInput('loadingLabel', { en: 'Searching...', fa: 'در حال جستجو...' })
+    fixture.componentRef.setInput('minimumQueryLabel', {
+      en: 'Enter at least 2 characters to search.',
+      fa: 'برای جستجو حداقل ۲ نویسه وارد کنید.',
+    })
+    fixture.componentRef.setInput('emptyLabel', {
+      en: 'No matching results.',
+      fa: 'نتیجه‌ای پیدا نشد.',
+    })
     fixture.componentRef.setInput('optionId', (row: Result) => String(row.id))
-    fixture.componentRef.setInput('optionLabel', (row: Result) => row.name)
-    fixture.componentRef.setInput('optionDescription', (row: Result) => row.nationalId)
+    fixture.componentRef.setInput('optionLabel', (row: Result) => ({ en: row.name, fa: row.name }))
+    fixture.componentRef.setInput('optionDescription', (row: Result) => ({
+      en: row.nationalId,
+      fa: row.nationalId,
+    }))
+    fixture.componentRef.setInput('language', 'en')
     fixture.componentRef.setInput('options', [
       { id: 12, name: 'Sam Driver', nationalId: '0012345678' },
     ])
@@ -53,10 +75,23 @@ describe('AutocompleteSearch', () => {
     expect(selected).toHaveBeenCalledWith({ id: 12, name: 'Sam Driver', nationalId: '0012345678' })
     expect(fixture.componentInstance.query()).toBe('Sam Driver')
     expect(input.getAttribute('aria-expanded')).toBe('false')
+    fixture.componentRef.setInput('language', 'fa')
+    fixture.detectChanges()
+    expect(input.getAttribute('aria-label')).toBe('نام یا کد ملی راننده')
+    expect(input.placeholder).toBe('نام یا کد ملی را وارد کنید')
+    expect(fixture.nativeElement.querySelector('[dir=rtl]')).not.toBeNull()
+    expect(fixture.nativeElement.querySelector('label')?.textContent).toContain(
+      'نام یا کد ملی راننده',
+    )
+    fixture.componentRef.setInput('language', 'en')
+    fixture.detectChanges()
+    expect(input.getAttribute('aria-label')).toBe('Driver name or national ID')
   })
 
   it('emits a reset when cleared and indicates the minimum query length', async () => {
     const fixture = await setup()
+    fixture.componentRef.setInput('language', 'fa')
+    fixture.detectChanges()
     const search = vi.fn()
     fixture.componentInstance.queryRequested.subscribe(search)
     const input = fixture.nativeElement.querySelector('input') as HTMLInputElement
@@ -65,8 +100,10 @@ describe('AutocompleteSearch', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }))
     fixture.detectChanges()
     expect(search).toHaveBeenCalledWith('')
-    expect(fixture.nativeElement.textContent).toContain('Enter at least 2 characters')
+    expect(fixture.nativeElement.textContent).toContain('برای جستجو حداقل ۲ نویسه وارد کنید.')
     const clear = fixture.nativeElement.querySelector('button') as HTMLButtonElement
+    expect(clear.getAttribute('aria-label')).toBe('پاک کردن جستجو')
+    expect(clear.textContent).toContain('پاک کردن')
     clear.click()
     fixture.detectChanges()
     expect(fixture.componentInstance.query()).toBe('')
