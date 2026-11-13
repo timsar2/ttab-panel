@@ -20,6 +20,16 @@ For app-local route entry versus library-owned page structure, also read
 Read the current implementation and installed declarations; do not assume an
 earlier transcript, checkout, or dependency version still describes the code.
 
+Before editing, verify which application is active from the user's explicit path and
+the repository architecture. In this workspace, root `panel/` is the legacy Angular
+app while the new Nx app is under `front/apps/panel/`; similarly named modules in
+both trees are not interchangeable. Scope searches and patches to the confirmed Nx
+root, inspect its `AGENTS.md`, `apps/panel/ARCHITECTURE.md`, and active migration
+checklist, and verify `git status` from that root before choosing source files. Never
+treat the active editor tab or a previous turn's modified path as proof of the target
+project. After work, confirm every implementation file is under the requested app or
+its libraries, and do not claim a legacy change implemented the new app.
+
 Work from `front` using Bun-prefixed Nx commands. Discover resolved targets with
 `bun nx show project PROJECT --json`. Load the Nx generation skill before
 scaffolding; inspect help/source and dry-run. Keep application composition thin
@@ -36,7 +46,10 @@ writes, pull branches, or revert concurrent changes without authorization.
    Keep app branding, routes, endpoints, and concrete preference stores outside
    generic libraries. Add Nx tags and Sheriff source mappings together.
 4. Verify store/API behavior, presentational forms, alternate app configuration,
-   and consumer integration. Preserve zoneless rendering and scoped ownership.
+   and consumer integration. Enter each actual route in tests: list pages must
+   automatically fetch their first server page, and create/edit pages must fetch
+   their server-backed lookup fields on entry. Preserve zoneless rendering and
+   scoped ownership.
 5. Build once, restart the matching production preview, and test real interaction.
    Check development separately; unit success is not production browser evidence.
 6. Convert tasks to `[X]` only after the required checks pass. Record fixture/live

@@ -1,4 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core'
+import {
+  ChangeDetectionStrategy,
+  Component,
+  TemplateRef,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core'
 import { FormField, form } from '@angular/forms/signals'
 import { ActivatedRoute, Router } from '@angular/router'
 import { firstValueFrom } from 'rxjs'
@@ -35,6 +43,28 @@ const emptyRows: readonly UserRow[] = []
           }}
         </p>
       </header>
+      <ng-template #userName let-cell>
+        <div class="flex min-w-0 items-center gap-3">
+          @if (cell.row.original.profileImage; as image) {
+            <img
+              class="h-10 w-10 shrink-0 rounded-full border object-cover"
+              [src]="image"
+              alt=""
+              loading="lazy"
+              referrerpolicy="no-referrer"
+            />
+          } @else {
+            <span
+              class="bg-muted text-muted-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-semibold"
+              aria-hidden="true"
+              >{{ initials(cell.row.original.fullName) }}</span
+            >
+          }
+          <span class="min-w-0 break-words">{{
+            cell.row.original.fullName ?? rowLabel(cell.row.original)
+          }}</span>
+        </div>
+      </ng-template>
       @if (!canManage()) {
         <p role="alert">
           {{ rtl() ? 'دسترسی مجاز نیست.' : 'You are not authorized to manage users.' }}
@@ -114,7 +144,7 @@ export class UsersPage {
     {
       accessorKey: 'fullName',
       header: this.rtl() ? 'نام' : 'Name',
-      cell: cell => cell.getValue() ?? '-',
+      cell: () => this.nameCell(),
     },
     {
       accessorKey: 'nationalId',
@@ -122,8 +152,16 @@ export class UsersPage {
       cell: cell => cell.getValue() ?? '-',
     },
   ])
+  private readonly nameCell =
+    viewChild.required<TemplateRef<{ $implicit: { row: { original: UserRow } } }>>('userName')
   protected readonly rowId = (row: UserRow) => String(row.id)
   protected readonly rowLabel = (row: UserRow) => row.fullName ?? `User ${row.id}`
+  protected initials(fullName?: string | null) {
+    const parts = fullName?.trim().split(/\s+/).filter(Boolean) ?? []
+    return parts.length
+      ? `${parts[0][0]}${parts.length > 1 ? parts[parts.length - 1][0] : ''}`
+      : '?'
+  }
   protected readonly page = computed<DataTablePage>(() => ({
     pageIndex: this.pageIndex(),
     pageSize: this.pageSize(),

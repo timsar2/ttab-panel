@@ -128,4 +128,17 @@ describe('AutocompleteSearch', () => {
     fixture.detectChanges()
     expect(fixture.componentInstance.query()).toBe('')
   })
+
+  it('restores an existing selection when an editor loads a persisted association', async () => {
+    const fixture = await setup()
+    const driver = { id: 12, name: 'Sam Driver', nationalId: '0012345678' }
+    fixture.componentRef.setInput('query', 'Sam Driver')
+    fixture.componentRef.setInput('selectedOption', driver)
+    fixture.detectChanges()
+    await fixture.whenStable()
+    fixture.detectChanges()
+
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement
+    expect(input.value).toBe('Sam Driver')
+  })
 })

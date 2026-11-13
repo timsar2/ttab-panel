@@ -1,0 +1,10 @@
+{
+  "name": "panel-shift",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/panel/shift/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:panel", "type:feature"],
+  "// targets": "to see all targets run: nx show project panel-shift --web",
+  "targets": {}
+}

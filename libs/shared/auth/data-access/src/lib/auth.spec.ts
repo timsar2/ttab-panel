@@ -35,7 +35,9 @@ import {
   authGuard,
   authInterceptor,
   guestGuard,
+  hasAnyRole,
   provideAuth,
+  requireAnyRole,
   requireRoles,
   safeReturnUrl,
 } from '../index'
@@ -839,6 +841,20 @@ describe('session concurrency and guards', () => {
     ).toBe(true)
     const denied = TestBed.runInInjectionContext(() => requireRoles(['Owner'])(route(), state()))
     expect(denied).toBe(false)
+  })
+
+  it('supports shared any-role guards and role matching helpers', async () => {
+    const { session, controller } = setup({ apiUrl: api })
+    await signIn(session, controller)
+    expect(hasAnyRole(['Manager'], ['Admin', 'Manager'])).toBe(true)
+    expect(hasAnyRole(['Client'], ['Admin', 'Manager'])).toBe(false)
+    expect(hasAnyRole(undefined, ['Admin'])).toBe(false)
+    expect(
+      TestBed.runInInjectionContext(() => requireAnyRole(['Admin', 'Manager'])(route(), state())),
+    ).toBe(true)
+    expect(TestBed.runInInjectionContext(() => requireAnyRole(['Owner'])(route(), state()))).toBe(
+      false,
+    )
   })
 
   it('cancels role denial even when afterLoginUrl is the same protected route', async () => {

@@ -1,12 +1,10 @@
 import { computed, inject } from '@angular/core'
-import { SessionStore } from '@org/auth-data-access'
+import { hasAnyRole, requireAnyRole, SessionStore } from '@org/auth-data-access'
 import { createUserRoutes } from '@org/panel-users'
 import { CompanyContextStore } from '@org/transport-company-data-access'
 import { PreferencesStore } from '../../core/preferences/preferences.store'
 
-function canManageUsers(roles: readonly string[] | undefined) {
-  return roles?.some(role => role === 'Admin' || role === 'Manager') ?? false
-}
+const userManagementRoles = ['Admin', 'Manager'] as const
 
 /** App adapter for company-scoped User routes; backend ownership checks remain required. */
 export function createPanelUserRoutes() {
@@ -14,13 +12,14 @@ export function createPanelUserRoutes() {
     path: '',
     apiUrl: '/api',
     heading: 'Users',
+    canActivate: requireAnyRole(userManagementRoles),
     companyId: () => {
       const context = inject(CompanyContextStore)
       return computed(() => (context.status() === 'ready' ? (context.company()?.id ?? null) : null))
     },
     canManage: () => {
       const session = inject(SessionStore)
-      return computed(() => canManageUsers(session.user()?.roles))
+      return computed(() => hasAnyRole(session.user()?.roles, userManagementRoles))
     },
     language: () => inject(PreferencesStore).language,
   })

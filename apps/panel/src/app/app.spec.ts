@@ -45,6 +45,9 @@ describe('App', () => {
     '/client/2/drivers/new',
     '/client/2/drivers/3',
     '/client/2/drivers/3/edit',
+    '/client/2/shift',
+    '/client/2/shift/add',
+    '/client/2/shift/detail/3',
   ])('routes %s to the login page', async url => {
     const pending = RouterTestingHarness.create(url)
     const controller = TestBed.inject(HttpTestingController)

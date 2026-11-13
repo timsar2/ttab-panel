@@ -11,4 +11,11 @@ export type { AuthUser } from './claims'
 export { SessionStore } from './lib/session.store'
 export type { AuthStatus, AuthErrorCode } from './lib/session.store'
 export { authInterceptor } from './lib/auth.interceptor'
-export { authGuard, guestGuard, requireRoles } from './lib/auth.guards'
+export {
+  authGuard,
+  guestGuard,
+  hasAllRoles,
+  hasAnyRole,
+  requireAnyRole,
+  requireRoles,
+} from './lib/auth.guards'

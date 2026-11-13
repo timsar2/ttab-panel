@@ -1,0 +1,10 @@
+{
+  "name": "transport-vehicles-feature",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/transport/vehicles/feature/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:transport", "type:feature"],
+  "// targets": "to see all targets run: nx show project transport-vehicles-feature --web",
+  "targets": {}
+}

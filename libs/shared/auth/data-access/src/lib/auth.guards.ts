@@ -45,14 +45,27 @@ export const guestGuard: CanActivateFn = route => {
   )
 }
 
-/**
- * Role checks improve UX only; the API must independently authorize every operation.
- * Denial cancels navigation. Callers can compose a dedicated forbidden route if desired.
- */
-export function requireRoles(roles: readonly string[]): CanActivateFn {
+export function hasAnyRole(
+  userRoles: readonly string[] | undefined,
+  allowedRoles: readonly string[],
+) {
+  return allowedRoles.some(role => userRoles?.includes(role))
+}
+
+export function hasAllRoles(
+  userRoles: readonly string[] | undefined,
+  requiredRoles: readonly string[],
+) {
+  return requiredRoles.every(role => userRoles?.includes(role))
+}
+
+function roleGuard(
+  roles: readonly string[],
+  matches: (userRoles: readonly string[] | undefined, roles: readonly string[]) => boolean,
+): CanActivateFn {
   return (route, state) => {
     const session = inject(SessionStore)
-    const allowed = () => roles.every(role => session.user()?.roles.includes(role))
+    const allowed = () => matches(session.user()?.roles, roles)
     const authenticated = authGuard(route, state)
     if (authenticated === true) return allowed()
     if (authenticated && typeof authenticated === 'object' && 'pipe' in authenticated) {
@@ -60,4 +73,14 @@ export function requireRoles(roles: readonly string[]): CanActivateFn {
     }
     return authenticated
   }
+}
+
+/** Require every listed role. Role checks improve UX; the API must authorize each operation. */
+export function requireRoles(roles: readonly string[]): CanActivateFn {
+  return roleGuard(roles, hasAllRoles)
+}
+
+/** Require at least one listed role. Role checks improve UX; the API must authorize each operation. */
+export function requireAnyRole(roles: readonly string[]): CanActivateFn {
+  return roleGuard(roles, hasAnyRole)
 }

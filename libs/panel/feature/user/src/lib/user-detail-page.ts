@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core'
 import { FormField, form } from '@angular/forms/signals'
-import { ActivatedRoute, RouterLink } from '@angular/router'
+import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import { firstValueFrom } from 'rxjs'
-import { SignalInput } from '@org/ui-forms'
+import { ConfirmDialog, FileUploadControl, SignalInput, UploadSelection } from '@org/ui-forms'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmFieldImports } from '@spartan-ng/helm/field'
 import {
@@ -10,9 +10,12 @@ import {
   USER_COMPANY_ID,
   USER_FEATURE,
   USER_LANGUAGE,
+  USER_IMAGE_FILE_TYPES,
   UserDetail,
+  deleteUser,
   userDetail,
   updateUser,
+  userProfileImagePayload,
   userHttp,
 } from './users.routes'
 
@@ -26,8 +29,8 @@ interface UserDraft {
   cityId: number
   address: string
   postalCode: string
-  lat: number
-  lng: number
+  lat: number | null
+  lng: number | null
 }
 
 const blankDraft: UserDraft = {
@@ -40,14 +43,29 @@ const blankDraft: UserDraft = {
   cityId: 0,
   address: '',
   postalCode: '',
-  lat: 0,
-  lng: 0,
+  lat: null,
+  lng: null,
+}
+
+const profileImageLabel = { en: 'Profile image', fa: 'تصویر پروفایل' }
+const currentProfileImage = { en: 'Current profile image', fa: 'تصویر پروفایل فعلی' }
+const profileImagePolicy = {
+  en: 'JPEG, PNG, or WebP. Maximum size 160 KiB.',
+  fa: 'فرمت JPEG، PNG یا WebP. حداکثر اندازه ۱۶۰ کیلوبایت.',
 }
 
 @Component({
   selector: 'lib-user-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormField, SignalInput, HlmButton, HlmFieldImports, RouterLink],
+  imports: [
+    ConfirmDialog,
+    FormField,
+    SignalInput,
+    FileUploadControl,
+    HlmButton,
+    HlmFieldImports,
+    RouterLink,
+  ],
   host: { class: 'block min-w-0 p-4 md:p-8' },
   template: `
     <main [attr.dir]="rtl() ? 'rtl' : 'ltr'">
@@ -63,6 +81,24 @@ const blankDraft: UserDraft = {
           @if (user() && !editing() && canManage()) {
             <button hlmBtn class="min-h-11" type="button" (click)="editing.set(true)">
               {{ rtl() ? 'ویرایش' : 'Edit' }}
+            </button>
+            <button
+              hlmBtn
+              variant="destructive"
+              class="min-h-11"
+              type="button"
+              [disabled]="deleting()"
+              (click)="deleteConfirmationOpen.set(true)"
+            >
+              {{
+                deleting()
+                  ? rtl()
+                    ? 'در حال حذف...'
+                    : 'Deleting...'
+                  : rtl()
+                    ? 'حذف کاربر'
+                    : 'Delete user'
+              }}
             </button>
           }
         </div>
@@ -105,8 +141,22 @@ const blankDraft: UserDraft = {
                 />
               </div>
             }
+            <lib-file-upload
+              class="sm:col-span-2"
+              id="user-profile-image"
+              [language]="rtl() ? 'fa' : 'en'"
+              [label]="profileImageLabel"
+              [allowedTypes]="imageTypes"
+              [maxBytes]="163840"
+              [policyDescription]="profileImagePolicy"
+              [existingName]="record.profileImage ? currentProfileImage : null"
+              [existingPreview]="record.profileImage ?? null"
+              [disabled]="saving()"
+              [allowRemove]="!!record.profileImage"
+              [(value)]="image"
+            />
             <div class="flex flex-wrap gap-2 sm:col-span-2">
-              <button hlmBtn class="min-h-11" type="submit" [disabled]="saving()">
+              <button hlmBtn class="min-h-11" type="submit" [disabled]="saving() || imagePending()">
                 {{
                   saving()
                     ? rtl()
@@ -130,6 +180,37 @@ const blankDraft: UserDraft = {
             </div>
           </form>
         } @else {
+          <section class="mb-6 flex min-w-0 items-center gap-4 rounded-lg border p-4">
+            @if (record.profileImage) {
+              <img
+                class="h-20 w-20 shrink-0 rounded-full border object-cover"
+                [src]="record.profileImage"
+                [alt]="title()"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+              />
+            } @else {
+              <span
+                class="bg-muted text-muted-foreground flex h-20 w-20 shrink-0 items-center justify-center rounded-full border text-lg font-semibold"
+                aria-hidden="true"
+                >{{ initials() }}</span
+              >
+            }
+            <div class="min-w-0">
+              <h2 class="font-semibold">{{ rtl() ? 'تصویر پروفایل' : 'Profile image' }}</h2>
+              <p class="text-muted-foreground mt-1 text-sm break-all">
+                {{
+                  record.profileImage
+                    ? rtl()
+                      ? 'تصویر ثبت‌شده'
+                      : 'Profile photo on file'
+                    : rtl()
+                      ? 'تصویری ثبت نشده است'
+                      : 'No profile image'
+                }}
+              </p>
+            </div>
+          </section>
           <section class="grid min-w-0 gap-4 sm:grid-cols-2" aria-label="User details">
             @for (item of displayFields(record); track item.label) {
               <article
@@ -146,6 +227,15 @@ const blankDraft: UserDraft = {
           </section>
         }
       }
+      <lib-confirm-dialog
+        [(open)]="deleteConfirmationOpen"
+        [title]="rtl() ? 'حذف کاربر' : 'Delete user'"
+        [description]="deleteDescription()"
+        [confirmLabel]="rtl() ? 'حذف' : 'Delete'"
+        [cancelLabel]="rtl() ? 'انصراف' : 'Cancel'"
+        [busy]="deleting()"
+        (confirmed)="removeUser()"
+      />
     </main>
   `,
 })
@@ -156,12 +246,23 @@ export class UserDetailPage {
   protected readonly canManage = inject(USER_CAN_MANAGE)
   private readonly http = userHttp()
   private readonly route = inject(ActivatedRoute)
+  private readonly router = inject(Router)
   protected readonly user = signal<UserDetail | null>(null)
   protected readonly loading = signal(true)
   protected readonly saving = signal(false)
+  protected readonly deleting = signal(false)
+  protected readonly deleteConfirmationOpen = signal(false)
   protected readonly editing = signal(false)
   protected readonly error = signal<string | null>(null)
   protected readonly draft = signal<UserDraft>({ ...blankDraft })
+  protected readonly image = signal<UploadSelection>({ kind: 'keep' })
+  protected readonly imageTypes = USER_IMAGE_FILE_TYPES
+  protected readonly profileImageLabel = profileImageLabel
+  protected readonly currentProfileImage = currentProfileImage
+  protected readonly profileImagePolicy = profileImagePolicy
+  protected readonly imagePending = computed(
+    () => !['keep', 'replace', 'remove'].includes(this.image().kind),
+  )
   protected readonly editor = form(this.draft)
   protected readonly textFields: readonly Exclude<keyof UserDraft, 'cityId' | 'lat' | 'lng'>[] = [
     'firstName',
@@ -183,6 +284,11 @@ export class UserDetailPage {
         ? 'جزئیات کاربر'
         : 'User details'
   })
+  protected readonly deleteDescription = computed(() =>
+    this.rtl()
+      ? `آیا از حذف ${this.title()} مطمئن هستید؟ این عملیات برگشت‌پذیر نیست و ممکن است حساب ورود مرتبط را نیز غیرفعال کند.`
+      : `Delete ${this.title()}? This cannot be undone and may also deactivate the linked sign-in account.`,
+  )
   private request = 0
 
   constructor() {
@@ -236,24 +342,24 @@ export class UserDetailPage {
     const record = this.user()
     const companyId = this.companyId()
     const draft = this.draft()
-    if (!record || companyId === null || this.saving()) return
+    if (!record || companyId === null || this.saving() || this.imagePending()) return
     if (
       !draft.mobileNumber.trim() ||
-      !Number.isFinite(draft.lat) ||
-      !Number.isFinite(draft.lng) ||
+      !this.validCoordinates(draft.lat, draft.lng) ||
       !Number.isSafeInteger(draft.cityId) ||
       draft.cityId < 1
     ) {
       this.error.set(
         this.rtl()
-          ? 'شماره همراه، شهر و مختصات معتبر الزامی است.'
-          : 'A mobile number, valid city, and coordinates are required.',
+          ? 'شماره همراه و شهر معتبر الزامی است؛ مختصات باید خالی یا معتبر باشد.'
+          : 'A mobile number and valid city are required; coordinates must be empty or a valid pair.',
       )
       return
     }
     this.saving.set(true)
     this.error.set(null)
     try {
+      const profileImage = userProfileImagePayload(this.image())
       const response = await firstValueFrom(
         updateUser(this.http, this.config, {
           id: record.id,
@@ -267,10 +373,15 @@ export class UserDetailPage {
           nationalId: draft.nationalId.trim() || null,
           address: draft.address.trim(),
           postalCode: draft.postalCode.trim() || null,
-          coordinate: { lat: draft.lat, lng: draft.lng },
+          coordinate:
+            draft.lat === null && draft.lng === null
+              ? null
+              : { lat: draft.lat as number, lng: draft.lng as number },
+          ...(profileImage ? { profileImage } : {}),
         }),
       )
       this.user.set(response.result)
+      this.image.set({ kind: 'keep' })
       this.editing.set(false)
       await this.load()
     } catch {
@@ -281,6 +392,24 @@ export class UserDetailPage {
       )
     } finally {
       this.saving.set(false)
+    }
+  }
+
+  protected async removeUser() {
+    const record = this.user()
+    if (!record || !this.canManage() || this.deleting()) return
+    this.deleting.set(true)
+    this.error.set(null)
+    try {
+      await firstValueFrom(deleteUser(this.http, this.config, record.id))
+      this.user.set(null)
+      await this.router.navigate(['..'], { relativeTo: this.route })
+    } catch {
+      this.error.set(
+        this.rtl() ? 'حذف کاربر ناموفق بود.' : 'Unable to delete user. The record was not removed.',
+      )
+    } finally {
+      this.deleting.set(false)
     }
   }
 
@@ -301,6 +430,7 @@ export class UserDetailPage {
       lng: record.lng,
     })
     this.editing.set(false)
+    this.image.set({ kind: 'keep' })
     this.error.set(null)
   }
   protected label(key: keyof UserDraft) {
@@ -339,9 +469,35 @@ export class UserDetailPage {
       { label: this.label('email'), value: record.email },
       { label: this.label('nationalId'), value: record.nationalId },
       { label: this.rtl() ? 'شهر' : 'City', value: record.cityName },
+      { label: this.rtl() ? 'استان' : 'Province', value: record.provinceName },
       { label: this.label('address'), value: record.address, wide: true },
       { label: this.label('postalCode'), value: record.postalCode },
-      { label: this.rtl() ? 'مختصات' : 'Coordinates', value: `${record.lat}, ${record.lng}` },
+      {
+        label: this.rtl() ? 'مختصات' : 'Coordinates',
+        value:
+          record.lat === null && record.lng === null
+            ? '-'
+            : `${record.lat ?? '-'}, ${record.lng ?? '-'}`,
+      },
     ]
+  }
+  protected initials() {
+    const parts = this.title().trim().split(/\s+/).filter(Boolean)
+    return parts.length
+      ? `${parts[0][0]}${parts.length > 1 ? parts[parts.length - 1][0] : ''}`
+      : '?'
+  }
+  private validCoordinates(lat: number | null, lng: number | null) {
+    if (lat === null && lng === null) return true
+    return (
+      lat !== null &&
+      lng !== null &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
+    )
   }
 }

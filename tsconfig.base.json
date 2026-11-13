@@ -112,7 +112,13 @@
       "@org/panel-drivers": ["./libs/panel/drivers/src/index.ts"],
       "@org/panel-drivers/ui": ["./libs/panel/drivers/src/ui.ts"],
       "@org/transport-drivers-data-access": ["./libs/transport/drivers/data-access/src/index.ts"],
-      "@org/panel-users": ["./libs/panel/feature/user/src/index.ts"]
+      "@org/panel-users": ["./libs/panel/feature/user/src/index.ts"],
+      "@org/transport-vehicles-data-access": ["./libs/transport/vehicles/data-access/src/index.ts"],
+      "@org/transport-vehicles-feature": ["./libs/transport/vehicles/feature/src/index.ts"],
+      "@org/transport-scheduling-data-access": [
+        "./libs/transport/scheduling/data-access/src/index.ts"
+      ],
+      "@org/panel-shifts": ["./libs/panel/shift/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

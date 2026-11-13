@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  effect,
   inject,
   input,
   model,
@@ -90,6 +91,7 @@ export class AutocompleteSearch<T> {
   readonly minCharacters = input(2)
   readonly debounceMs = input(350)
   readonly options = input<readonly T[]>([])
+  readonly selectedOption = input<T | null>(null)
   readonly loading = input(false)
   readonly optionId = input.required<(option: T) => string>()
   readonly optionLabel = input.required<(option: T) => BilingualText>()
@@ -114,6 +116,14 @@ export class AutocompleteSearch<T> {
   }
 
   constructor() {
+    effect(() => {
+      const option = this.selectedOption()
+      const id = option ? this.optionId()(option) : null
+      const label = option ? this.text(this.optionLabel()(option)) : ''
+      if (id !== this.selectedId()) this.selectedId.set(id)
+      if (label !== this.selectedLabel()) this.selectedLabel.set(label)
+      if (label) this.suppressedSearch = label
+    })
     this.destroyRef.onDestroy(() => clearTimeout(this.timer))
   }
 

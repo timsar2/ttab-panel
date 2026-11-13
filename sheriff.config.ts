@@ -30,6 +30,9 @@ export const config: SheriffConfig = {
     'libs/transport/people/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/departure-times/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/drivers/data-access/src': ['scope:transport', 'type:data'],
+    'libs/transport/vehicles/data-access/src': ['scope:transport', 'type:data'],
+    'libs/transport/vehicles/feature/src': ['scope:transport', 'type:feature'],
+    'libs/transport/scheduling/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/support/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/company/feature/src': ['scope:transport', 'type:feature'],
     'libs/transport/shell/feature/src': ['scope:transport', 'type:feature'],
@@ -37,6 +40,7 @@ export const config: SheriffConfig = {
     'libs/panel/departure-times/src': ['scope:panel', 'type:feature'],
     'libs/panel/drivers/src': ['scope:panel', 'type:feature'],
     'libs/panel/feature/user/src': ['scope:panel', 'type:feature'],
+    'libs/panel/shift/src': ['scope:panel', 'type:feature'],
 
     'packages/shop/feature-<feature>/src': ['scope:shop', 'type:feature'],
     'packages/shop/data/src': ['scope:shop', 'type:data'],
@@ -46,10 +50,12 @@ export const config: SheriffConfig = {
 
     'libs/spartan/attachment/src': ['scope:ui', 'type:ui'],
     'libs/spartan/autocomplete/src': ['scope:ui', 'type:ui'],
+    'libs/spartan/dialog/src': ['scope:ui', 'type:ui'],
     'libs/spartan/<component>/src': ['scope:ui', 'type:ui'],
     '@spartan-ng/helm/*': ['scope:ui', 'type:ui'],
     '@spartan-ng/helm/attachment': ['scope:ui', 'type:ui'],
     '@spartan-ng/helm/autocomplete': ['scope:ui', 'type:ui'],
+    '@spartan-ng/helm/dialog': ['scope:ui', 'type:ui'],
   },
 
   depRules: {

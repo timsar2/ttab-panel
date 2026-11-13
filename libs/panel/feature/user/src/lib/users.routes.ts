@@ -1,8 +1,11 @@
 import { InjectionToken, Signal, makeEnvironmentProviders, signal } from '@angular/core'
 import { Routes } from '@angular/router'
 import { authGuard } from '@org/auth-data-access'
+import type { CanActivateFn } from '@angular/router'
 import { HttpClient } from '@angular/common/http'
 import { inject } from '@angular/core'
+import { TRANSPORT_IMAGE_FILE_TYPES, transportImageUpload } from '@org/transport-http'
+import type { UploadSelection } from '@org/ui-forms'
 
 export interface UserFeatureConfig {
   readonly path: string
@@ -11,6 +14,8 @@ export interface UserFeatureConfig {
   readonly canManage: () => Signal<boolean>
   readonly language?: () => Signal<'en' | 'fa'>
   readonly heading?: string
+  /** Consumer-owned role/access guard; authorization must also be enforced by the API. */
+  readonly canActivate?: CanActivateFn
 }
 
 export interface UserRow {
@@ -31,8 +36,8 @@ export interface UserDetail {
   readonly cityId: number
   readonly address?: string | null
   readonly postalCode?: string | null
-  readonly lat: number
-  readonly lng: number
+  readonly lat: number | null
+  readonly lng: number | null
   readonly mobileNumber: string
   readonly phoneNumber?: string | null
   readonly profileImage?: string | null
@@ -69,7 +74,7 @@ export function createUserRoutes(config: UserFeatureConfig): Routes {
   return [
     {
       path: config.path,
-      canActivate: [authGuard],
+      canActivate: [config.canActivate ?? authGuard],
       providers: [provideUserFeature(config)],
       data: { breadcrumb: config.heading ?? 'Users' },
       children: [
@@ -118,11 +123,37 @@ export interface SetUserPayload {
   readonly nationalId: string | null
   readonly address: string
   readonly postalCode: string | null
-  readonly coordinate: { readonly lat: number; readonly lng: number }
+  readonly coordinate: { readonly lat: number; readonly lng: number } | null
+  readonly profileImage?: UserProfileImagePayload
 }
+
+export interface UserProfileImagePayload {
+  readonly name: string | null
+  readonly extension: string | null
+  readonly data: string | null
+  readonly deleteCurrentImage: boolean
+}
+
+export function userProfileImagePayload(
+  selection: UploadSelection,
+): UserProfileImagePayload | undefined {
+  if (selection.kind === 'keep') return undefined
+  if (selection.kind === 'remove') {
+    return { name: null, extension: null, data: null, deleteCurrentImage: true }
+  }
+  if (selection.kind !== 'replace') return undefined
+  const upload = transportImageUpload(selection.file)
+  return { name: selection.file.name, ...upload }
+}
+
+export const USER_IMAGE_FILE_TYPES = TRANSPORT_IMAGE_FILE_TYPES
 
 export function updateUser(http: HttpClient, config: UserFeatureConfig, payload: SetUserPayload) {
   return http.put<{ result: UserDetail }>(`${config.apiUrl}/users`, payload)
+}
+
+export function deleteUser(http: HttpClient, config: UserFeatureConfig, id: number) {
+  return http.delete(`${config.apiUrl}/users/${id}`)
 }
 
 export function userHttp() {

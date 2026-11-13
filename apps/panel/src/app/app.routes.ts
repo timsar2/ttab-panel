@@ -28,7 +28,7 @@ import {
   lucideLifeBuoy,
 } from '@ng-icons/lucide'
 
-function navigationFor(companyId: number | null, rtl: boolean): readonly LayoutNavItem[] {
+export function navigationFor(companyId: number | null, rtl: boolean): readonly LayoutNavItem[] {
   const choose = rtl ? 'ابتدا یک شرکت انتخاب کنید' : 'Choose a company first'
   const planned = rtl ? 'به‌زودی' : 'Not implemented yet'
   const administration = rtl ? 'مدیریت' : 'Administration'
@@ -79,7 +79,8 @@ function navigationFor(companyId: number | null, rtl: boolean): readonly LayoutN
       label: rtl ? 'خودروها' : 'Vehicles',
       icon: lucideBus,
       group: operations,
-      hint: planned,
+      commands: companyId ? ['/client', companyId, 'vehicles'] : undefined,
+      hint: choose,
     },
     {
       id: 'routes',
@@ -129,7 +130,8 @@ function navigationFor(companyId: number | null, rtl: boolean): readonly LayoutN
       label: rtl ? 'شیفت‌ها' : 'Shifts',
       icon: lucideCalendarDays,
       group: scheduling,
-      hint: planned,
+      commands: companyId ? ['/client', companyId, 'shift'] : undefined,
+      hint: companyId ? undefined : choose,
     },
     {
       id: 'tracking',
@@ -173,11 +175,24 @@ function companyShellTranslations() {
           Breadcrumbs: 'مسیر راهنما',
           'Signed-in account': 'حساب واردشده',
           Drivers: 'رانندگان',
+          Vehicles: 'خودروها',
+          Vehicle: 'خودرو',
           Users: 'کاربران',
           User: 'کاربر',
           user: 'کاربران',
           People: 'افراد',
           'Departure times': 'زمان‌های حرکت',
+          Shifts: 'شیفت‌ها',
+          'Shift list': 'فهرست شیفت‌ها',
+          'Shift groups': 'گروه‌های شیفت',
+          'Shift group': 'گروه شیفت',
+          'Add shift': 'افزودن شیفت',
+          'Edit shift': 'ویرایش شیفت',
+          'Create shift group': 'ایجاد گروه شیفت',
+          'Shift type': 'نوع شیفت',
+          'Shift name': 'نام شیفت',
+          'Start time': 'ساعت شروع',
+          'End time': 'ساعت پایان',
           Create: 'ایجاد',
           Edit: 'ویرایش',
         }
@@ -224,7 +239,9 @@ export const appRoutes: Route[] = [
         { path: 'people', label: 'People' },
         { path: 'users', label: 'Users' },
         { path: 'drivers', label: 'Drivers' },
+        { path: 'vehicles', label: 'Vehicles' },
         { path: 'departure-times', label: 'Departure times' },
+        { path: 'shift', label: 'Shifts' },
       ],
     },
     [
@@ -263,10 +280,24 @@ export const appRoutes: Route[] = [
           'Departure-time access is not enabled until company and entity permissions are approved.',
       }),
       {
+        path: 'shift',
+        loadChildren: () =>
+          import('./feature/shift/shift.routes').then(({ createPanelShiftRoutes }) =>
+            createPanelShiftRoutes(),
+          ),
+      },
+      {
         path: 'users',
         loadChildren: () =>
           import('./features/user/user.routes').then(({ createPanelUserRoutes }) =>
             createPanelUserRoutes(),
+          ),
+      },
+      {
+        path: 'vehicles',
+        loadChildren: () =>
+          import('./vehicles/vehicle.routes').then(({ createPanelVehicleRoutes }) =>
+            createPanelVehicleRoutes(),
           ),
       },
       {

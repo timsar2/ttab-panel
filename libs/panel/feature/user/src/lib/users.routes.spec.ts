@@ -2,7 +2,14 @@ import { HttpClient, provideHttpClient } from '@angular/common/http'
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing'
 import { TestBed } from '@angular/core/testing'
 import { firstValueFrom } from 'rxjs'
-import { UserFeatureConfig, userDetail, updateUser, userSearch } from './users.routes'
+import {
+  UserFeatureConfig,
+  deleteUser,
+  userDetail,
+  updateUser,
+  userProfileImagePayload,
+  userSearch,
+} from './users.routes'
 
 const config: UserFeatureConfig = {
   path: 'directory',
@@ -18,6 +25,33 @@ describe('User feature API adapters', () => {
     }),
   )
   afterEach(() => TestBed.inject(HttpTestingController).verify())
+
+  it('preserves, replaces, or removes profile images with the legacy payload contract', () => {
+    expect(userProfileImagePayload({ kind: 'keep' })).toBeUndefined()
+    expect(userProfileImagePayload({ kind: 'remove' })).toEqual({
+      name: null,
+      extension: null,
+      data: null,
+      deleteCurrentImage: true,
+    })
+    expect(
+      userProfileImagePayload({
+        kind: 'replace',
+        file: {
+          name: 'portrait.png',
+          mime: 'image/png',
+          size: 1,
+          extension: '.png',
+          dataUrl: 'data:image/png;base64,YQ==',
+        },
+      }),
+    ).toEqual({
+      name: 'portrait.png',
+      extension: '.png',
+      data: 'data:image/png;base64,YQ==',
+      deleteCurrentImage: false,
+    })
+  })
 
   it('uses the configured collection endpoint and company search payload', async () => {
     const http = TestBed.inject(HttpTestingController)
@@ -84,5 +118,14 @@ describe('User feature API adapters', () => {
     expect(write.request.body.profileImage).toBeUndefined()
     write.flush({ result: { id: 81, cityId: 3 } })
     await expect(update).resolves.toMatchObject({ result: { id: 81 } })
+  })
+
+  it('deletes the requested user id through the configured endpoint', async () => {
+    const http = TestBed.inject(HttpClient)
+    const response = firstValueFrom(deleteUser(http, config, 81))
+    const request = TestBed.inject(HttpTestingController).expectOne('/alternate-api/users/81')
+    expect(request.request.method).toBe('DELETE')
+    request.flush({ code: '2000', massage: 'Success' })
+    await expect(response).resolves.toEqual({ code: '2000', massage: 'Success' })
   })
 })
