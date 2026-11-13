@@ -28,10 +28,6 @@ import {
   lucideLifeBuoy,
 } from '@ng-icons/lucide'
 
-function canManageDrivers(roles: readonly string[] | undefined): boolean {
-  return roles?.some(role => role === 'Admin' || role === 'Manager') ?? false
-}
-
 function navigationFor(companyId: number | null, rtl: boolean): readonly LayoutNavItem[] {
   const choose = rtl ? 'ابتدا یک شرکت انتخاب کنید' : 'Choose a company first'
   const planned = rtl ? 'به‌زودی' : 'Not implemented yet'
@@ -60,6 +56,14 @@ function navigationFor(companyId: number | null, rtl: boolean): readonly LayoutN
       icon: lucideUsers,
       group: operations,
       commands: companyId ? ['/client', companyId, 'people'] : undefined,
+      hint: choose,
+    },
+    {
+      id: 'users',
+      label: rtl ? 'کاربران' : 'Users',
+      icon: lucideUsers,
+      group: administration,
+      commands: companyId ? ['/client', companyId, 'users'] : undefined,
       hint: choose,
     },
     {
@@ -169,6 +173,9 @@ function companyShellTranslations() {
           Breadcrumbs: 'مسیر راهنما',
           'Signed-in account': 'حساب واردشده',
           Drivers: 'رانندگان',
+          Users: 'کاربران',
+          User: 'کاربر',
+          user: 'کاربران',
           People: 'افراد',
           'Departure times': 'زمان‌های حرکت',
           Create: 'ایجاد',
@@ -215,6 +222,7 @@ export const appRoutes: Route[] = [
       translations: companyShellTranslations,
       links: [
         { path: 'people', label: 'People' },
+        { path: 'users', label: 'Users' },
         { path: 'drivers', label: 'Drivers' },
         { path: 'departure-times', label: 'Departure times' },
       ],
@@ -255,79 +263,17 @@ export const appRoutes: Route[] = [
           'Departure-time access is not enabled until company and entity permissions are approved.',
       }),
       {
+        path: 'users',
+        loadChildren: () =>
+          import('./features/user/user.routes').then(({ createPanelUserRoutes }) =>
+            createPanelUserRoutes(),
+          ),
+      },
+      {
         path: 'drivers',
         loadChildren: () =>
-          import('@org/panel-drivers').then(({ createDriverRoutes, driverTextPair }) =>
-            createDriverRoutes({
-              path: '',
-              apiUrl: '/api',
-              language: () => inject(PreferencesStore).language,
-              endpoints: {
-                collection: 'v1/drivers',
-                search: 'v1/drivers/search',
-                save: 'v1/drivers',
-              },
-              company: () => {
-                const context = inject(CompanyContextStore)
-                return computed(() => {
-                  const company = context.company()
-                  return context.status() === 'ready' && company
-                    ? peopleCompanyId(company.id)
-                    : null
-                })
-              },
-              // Detail and upsert require privileged roles because backend entity ownership
-              // checks are not yet implemented for company operators.
-              access: () => {
-                const context = inject(CompanyContextStore)
-                const session = inject(SessionStore)
-                return request => {
-                  const user = session.user()
-                  const roleAllowed =
-                    !!user &&
-                    (request.action === 'search'
-                      ? user.roles.some(role => ['Admin', 'Manager', 'Oprator'].includes(role))
-                      : canManageDrivers(user.roles))
-                  const companyAllowed = Boolean(
-                    context.status() === 'ready' &&
-                    context.company()?.id === request.companyId &&
-                    (canManageDrivers(user?.roles) || user?.companyId === request.companyId),
-                  )
-                  return of(roleAllowed && companyAllowed)
-                }
-              },
-              canManage: () => {
-                const session = inject(SessionStore)
-                return computed(() => canManageDrivers(session.user()?.roles))
-              },
-              canRegisterPerson: () => {
-                const session = inject(SessionStore)
-                return computed(() => canManageDrivers(session.user()?.roles))
-              },
-              people: {
-                apiUrl: '/api',
-                company: () => {
-                  const context = inject(CompanyContextStore)
-                  return computed(() => {
-                    const company = context.company()
-                    return context.status() === 'ready' && company
-                      ? peopleCompanyId(company.id)
-                      : null
-                  })
-                },
-                access: () => {
-                  const context = inject(CompanyContextStore)
-                  const session = inject(SessionStore)
-                  return request =>
-                    of(
-                      canManageDrivers(session.user()?.roles) &&
-                        context.status() === 'ready' &&
-                        context.company()?.id === request.companyId,
-                    )
-                },
-              },
-              deniedMessage: driverTextPair('accessManageDenied'),
-            }),
+          import('./driver/driver.routes').then(({ createPanelDriverRoutes }) =>
+            createPanelDriverRoutes(),
           ),
       },
     ],

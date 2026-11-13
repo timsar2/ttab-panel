@@ -36,6 +36,7 @@ export const config: SheriffConfig = {
     'libs/panel/people/src': ['scope:panel', 'type:feature'],
     'libs/panel/departure-times/src': ['scope:panel', 'type:feature'],
     'libs/panel/drivers/src': ['scope:panel', 'type:feature'],
+    'libs/panel/feature/user/src': ['scope:panel', 'type:feature'],
 
     'packages/shop/feature-<feature>/src': ['scope:shop', 'type:feature'],
     'packages/shop/data/src': ['scope:shop', 'type:data'],

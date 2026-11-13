@@ -15,6 +15,8 @@ description: >-
 Read [the architecture guide](../../../apps/panel/ARCHITECTURE.md) before changing
 an app or shared feature. Treat it as the feature-delivery contract for all apps,
 not just panel. Read applicable Angular, Spartan, and Nx skills from `.agents`.
+For app-local route entry versus library-owned page structure, also read
+[the panel feature-entry skill](../../../../.agents/skills/ttab-panel-feature-entry/SKILL.md).
 Read the current implementation and installed declarations; do not assume an
 earlier transcript, checkout, or dependency version still describes the code.
 

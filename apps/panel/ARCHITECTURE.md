@@ -20,13 +20,16 @@ this Nx workspace. Run the commands below from the `front` workspace root.
   route mounting, and app-specific branding belong in `apps/*`.
 - Implement reusable capabilities in Nx libraries. Shared libraries must not
   import an app, its preferences store, its environment, or its concrete routes.
-- Generate every new feature/page/component implementation inside an appropriate
-  Nx library, reusing an existing library where it owns the capability. Do not add
-  new feature components under `apps/panel`; app files are composition only.
-- New application features/pages live under `libs/<app>/<feature>` (for example,
-  `libs/panel/people`). Their component implementations live in feature `ui`
-  folders within Nx libraries; shared domain data remains in transport libraries.
-  Preserve existing library APIs when extending earlier migration work.
+- Give each app feature a thin entry folder at
+  `apps/panel/src/app/<feature>/` containing its route factory adapter and, when
+  needed, an app-owned `<router-outlet>` host. The central `app.routes.ts` should
+  lazy-load that entry rather than accumulating feature permissions/configuration.
+- Implement actual feature page/component content and reusable forms inside an
+  appropriate Nx library (for example `libs/panel/drivers`). App-local page files
+  may only host the library router outlet; do not copy feature UI or domain state
+  into `apps/panel`.
+- Keep shared domain state in transport libraries and preserve public library APIs
+  when extending earlier migration work.
 - Separate generic capabilities from transport business rules. Authentication,
   layouts, form primitives, and theme are generic; company and assignment rules
   belong to reusable transport-domain libraries.
@@ -45,7 +48,10 @@ this Nx workspace. Run the commands below from the `front` workspace root.
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/panel/src/app/app.config.ts`           | Compose providers, hydration, routing, auth/theme adapters, and directionality.                                                                                               |
 | `apps/panel/src/app/panel.config.ts`         | App-owned API prefix, tenant, branding, and login/success paths.                                                                                                              |
-| `apps/panel/src/app/app.routes.ts`           | Mount reusable auth routes and protect the workspace.                                                                                                                         |
+| `apps/panel/src/app/app.routes.ts`           | Mount reusable auth routes, protect the workspace, and lazily load app-local feature entries.                                                                                 |
+| `apps/panel/src/app/driver/`                 | Panel-owned driver route/provider adapter and thin RouterOutlet page host; it consumes the reusable library, not embedded page markup.                                        |
+| `apps/panel/src/app/driver/driver.routes.ts` | Adapt panel session, company, permission, and language signals into the reusable `@org/panel-drivers` route factory.                                                          |
+| `apps/panel/src/app/driver/driver.page.ts`   | Thin app-owned RouterOutlet host; driver list/detail/editor UI remains in `libs/panel/drivers`.                                                                               |
 | `apps/panel/src/app/app.routes.server.ts`    | Render routes per request with validated, request-scoped authentication.                                                                                                      |
 | `apps/panel/src/app/core/preferences/`       | Panel's direction/language adapter; not a second theme store.                                                                                                                 |
 | `@org/auth-data-access`                      | Configurable backend contract, public session metadata, HTTP interception, guards, and auth helpers.                                                                          |
@@ -76,6 +82,32 @@ this Nx workspace. Run the commands below from the `front` workspace root.
 | `libs/base-theme.css`                        | Shared semantic design tokens and base theme rules.                                                                                                                           |
 | `apps/panel/src/styles.css`                  | Font/CSS imports and explicit Tailwind source discovery.                                                                                                                      |
 | `apps/panel-e2e/`                            | Browser acceptance tests and reusable controlled API fixtures.                                                                                                                |
+
+## App Feature Entry Pattern
+
+Each mounted panel feature has a discoverable folder under
+`apps/panel/src/app/<feature>/`. Keep only app-specific route composition there:
+paths, API prefixes, current company/session/permission adapters, language signals,
+and a lightweight RouterOutlet host. Keep page content, forms, tables and stores in
+`libs/panel/<feature>` or the relevant shared/transport library.
+
+```text
+apps/panel/src/app/
+  app.routes.ts                 # lazy mount only
+  driver/
+    driver.routes.ts            # panel providers/permissions -> library route factory
+    driver.page.ts               # thin <router-outlet> host
+libs/panel/drivers/src/lib/
+  driver.routes.ts              # reusable route factory and typed configuration
+  ui/                           # actual list/detail/editor/Person UI
+libs/transport/drivers/data-access/
+  src/lib/                      # DTO adapters, API, scoped NgRx SignalStore
+```
+
+The central router should lazy-load the local entry, and that entry should compose
+the public feature library route factory. Do not duplicate the library's page
+components in `apps/panel`, and do not move app credentials, preference stores,
+company IDs, or role decisions into a reusable library.
 
 Authentication, layouts, forms, and theme exist today. A library-owned company
 search/table and basic create/edit forms are mounted at `/companies`,
@@ -374,10 +406,13 @@ primary preset, not a valid white-card heading color.
 6. Implement explicit presentational components and local Signal Forms. Reuse or
    extract controls/functions/layouts with typed inputs/outputs and public exports.
    Avoid app imports, fixed tenant/company IDs, branding, or mount paths in libraries.
-7. Export a route factory or lazy feature entry. The app supplies paths, providers,
-   branding, appearance callbacks, permissions, and success/forbidden destinations.
-   Keep provider/route entries separate from heavy runtime UI exports when needed
-   to retain actual lazy chunks.
+7. Export a library route factory and add an app-local feature entry folder at
+   `apps/panel/src/app/<feature>/`. Put app-specific paths, providers, company/session
+   permissions and language adapters in `<feature>.routes.ts`; add only a thin
+   RouterOutlet host if the route tree needs one. Have central `app.routes.ts` lazily
+   import that entry. Keep actual pages/forms/stores inside the reusable feature
+   library, and keep provider/route entries separate from heavy runtime UI exports
+   when needed to retain actual lazy chunks.
 8. Add consumed Helm directories to Tailwind's explicit `@source` list. Keep shared
    tokens and logical CSS properties; check RTL/LTR, density, radius, responsive
    layout, keyboard navigation, and semantic error feedback.
