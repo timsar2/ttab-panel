@@ -118,7 +118,7 @@ describe('departure-time reusable routes', () => {
     expect(root(harness).textContent).toContain('07:15:01.1234567')
     expect(root(harness).textContent).toContain('not guaranteed to be complete')
     expect(root(harness).querySelector('nav')).toBeNull()
-    expect(root(harness).querySelector('tbody a')?.getAttribute('href')).toBe(`/${path}/3/edit`)
+    expect(root(harness).querySelector('tbody a')?.getAttribute('href')).toBe(`/${path}/3`)
     input(harness, 'departure-search', 'Morning')
     await save(harness)
     await vi.waitFor(() => expect(TestBed.inject(Router).url).toContain('name=Morning'))
@@ -170,6 +170,17 @@ describe('departure-time reusable routes', () => {
     expect(root(harness).textContent).toContain('Departure time saved.')
     const store = harness.routeDebugElement?.injector.get(DepartureTimesStore)
     expect(store?.detail()?.name).toBe('Fixed')
+  })
+
+  it('loads a read-only detail independently from the editor route', async () => {
+    const { harness, http } = await setup('slots', '/api', '/3', false)
+    http.expectOne('/api/times/3').flush(envelope(detail()))
+    harness.detectChanges()
+    expect(root(harness).textContent).toContain('Departure time details')
+    expect(root(harness).textContent).toContain('Morning')
+    expect(root(harness).textContent).toContain('07:15:01.1234567')
+    expect(root(harness).querySelector('form')).toBeNull()
+    expect(root(harness).querySelector('a[href="/slots/3/edit"]')).toBeNull()
   })
 
   it('validates local fields only after submit, then creates an explicit minute value without date conversion', async () => {

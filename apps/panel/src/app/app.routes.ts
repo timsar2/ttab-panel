@@ -1,6 +1,5 @@
 import { Route } from '@angular/router'
 import { computed, inject, signal } from '@angular/core'
-import { SessionStore } from '@org/auth-data-access'
 import { createAuthRoutes } from '@org/auth-feature'
 import { createCompanyRoutes } from '@org/transport-company-feature'
 import { CompanyContextStore } from '@org/transport-company-data-access'
@@ -133,8 +132,8 @@ export function navigationFor(companyId: number | null, rtl: boolean): readonly 
       label: rtl ? 'زمان‌های حرکت' : 'Departure times',
       icon: lucideClock,
       group: scheduling,
-      commands: companyId ? ['/client', companyId, 'departure-times'] : undefined,
-      hint: choose,
+      commands: companyId ? ['/client', companyId, 'shift-time'] : undefined,
+      hint: companyId ? undefined : choose,
     },
     {
       id: 'shifts',
@@ -266,9 +265,13 @@ export const appRoutes: Route[] = [
     [
       { path: 'passenger', pathMatch: 'full', redirectTo: 'passengers' },
       { path: 'passenger/add', pathMatch: 'full', redirectTo: 'passengers/add' },
-      { path: 'shift-time', pathMatch: 'full', redirectTo: 'departure-times' },
-      { path: 'shift-time/add', pathMatch: 'full', redirectTo: 'departure-times/new' },
-      { path: 'shift-time/detail/:id', pathMatch: 'full', redirectTo: 'departure-times/:id/edit' },
+      {
+        path: 'shift-time',
+        loadChildren: () =>
+          import('./feature/shift-time/shift-time.routes').then(({ createPanelShiftTimeRoutes }) =>
+            createPanelShiftTimeRoutes(),
+          ),
+      },
       ...createPeopleRoutes({
         path: 'people',
         apiUrl: '/api',

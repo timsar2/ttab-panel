@@ -51,6 +51,14 @@ export function createDepartureTimeRoutes(config: DepartureTimeFeatureConfig): R
             import('./ui/departure-time-editor').then(m => m.DepartureTimeEditor),
         },
         {
+          path: ':id',
+          pathMatch: 'full',
+          runGuardsAndResolvers: 'pathParamsChange',
+          data: { breadcrumb: 'Details' },
+          loadComponent: () =>
+            import('./ui/departure-time-detail').then(m => m.DepartureTimeDetail),
+        },
+        {
           path: ':id/edit',
           runGuardsAndResolvers: 'pathParamsChange',
           canDeactivate: [canLeave],

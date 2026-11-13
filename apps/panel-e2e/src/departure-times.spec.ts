@@ -17,9 +17,17 @@ test('departure-time company routes preserve the permission gate and truthful bo
   })
   await mockAuthentication(page)
   let requests = 0
+  const listBodies: unknown[] = []
   await page.route('**/api/v1/shiftTimes**', route => {
     requests++
-    return route.fulfill({ status: 500, json: {} })
+    listBodies.push(route.request().postDataJSON())
+    return route.fulfill({
+      json: {
+        code: '2000',
+        massage: null,
+        result: [{ id: 3, companyId: 2, name: 'Morning service', shiftTime: '07:30:00' }],
+      },
+    })
   })
   await page.route('**/api/v1/companys/2', route =>
     route.fulfill({
@@ -52,9 +60,11 @@ test('departure-time company routes preserve the permission gate and truthful bo
   await page.locator('button[type=submit]').click()
   await expect(page).toHaveURL(/\/workspace$/)
   await page.goto('/client/2/shift-time')
-  await expect(page).toHaveURL(/\/client\/2\/departure-times$/)
+  await expect(page).toHaveURL(/\/client\/2\/shift-time$/)
   await expect(page.getByRole('heading', { name: 'Departure times', exact: true })).toBeVisible()
-  await expect(page.getByRole('alert')).toContainText('Departure-time access is not enabled')
+  await expect(page.getByRole('row').filter({ hasText: 'Morning service' })).toBeVisible()
+  await expect.poll(() => requests).toBe(1)
+  expect(listBodies[0]).toEqual({ companyId: 2, name: null })
   await expect(
     page.getByText('This list is not guaranteed to be complete.', { exact: false }),
   ).toBeVisible()
@@ -65,6 +75,8 @@ test('departure-time company routes preserve the permission gate and truthful bo
   await page.getByRole('searchbox', { name: 'Departure-time name', exact: true }).fill('Morning')
   await page.getByRole('button', { name: 'Search', exact: true }).click()
   await expect(page).toHaveURL(/name=Morning/)
+  await expect.poll(() => requests).toBe(2)
+  expect(listBodies[1]).toEqual({ companyId: 2, name: 'Morning' })
   for (const dir of ['rtl', 'ltr']) {
     await page.evaluate(direction => document.documentElement.setAttribute('dir', direction), dir)
     await page.setViewportSize({ width: 375, height: 812 })
@@ -77,6 +89,7 @@ test('departure-time company routes preserve the permission gate and truthful bo
   if (!reload) throw new Error('Reload returned no document')
   expect(await reload.text()).not.toContain('Private departure company')
   await expect(page.getByRole('heading', { name: 'Departure times', exact: true })).toBeVisible()
+  await expect.poll(() => requests).toBe(3)
   for (const path of ['new', '3/edit']) {
     await page.goto('/client/2/departure-times/' + path)
     await expect(page.getByRole('alert')).toContainText(
@@ -85,14 +98,12 @@ test('departure-time company routes preserve the permission gate and truthful bo
     await expect(page.locator('lib-departure-time-editor form')).toHaveCount(0)
   }
   await page.goto('/client/2/shift-time/detail/3')
-  await expect(page).toHaveURL(/\/client\/2\/departure-times\/3\/edit$/)
-  await expect(page.getByRole('alert')).toContainText(
-    'You do not have access to edit departure times',
-  )
+  await expect(page).toHaveURL(/\/client\/2\/shift-time\/3$/)
+  await expect(page.getByRole('alert')).toContainText('Departure-time access is not enabled')
   await page.getByRole('button', { name: 'Sign out', exact: true }).click()
   await expect(page).toHaveURL(/\/login$/)
   await page.goto('/client/2/departure-times/3/edit')
   await expect(page).toHaveURL(/\/login/)
-  expect(requests).toBe(0)
+  expect(requests).toBe(3)
   expect(errors).toEqual([])
 })

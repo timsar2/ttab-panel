@@ -145,12 +145,15 @@ All commands ran from `front` using Bun, with no production requests or writes.
   destroy the protected outlet before deactivation; the leave guard now accepts
   a null component. Both the null guard and actual protected-editor logout have
   regressions. Context loss clears drafts, pending reads and saved/error state.
-- Panel mounts `/client/:companyId/departure-times`, `/new` and `/:id/edit` under
-  private client rendering. Deliberate app-owned redirects preserve legacy
-  `/shift-time`, `/shift-time/add` and `/shift-time/detail/:id`. Live list/editor
-  access remains denied pending Q03/Q04; the page states this truthfully and
-  sends no departure-time HTTP. This is not a frontend substitute for backend
-  authorization, and no destructive delete operation is exposed.
+- Panel mounts `/client/:companyId/shift-time`, `/:id`, `/new` and `/:id/edit` under
+  private client rendering. The app-owned shift-time route adapter preserves
+  legacy `/shift-time/add` and `/shift-time/detail/:shiftTimeId`; the equivalent
+  `/departure-times` route remains available. A read-only detail page uses the
+  scoped detail API independently from the editor. The shift-time list now makes
+  an authenticated request only for the active company context through the same-origin
+  `/api` BFF. Detail and mutation access remain denied pending Q03/Q04. The BFF's
+  configured upstream is `https://api.ttabline.com/api`; backend authorization is
+  still required, and no destructive delete operation is exposed.
 - `bun nx run-many -p panel-departure-times,transport-departure-times-data-access,transport-support-data-access,shared-ui-data-table,panel,panel-e2e -t test,lint,typecheck`
   passes 16 applicable targets. Departure feature has 9 route/editor tests,
   departure data 88, shared table 5, support data 104, panel 12. Separate feature

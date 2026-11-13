@@ -149,11 +149,13 @@ permissions. Controlled alternate-consumer unit tests verify real search/paging
 and selection through the API; panel browser tests verify the fail-closed gate,
 responsive controls, private reload and logout. Neither is live ownership proof.
 
-Departure-time list/create/edit pages are mounted at
-`/client/:companyId/departure-times`, `/new` and `/:id/edit`, with deliberate
-redirects from the legacy `shift-time` list/add/detail paths. App-owned access
-remains denied pending company/entity permission approval. The feature itself
-supports explicitly enabled alternate consumers, preserving exact TimeSpan input,
+Departure-time list/detail/create/edit pages are mounted at
+`/client/:companyId/shift-time`, `/:id`, `/new` and `/:id/edit`, with legacy
+`add` and `detail/:shiftTimeId` paths translated to the new route shape. The
+equivalent `/departure-times` route remains available. The shift-time list makes
+an authenticated request only for the active company context through the same-origin
+`/api` BFF; detail and mutation access remain denied pending company/entity
+permission approval. The feature itself supports explicitly enabled alternate consumers, preserving exact TimeSpan input,
 field errors, dirty-navigation confirmation and safe unconfirmed-save handling.
 Its bounded collection has no fabricated paging, total count or exhaustive-lookup
 claim. Delete and schedule-calendar semantics remain gated. Protected outlet

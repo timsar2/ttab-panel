@@ -74,7 +74,7 @@ const columns: readonly DataTableColumn<DepartureTimeDto>[] = [
       [error]="error()"
       [page]="page"
       [showPagination]="false"
-      [rowActions]="canManage() ? actions : null"
+      [rowActions]="actions"
       (retry)="reload()"
     />
     <ng-template #actions let-item>
@@ -82,10 +82,20 @@ const columns: readonly DataTableColumn<DepartureTimeDto>[] = [
         hlmBtn
         variant="outline"
         class="min-h-11"
-        [routerLink]="[item.id, 'edit']"
-        [attr.aria-label]="'Edit departure time: ' + item.name"
-        >Edit</a
+        [routerLink]="[item.id]"
+        [attr.aria-label]="'View departure time: ' + item.name"
+        >View</a
       >
+      @if (canManage()) {
+        <a
+          hlmBtn
+          variant="outline"
+          class="min-h-11"
+          [routerLink]="[item.id, 'edit']"
+          [attr.aria-label]="'Edit departure time: ' + item.name"
+          >Edit</a
+        >
+      }
     </ng-template>
   `,
 })

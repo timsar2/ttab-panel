@@ -1,6 +1,20 @@
 import { appRoutes, navigationFor } from './app.routes'
 
 describe('panel navigation', () => {
+  it('enables the departure-time feature in the selected company workspace', () => {
+    const departureTimes = navigationFor(2, false).find(item => item.id === 'departure-times')
+
+    expect(departureTimes?.commands).toEqual(['/client', 2, 'shift-time'])
+    expect(departureTimes?.hint).toBeUndefined()
+  })
+
+  it('keeps departure times unavailable until a company is selected', () => {
+    const departureTimes = navigationFor(null, false).find(item => item.id === 'departure-times')
+
+    expect(departureTimes?.commands).toBeUndefined()
+    expect(departureTimes?.hint).toBe('Choose a company first')
+  })
+
   it('enables the Shift link in the selected company workspace', () => {
     const shift = navigationFor(2, false).find(item => item.id === 'shifts')
 
@@ -43,5 +57,12 @@ describe('panel navigation', () => {
 
     expect(listAlias).toMatchObject({ pathMatch: 'full', redirectTo: 'passengers' })
     expect(addAlias).toMatchObject({ pathMatch: 'full', redirectTo: 'passengers/add' })
+  })
+
+  it('lazy-loads the shift-time app feature entry', () => {
+    const companyRoute = appRoutes.find(route => route.path === 'client/:companyId')
+    const shiftTimeRoute = companyRoute?.children?.find(route => route.path === 'shift-time')
+
+    expect(shiftTimeRoute?.loadChildren).toBeDefined()
   })
 })
