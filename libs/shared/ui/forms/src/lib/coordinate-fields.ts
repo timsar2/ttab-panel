@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { FieldTree, FormField } from '@angular/forms/signals'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmFieldImports } from '@spartan-ng/helm/field'
+import { textForLanguage, type AutocompleteLanguage, type BilingualText } from './localized-text'
 import { SignalInput } from './signal-input'
 
 @Component({
@@ -11,7 +12,7 @@ import { SignalInput } from './signal-input'
   template: `
     <div hlmFieldGroup>
       <div hlmField>
-        <label hlmFieldLabel [for]="idPrefix() + '-latitude'">{{ latitudeLabel() }}</label>
+        <label hlmFieldLabel [for]="idPrefix() + '-latitude'">{{ text(latitudeLabel()) }}</label>
         <input
           libSignalInput
           class="min-h-11"
@@ -19,7 +20,7 @@ import { SignalInput } from './signal-input'
           inputmode="decimal"
           [id]="idPrefix() + '-latitude'"
           [formField]="latitude()"
-          [attr.aria-label]="latitudeLabel()"
+          [attr.aria-label]="text(latitudeLabel())"
           [attr.aria-describedby]="
             latitude()().touched() && latitude()().invalid()
               ? idPrefix() + '-latitude-errors'
@@ -29,13 +30,13 @@ import { SignalInput } from './signal-input'
         @if (latitude()().touched() && latitude()().invalid()) {
           <hlm-field-error [id]="idPrefix() + '-latitude-errors'" [forceShow]="true">
             @for (error of latitude()().errors(); track $index) {
-              <div>{{ error.message || 'Invalid value' }}</div>
+              <div>{{ validationMessage(error.kind, error.message) }}</div>
             }
           </hlm-field-error>
         }
       </div>
       <div hlmField>
-        <label hlmFieldLabel [for]="idPrefix() + '-longitude'">{{ longitudeLabel() }}</label>
+        <label hlmFieldLabel [for]="idPrefix() + '-longitude'">{{ text(longitudeLabel()) }}</label>
         <input
           libSignalInput
           class="min-h-11"
@@ -43,7 +44,7 @@ import { SignalInput } from './signal-input'
           inputmode="decimal"
           [id]="idPrefix() + '-longitude'"
           [formField]="longitude()"
-          [attr.aria-label]="longitudeLabel()"
+          [attr.aria-label]="text(longitudeLabel())"
           [attr.aria-describedby]="
             longitude()().touched() && longitude()().invalid()
               ? idPrefix() + '-longitude-errors'
@@ -53,7 +54,7 @@ import { SignalInput } from './signal-input'
         @if (longitude()().touched() && longitude()().invalid()) {
           <hlm-field-error [id]="idPrefix() + '-longitude-errors'" [forceShow]="true">
             @for (error of longitude()().errors(); track $index) {
-              <div>{{ error.message || 'Invalid value' }}</div>
+              <div>{{ validationMessage(error.kind, error.message) }}</div>
             }
           </hlm-field-error>
         }
@@ -67,7 +68,7 @@ import { SignalInput } from './signal-input'
           [disabled]="mapUnavailable()"
           (click)="mapRequested.emit()"
         >
-          Choose on map
+          {{ text(mapText) }}
         </button>
       }
     </div>
@@ -77,8 +78,12 @@ export class CoordinateFields {
   readonly latitude = input.required<FieldTree<string>>()
   readonly longitude = input.required<FieldTree<string>>()
   readonly idPrefix = input.required<string>()
-  readonly latitudeLabel = input('Latitude')
-  readonly longitudeLabel = input('Longitude')
+  readonly latitudeLabel = input<string | BilingualText>({ en: 'Latitude', fa: 'عرض جغرافیایی' })
+  readonly longitudeLabel = input<string | BilingualText>({ en: 'Longitude', fa: 'طول جغرافیایی' })
+  readonly language = input<AutocompleteLanguage>('en')
+  readonly validationText = input<
+    ((kind: string, message: string) => string | BilingualText | null) | null
+  >(null)
   readonly mapEnabled = input(false)
   readonly mapRequested = output<void>()
 
@@ -89,4 +94,20 @@ export class CoordinateFields {
       this.longitude()().disabled() ||
       this.longitude()().readonly(),
   )
+  protected readonly invalidText: BilingualText = {
+    en: 'Enter a valid coordinate within its geographic range.',
+    fa: 'مختصات معتبر در محدوده جغرافیایی وارد کنید.',
+  }
+  protected readonly mapText: BilingualText = { en: 'Choose on map', fa: 'انتخاب روی نقشه' }
+  protected text(value: string | BilingualText): string {
+    if (typeof value === 'string') return value
+    return textForLanguage(value, this.language())
+  }
+
+  protected validationMessage(kind: string, message: string | undefined): string {
+    const custom = this.validationText()?.(kind, message ?? '')
+    if (custom) return this.text(custom)
+    if (this.language() === 'en' && message) return message
+    return this.text(this.invalidText)
+  }
 }

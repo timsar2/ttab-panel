@@ -35,6 +35,7 @@ capability from [companies](04-companies.md), not all company CRUD.
 [ ] CONTEXT-13 Verify login -> company selection -> authorized company workspace -> logout, including direct links and context switches.
 [X] CONTEXT-14 Verify library boundaries, RTL/mobile keyboard navigation, theme/sidebar modes, overlay direction, and production build budgets.
 [ ] CONTEXT-15 Compose the transport side menu from Spartan sidebar primitives, expose unfinished modules without dead links, and verify theme settings and responsive navigation without implementing destination pages.
+[ ] CONTEXT-17 Enable persistent desktop icon collapse in the shared Spartan layout, with theme-token-driven widths and accessible expanded state; verify desktop/mobile and live theme changes.
 
 ## Evidence
 

@@ -43,8 +43,12 @@ export const config: SheriffConfig = {
     'packages/api/<feature>/src': ['scope:api', 'type:feature'],
     'packages/shared/models/src': ['scope:shared', 'type:models'],
 
+    'libs/spartan/attachment/src': ['scope:ui', 'type:ui'],
+    'libs/spartan/autocomplete/src': ['scope:ui', 'type:ui'],
     'libs/spartan/<component>/src': ['scope:ui', 'type:ui'],
     '@spartan-ng/helm/*': ['scope:ui', 'type:ui'],
+    '@spartan-ng/helm/attachment': ['scope:ui', 'type:ui'],
+    '@spartan-ng/helm/autocomplete': ['scope:ui', 'type:ui'],
   },
 
   depRules: {

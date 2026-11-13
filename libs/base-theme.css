@@ -501,6 +501,72 @@
     box-shadow: var(--shadow-primary);
   }
 
+  .theme-breadcrumb [data-slot='breadcrumb-list'] {
+    gap: 0.35rem;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .theme-breadcrumb [data-slot='breadcrumb-item'] {
+    min-width: 0;
+  }
+
+  .theme-breadcrumb [data-slot='breadcrumb-link'] {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    padding-inline: 0.4rem;
+    margin-inline: -0.4rem;
+    border-radius: var(--radius);
+    color: var(--muted-foreground);
+    font-weight: 500;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.2em;
+    transition:
+      color 150ms ease,
+      background-color 150ms ease,
+      text-decoration-color 150ms ease;
+  }
+
+  .theme-breadcrumb [data-slot='breadcrumb-link']:hover {
+    background: var(--primary-soft);
+    color: var(--primary-active);
+    text-decoration-color: currentColor;
+  }
+
+  .theme-breadcrumb [data-slot='breadcrumb-link']:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    color: var(--primary-active);
+    text-decoration-color: currentColor;
+  }
+
+  .theme-breadcrumb [data-slot='breadcrumb-link'][aria-current='page'],
+  .theme-breadcrumb [data-slot='breadcrumb-page'] {
+    color: var(--heading);
+    font-weight: 600;
+  }
+
+  .theme-breadcrumb [data-slot='breadcrumb-link'][aria-current='page'] {
+    text-decoration-color: var(--primary);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.3em;
+  }
+
+  .theme-breadcrumb [data-slot='breadcrumb-separator'] {
+    color: var(--border);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .theme-breadcrumb [data-slot='breadcrumb-link'] {
+      transition: none;
+    }
+  }
+
   [data-layout='vertical'][data-sidebar-style='mini'] .theme-nav-link [data-nav-label],
   [data-layout='vertical'][data-sidebar-style='icon-hover'] .theme-nav-link [data-nav-label] {
     display: none;

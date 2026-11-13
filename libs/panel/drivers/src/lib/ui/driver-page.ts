@@ -20,16 +20,8 @@ import { DataTablePage } from '@org/ui-data-table'
 import { AutocompleteSearch, type BilingualText } from '@org/ui-forms'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { DRIVER_FEATURE, DRIVER_LANGUAGE, DRIVER_MANAGE } from '../driver.routes'
+import { DRIVER_TEXT, driverText, safeDriverError, type DriverTextKey } from '../driver-text'
 import { DriverTable } from './driver-table'
-
-const searchLabel: BilingualText = {
-  en: 'Driver name or national ID',
-  fa: 'نام یا کد ملی راننده',
-}
-const searchPlaceholder: BilingualText = {
-  en: 'Enter at least 2 characters',
-  fa: 'حداقل ۲ نویسه وارد کنید',
-}
 
 export function driverQuery(text: string, page: string | null, size: string | null): DriverSearch {
   const number = page && /^[1-9]\d*$/.test(page) ? Number(page) : 1
@@ -48,31 +40,30 @@ export function driverQuery(text: string, page: string | null, size: string | nu
   host: { class: 'block min-w-0 p-4 md:p-8' },
   template: `
     <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
-      <!-- <div>
-        <p class="text-muted-foreground mb-1 text-sm">People & transport</p>
-        <h1 class="text-2xl font-semibold">{{ config.heading ?? 'Drivers' }}</h1>
+      <div>
+        <p class="text-muted-foreground mb-1 text-sm">{{ text('peopleAndTransport') }}</p>
+        <h1 class="text-2xl font-semibold">{{ text('drivers') }}</h1>
         <p class="text-muted-foreground mt-2">
-          Identity, licence and document records for this company.
+          {{ text('driverListDescription') }}
         </p>
-      </div> -->
+      </div>
       @if (canManage()) {
-        <a hlmBtn class="min-h-11" [routerLink]="['new']" queryParamsHandling="preserve"
-          >Add driver</a
-        >
+        <a hlmBtn class="min-h-11" [routerLink]="['new']" queryParamsHandling="preserve">{{
+          text('addDriver')
+        }}</a>
       }
     </header>
     <lib-autocomplete-search
       class="mb-6"
       id="driver-search"
       [language]="language()"
-      [label]="searchLabel"
-      [placeholder]="searchPlaceholder"
-      [clearLabel]="clearLabel"
-      [clearText]="clearText"
-      [loadingLabel]="loadingLabel"
-      [minimumQueryLabel]="minimumQueryLabel"
-      [emptyLabel]="emptyLabel"
-      [(query)]="searchText"
+      [label]="DRIVER_TEXT.driverNameOrNationalId"
+      [placeholder]="DRIVER_TEXT.driverSearchHint"
+      [clearLabel]="DRIVER_TEXT.clearDriverSearch"
+      [loadingLabel]="DRIVER_TEXT.searching"
+      [minimumQueryLabel]="DRIVER_TEXT.minimumSearch"
+      [emptyLabel]="DRIVER_TEXT.noMatchingDrivers"
+      [query]="searchText()"
       [options]="suggestions()"
       [loading]="suggestionLoading()"
       [optionId]="rowId"
@@ -83,7 +74,7 @@ export function driverQuery(text: string, page: string | null, size: string | nu
     />
     <lib-driver-table
       [rows]="store.page()?.items ?? []"
-      [caption]="config.heading ?? 'Drivers'"
+      [caption]="DRIVER_TEXT.drivers"
       [loading]="store.loading()"
       [error]="error()"
       [page]="page()"
@@ -97,8 +88,7 @@ export class DriverPage {
   protected readonly config = inject(DRIVER_FEATURE)
   protected readonly canManage = inject(DRIVER_MANAGE)
   protected readonly language = inject(DRIVER_LANGUAGE)
-  protected readonly searchLabel = searchLabel
-  protected readonly searchPlaceholder = searchPlaceholder
+  protected readonly DRIVER_TEXT = DRIVER_TEXT
   protected readonly store = inject(DriversStore)
   private readonly api = inject(DriversApi)
   private readonly session = inject(SessionStore)
@@ -117,25 +107,11 @@ export class DriverPage {
   })
   protected readonly rowId = (row: DriverRow) => String(row.id)
   protected readonly rowLabel = (row: DriverRow): BilingualText => ({
-    en: row.fullName ?? `Driver ${row.id}`,
-    fa: row.fullName ?? `راننده ${row.id}`,
+    en: row.fullName ?? `${driverText('en', 'driver')} ${row.id}`,
+    fa: row.fullName ?? `${driverText('fa', 'driver')} ${row.id}`,
   })
   protected readonly optionDescription = (row: DriverRow): BilingualText | null =>
     row.nationalId === null ? null : { en: row.nationalId, fa: row.nationalId }
-  protected readonly clearLabel: BilingualText = {
-    en: 'Clear driver search',
-    fa: 'پاک کردن جستجوی راننده',
-  }
-  protected readonly clearText: BilingualText = { en: 'Clear', fa: 'پاک کردن' }
-  protected readonly loadingLabel: BilingualText = { en: 'Searching...', fa: 'در حال جستجو...' }
-  protected readonly minimumQueryLabel: BilingualText = {
-    en: 'Enter at least 2 characters to search.',
-    fa: 'برای جستجو حداقل ۲ نویسه وارد کنید.',
-  }
-  protected readonly emptyLabel: BilingualText = {
-    en: 'No matching drivers found.',
-    fa: 'راننده‌ای با این مشخصات پیدا نشد.',
-  }
   protected readonly suggestions = computed(() => {
     const text = this.searchText().trim()
     const current = this.store.query()
@@ -162,12 +138,16 @@ export class DriverPage {
     )
   })
   protected readonly error = computed(() => {
-    if (!this.session.user() || this.api.companyId() === null)
-      return this.config.deniedMessage ?? 'You do not have access to drivers in this company.'
+    const denied = this.config.deniedMessage
+      ? this.config.deniedMessage[this.language()]
+      : this.text('accessManageDenied')
+    if (!this.session.user() || this.api.companyId() === null) return denied
     const error = this.store.error()
     return error?.code === 'drivers-access-denied' || error?.status === 401 || error?.status === 403
-      ? (this.config.deniedMessage ?? 'You do not have access to drivers in this company.')
-      : (error?.message ?? null)
+      ? denied
+      : error
+        ? safeDriverError(error, this.language(), 'detailFailedGeneric')
+        : null
   })
   protected readonly page = computed<DataTablePage>(() => ({
     pageIndex: this.query().pageIndex,
@@ -186,6 +166,9 @@ export class DriverPage {
   }
   protected reload() {
     this.store.search(this.query())
+  }
+  protected text(key: DriverTextKey): string {
+    return driverText(this.language(), key)
   }
   protected search(value: string) {
     this.searchText.set(value)

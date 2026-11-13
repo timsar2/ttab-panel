@@ -5,11 +5,13 @@ import { NgIcon } from '@ng-icons/core'
 import {
   HlmSidebar,
   HlmSidebarContent,
+  HlmSidebarInset,
   HlmSidebarMenu,
   HlmSidebarMenuButton,
   HlmSidebarMenuItem,
   HlmSidebarService,
   HlmSidebarTrigger,
+  HlmSidebarWrapper,
   provideHlmSidebarConfig,
 } from '@spartan-ng/helm/sidebar'
 
@@ -29,10 +31,12 @@ export interface LayoutNavItem {
   imports: [
     HlmSidebar,
     HlmSidebarContent,
+    HlmSidebarInset,
     HlmSidebarMenu,
     HlmSidebarMenuButton,
     HlmSidebarMenuItem,
     HlmSidebarTrigger,
+    HlmSidebarWrapper,
     RouterLink,
     RouterLinkActive,
     NgIcon,
@@ -45,11 +49,17 @@ export interface LayoutNavItem {
     }),
   ],
   template: `
-    <div class="theme-shell">
+    <div
+      hlmSidebarWrapper
+      class="theme-shell"
+      [sidebarWidth]="sidebarWidth()"
+      [sidebarWidthIcon]="sidebarWidthIcon()"
+    >
       <hlm-sidebar
+        id="app-navigation"
         class="theme-sidebar"
         [side]="direction.valueSignal() === 'rtl' ? 'right' : 'left'"
-        [collapsible]="sidebar.isMobile() ? 'offcanvas' : 'none'"
+        [collapsible]="sidebar.isMobile() ? 'offcanvas' : 'icon'"
         sidebarWidthMobile="min(21.563rem, calc(100vw - 2rem))"
         [srOnlySheetTitle]="navigationLabel()"
         [srOnlySheetDescription]="navigationLabel()"
@@ -109,20 +119,22 @@ export interface LayoutNavItem {
           }
         </div>
       </hlm-sidebar>
-      <div class="theme-content-column">
+      <main hlmSidebarInset class="theme-content-column">
         <header>
           <button
             hlmSidebarTrigger
-            class="theme-menu-trigger"
+            class="theme-menu-trigger bg-background border-border hover:bg-accent rounded-md border"
             type="button"
             [srOnlyText]="navigationLabel()"
-            [attr.aria-label]="navigationLabel()"
-            [attr.aria-expanded]="sidebar.openMobile()"
+            [attr.aria-label]="toggleNavigationLabel()"
+            [attr.aria-expanded]="sidebar.isMobile() ? sidebar.openMobile() : sidebar.open()"
+            aria-controls="app-navigation"
+            [attr.title]="toggleNavigationLabel()"
           ></button>
           <ng-content select="[layoutHeader]" />
         </header>
-        <main><ng-content /></main>
-      </div>
+        <section class="theme-page-content"><ng-content /></section>
+      </main>
     </div>
   `,
   styleUrl: './app-layout.css',
@@ -130,6 +142,9 @@ export interface LayoutNavItem {
 export class AppLayout {
   readonly items = input<readonly LayoutNavItem[]>([])
   readonly navigationLabel = input('Navigation')
+  readonly toggleNavigationLabel = input('Toggle navigation')
+  readonly sidebarWidth = input('var(--app-layout-sidebar-width, 21.563rem)')
+  readonly sidebarWidthIcon = input('var(--app-layout-sidebar-width-icon, 5.7rem)')
   protected readonly sidebar = inject(HlmSidebarService)
   protected readonly direction = inject(Directionality)
 }

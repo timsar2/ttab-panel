@@ -1,7 +1,9 @@
-import { InjectionToken, makeEnvironmentProviders } from '@angular/core'
+import { InjectionToken, makeEnvironmentProviders, signal } from '@angular/core'
+import type { Signal } from '@angular/core'
 import { Routes } from '@angular/router'
 import { authGuard } from '@org/auth-data-access'
 import type { CompanyRow } from '@org/transport-company-data-access'
+import type { AutocompleteLanguage } from '@org/ui-forms'
 import { provideTransportHttp } from '@org/transport-http'
 import { provideCompanyLookups } from '@org/transport-company-data-access'
 import type { CompanyEditor } from './company-editor'
@@ -9,6 +11,7 @@ import type { CompanyEditor } from './company-editor'
 export interface CompanyFeatureConfig {
   readonly path: string
   readonly apiUrl: string
+  readonly language?: () => Signal<AutocompleteLanguage>
   readonly heading?: string
   readonly actionLabel?: string
   /** Emits intent only. The consumer must independently authorize any selected workspace. */
@@ -24,6 +27,7 @@ export interface CompanyFeatureConfig {
 }
 
 export const COMPANY_FEATURE = new InjectionToken<CompanyFeatureConfig>('COMPANY_FEATURE')
+export const COMPANY_LANGUAGE = new InjectionToken<Signal<AutocompleteLanguage>>('COMPANY_LANGUAGE')
 
 export function provideCompanyFeature(config: CompanyFeatureConfig) {
   const maximum = config.editor?.maxLogoBytes
@@ -33,6 +37,10 @@ export function provideCompanyFeature(config: CompanyFeatureConfig) {
   return makeEnvironmentProviders([
     provideTransportHttp({ apiUrl: config.apiUrl }),
     { provide: COMPANY_FEATURE, useValue: config },
+    {
+      provide: COMPANY_LANGUAGE,
+      useFactory: config.language ?? (() => signal<AutocompleteLanguage>('en')),
+    },
     ...(config.editor ? [provideCompanyLookups(config.editor)] : []),
   ])
 }

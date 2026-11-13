@@ -41,41 +41,41 @@ this Nx workspace. Run the commands below from the `front` workspace root.
 
 ## Current Structure
 
-| Location / Public Entry                      | Responsibility                                                                                                                                                         |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/panel/src/app/app.config.ts`           | Compose providers, hydration, routing, auth/theme adapters, and directionality.                                                                                        |
-| `apps/panel/src/app/panel.config.ts`         | App-owned API prefix, tenant, branding, and login/success paths.                                                                                                       |
-| `apps/panel/src/app/app.routes.ts`           | Mount reusable auth routes and protect the workspace.                                                                                                                  |
-| `apps/panel/src/app/app.routes.server.ts`    | Render routes per request with validated, request-scoped authentication.                                                                                               |
-| `apps/panel/src/app/core/preferences/`       | Panel's direction/language adapter; not a second theme store.                                                                                                          |
-| `@org/auth-data-access`                      | Configurable backend contract, public session metadata, HTTP interception, guards, and auth helpers.                                                                   |
-| `@org/auth-data-access/node`                 | Node-only cookie BFF, server-held tokens, session storage contract, and SSR restoration.                                                                               |
-| `@org/auth-feature`                          | Auth presentation providers and the lazy login route factory.                                                                                                          |
-| `@org/auth-feature/ui`                       | Explicit public entry for embedding `LoginForm` or `LoginPage`.                                                                                                        |
-| `@org/layout`                                | Projected `AuthLayout` and `AppLayout`, independent of auth/theme stores; optional typed navigation metadata composes the owned Spartan sidebar/menu and mobile sheet. |
-| `@org/ui-forms`                              | Reusable Signal Forms input/lookup/coordinate bridges, typed local file selection/preview and accessible confirmation.                                                 |
-| `@org/transport-http`                        | Opt-in transport envelope/page/error decoders and safe configured requests through the existing scoped HttpClient.                                                     |
-| `@org/transport-company-data-access`         | Typed company read/write/lookup APIs, scoped search/editor stores and navigation-committed context; no inferred membership policy.                                     |
-| `@org/transport-company-feature`             | Configurable lazy search/create/edit route and provider entry; media/delete/approved-policy acceptance remains open.                                                   |
-| `@org/transport-company-feature/ui`          | Explicit component entry for embedding CompanyPage/CompanyEditor without eagerly loading UI from the route entry.                                                      |
-| `@org/transport-shell-feature`               | Configurable lazy landing/company shell, navigation-committed context, breadcrumbs/account/navigation and explicit error states.                                       |
-| `@org/transport-people-data-access`          | Explicit company/access-configured Person adapters, API and cancellable search state; live access/mutation policy remains gated.                                       |
-| `@org/panel-people`                          | Lazy configurable company-scoped Person search/page and typed selection intent, with UI under `libs/panel/people/src/lib/ui`.                                          |
-| `@org/panel-people/ui`                       | Explicit embedding entry, separate from the light provider/route entry.                                                                                                |
-| `@org/transport-departure-times-data-access` | Source-backed bounded-list, TimeSpan and scoped list/detail/upsert state; deletion and live policy acceptance remain open.                                             |
-| `@org/panel-departure-times`                 | Configurable lazy bounded-list/create/edit pages, with library-owned `ui` components, explicit access and guarded local drafts.                                        |
-| `@org/panel-departure-times/ui`              | Separate entry for embedding departure-time page/editor components without eager UI in route configuration.                                                            |
-| `@org/transport-drivers-data-access`         | Configured Person-backed driver search/detail/upsert adapters and scoped SignalStore; explicit authorization, document preservation/replacement, no deletion.          |
-| `@org/panel-drivers`                         | Lazy configurable company-scoped driver list, onboarding, details and editor routes with local Signal Forms and guarded drafts.                                        |
-| `@org/panel-drivers/ui`                      | Separate embedding entry for driver pages and Person form, without eager UI in route configuration.                                                                    |
-| `@org/transport-support-data-access`         | Explicit-scope read-only search/detail/case-file adapters and independent cancellable stores; no messages, mutations or inferred applicant types.                      |
-| `@org/ui-data-table`                         | Typed TanStack v9/Spartan server-page composition, stable row IDs and optional typed action intent.                                                                    |
-| `@org/theme`                                 | Validated theme model, NgRx ThemeStore, palette/token generation, persistence, and safe custom CSS.                                                                    |
-| `@org/theme-ui`                              | Configurable Spartan customization sheet.                                                                                                                              |
-| `libs/spartan/*`                             | Existing owned Helm source; inspect its actual exports before adding controls.                                                                                         |
-| `libs/base-theme.css`                        | Shared semantic design tokens and base theme rules.                                                                                                                    |
-| `apps/panel/src/styles.css`                  | Font/CSS imports and explicit Tailwind source discovery.                                                                                                               |
-| `apps/panel-e2e/`                            | Browser acceptance tests and reusable controlled API fixtures.                                                                                                         |
+| Location / Public Entry                      | Responsibility                                                                                                                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/panel/src/app/app.config.ts`           | Compose providers, hydration, routing, auth/theme adapters, and directionality.                                                                                               |
+| `apps/panel/src/app/panel.config.ts`         | App-owned API prefix, tenant, branding, and login/success paths.                                                                                                              |
+| `apps/panel/src/app/app.routes.ts`           | Mount reusable auth routes and protect the workspace.                                                                                                                         |
+| `apps/panel/src/app/app.routes.server.ts`    | Render routes per request with validated, request-scoped authentication.                                                                                                      |
+| `apps/panel/src/app/core/preferences/`       | Panel's direction/language adapter; not a second theme store.                                                                                                                 |
+| `@org/auth-data-access`                      | Configurable backend contract, public session metadata, HTTP interception, guards, and auth helpers.                                                                          |
+| `@org/auth-data-access/node`                 | Node-only cookie BFF, server-held tokens, session storage contract, and SSR restoration.                                                                                      |
+| `@org/auth-feature`                          | Auth presentation providers and the lazy login route factory.                                                                                                                 |
+| `@org/auth-feature/ui`                       | Explicit public entry for embedding `LoginForm` or `LoginPage`.                                                                                                               |
+| `@org/layout`                                | Projected `AuthLayout` and `AppLayout`, independent of auth/theme stores; optional typed navigation metadata composes the owned Spartan sidebar/menu and mobile sheet.        |
+| `@org/ui-forms`                              | Reusable Signal Forms input/lookup/coordinate bridges, Spartan Autocomplete/Attachment compositions, bilingual copy models, typed file selection and accessible confirmation. |
+| `@org/transport-http`                        | Opt-in transport envelope/page/error decoders and safe configured requests through the existing scoped HttpClient.                                                            |
+| `@org/transport-company-data-access`         | Typed company read/write/lookup APIs, scoped search/editor stores and navigation-committed context; no inferred membership policy.                                            |
+| `@org/transport-company-feature`             | Configurable lazy search/create/edit route and provider entry; media/delete/approved-policy acceptance remains open.                                                          |
+| `@org/transport-company-feature/ui`          | Explicit component entry for embedding CompanyPage/CompanyEditor without eagerly loading UI from the route entry.                                                             |
+| `@org/transport-shell-feature`               | Configurable lazy landing/company shell, navigation-committed context, breadcrumbs/account/navigation and explicit error states.                                              |
+| `@org/transport-people-data-access`          | Explicit company/access-configured Person adapters, API and cancellable search state; live access/mutation policy remains gated.                                              |
+| `@org/panel-people`                          | Lazy configurable company-scoped Person search/page and typed selection intent, with UI under `libs/panel/people/src/lib/ui`.                                                 |
+| `@org/panel-people/ui`                       | Explicit embedding entry, separate from the light provider/route entry.                                                                                                       |
+| `@org/transport-departure-times-data-access` | Source-backed bounded-list, TimeSpan and scoped list/detail/upsert state; deletion and live policy acceptance remain open.                                                    |
+| `@org/panel-departure-times`                 | Configurable lazy bounded-list/create/edit pages, with library-owned `ui` components, explicit access and guarded local drafts.                                               |
+| `@org/panel-departure-times/ui`              | Separate entry for embedding departure-time page/editor components without eager UI in route configuration.                                                                   |
+| `@org/transport-drivers-data-access`         | Configured Person-backed driver search/detail/upsert adapters and scoped SignalStore; explicit authorization, document preservation/replacement, no deletion.                 |
+| `@org/panel-drivers`                         | Lazy configurable company-scoped driver list, onboarding, details and editor routes with local Signal Forms and guarded drafts.                                               |
+| `@org/panel-drivers/ui`                      | Separate embedding entry for driver pages and Person form, without eager UI in route configuration.                                                                           |
+| `@org/transport-support-data-access`         | Explicit-scope read-only search/detail/case-file adapters and independent cancellable stores; no messages, mutations or inferred applicant types.                             |
+| `@org/ui-data-table`                         | Typed TanStack v9/Spartan server-page composition, stable row IDs and optional typed action intent.                                                                           |
+| `@org/theme`                                 | Validated theme model, NgRx ThemeStore, palette/token generation, persistence, and safe custom CSS.                                                                           |
+| `@org/theme-ui`                              | Configurable Spartan customization sheet.                                                                                                                                     |
+| `libs/spartan/*`                             | Existing owned Helm source; inspect its actual exports before adding controls.                                                                                                |
+| `libs/base-theme.css`                        | Shared semantic design tokens and base theme rules.                                                                                                                           |
+| `apps/panel/src/styles.css`                  | Font/CSS imports and explicit Tailwind source discovery.                                                                                                                      |
+| `apps/panel-e2e/`                            | Browser acceptance tests and reusable controlled API fixtures.                                                                                                                |
 
 Authentication, layouts, forms, and theme exist today. A library-owned company
 search/table and basic create/edit forms are mounted at `/companies`,
@@ -125,6 +125,11 @@ Document replacement is bounded by the cookie-BFF aggregate request limit.
 Document removal and driver deletion are not exposed pending backend semantics
 and retention decisions. See the driver checklist for controlled verification
 versus live-backend acceptance evidence.
+Driver list and Person selection use the shared Spartan Autocomplete wrapper;
+file selection and current/replacement previews use Spartan Attachment. Driver
+copy is bilingual and reads the live PreferencesStore language signal. Detail and
+edit child routes clear inherited breadcrumb data so the Drivers crumb keeps its
+company-list link.
 
 Read [BUSINESS_DOMAIN.md](../../docs/BUSINESS_DOMAIN.md) for business scope and
 evidence. Use [the main migration TODO](../../docs/migration/TODO.md) and its

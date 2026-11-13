@@ -744,16 +744,16 @@ describe('Node cookie authentication BFF', () => {
     expect(response.headers['set-cookie'][0]).not.toContain('padding')
   })
 
-  it('allows a seven-day development session with a long upstream token lifetime', async () => {
+  it('allows a one-day development session with a long upstream token lifetime', async () => {
     const f = fixture(undefined, 90 * 86_400_000)
     const now = Date.now()
     f.setToken(jwt(now + 90 * 86_400_000))
     const logged = await f.login().expect(200)
-    expect(logged.body.expiresAt).toBeLessThanOrEqual(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    expect(logged.body.expiresAt).toBeLessThanOrEqual(Date.now() + 24 * 60 * 60 * 1000)
     const maxAge = Number(/Max-Age=(\d+)/.exec(logged.headers['set-cookie'][0])?.[1])
-    expect(maxAge).toBeGreaterThanOrEqual(604_798)
-    expect(maxAge).toBeLessThanOrEqual(604_800)
-    vi.spyOn(Date, 'now').mockReturnValue(now + 8 * 24 * 60 * 60 * 1000)
+    expect(maxAge).toBeGreaterThanOrEqual(86_398)
+    expect(maxAge).toBeLessThanOrEqual(86_400)
+    vi.spyOn(Date, 'now').mockReturnValue(now + 25 * 60 * 60 * 1000)
     await request(f.app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(401)
   })
 

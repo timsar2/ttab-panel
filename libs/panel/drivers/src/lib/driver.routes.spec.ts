@@ -12,7 +12,8 @@ import {
   driverCompanyId,
   driverId,
 } from '@org/transport-drivers-data-access'
-import { FileUploadControl } from '@org/ui-forms'
+import { AutocompleteSearch, FileUploadControl } from '@org/ui-forms'
+import type { PersonRow } from '@org/transport-people-data-access'
 import { Subject, identity, of } from 'rxjs'
 import { createDriverRoutes } from './driver.routes'
 import { driverQuery } from './ui/driver-page'
@@ -23,6 +24,19 @@ const envelope = (result: unknown) => ({ code: '2000', massage: null, result })
 function present<T>(value: T | null | undefined): T {
   if (value === null || value === undefined) throw new Error('Expected rendered driver control')
   return value
+}
+async function searchForPerson(harness: RouterTestingHarness, http: HttpTestingController) {
+  const component = present(harness.routeDebugElement?.query(By.directive(AutocompleteSearch)))
+    .componentInstance as AutocompleteSearch<PersonRow>
+  component.queryRequested.emit('Sam')
+  TestBed.tick()
+  harness.detectChanges()
+  return http.expectOne('/directory/users/search')
+}
+function selectPersonSuggestion(harness: RouterTestingHarness) {
+  const component = present(harness.routeDebugElement?.query(By.directive(AutocompleteSearch)))
+    .componentInstance as AutocompleteSearch<PersonRow>
+  component.optionSelected.emit(present(component.options()[0]))
 }
 const person = (id = 12) => ({
   id,
@@ -63,6 +77,26 @@ const page = (list: unknown[]) =>
   })
 
 describe('reusable driver routes', () => {
+  beforeAll(() => {
+    if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn()
+    if (!globalThis.ResizeObserver) {
+      Object.defineProperty(globalThis, 'ResizeObserver', {
+        configurable: true,
+        value: class {
+          observe() {
+            return undefined
+          }
+          unobserve() {
+            return undefined
+          }
+          disconnect() {
+            return undefined
+          }
+        },
+      })
+    }
+  })
+
   afterEach(() => {
     TestBed.inject(HttpTestingController).verify()
     TestBed.resetTestingModule()
@@ -106,7 +140,10 @@ describe('reusable driver routes', () => {
             access: () => () => of(allowed),
             canManage: () => signal(manage),
             canRegisterPerson: () => signal(register),
-            deniedMessage: 'Driver access not approved.',
+            deniedMessage: {
+              en: 'Driver access not approved.',
+              fa: 'دسترسی به رانندگان تأیید نشده است.',
+            },
             people: {
               apiUrl: '/directory',
               company: () => company,
@@ -193,11 +230,11 @@ describe('reusable driver routes', () => {
     harness.detectChanges()
     const input = present(root(harness).querySelector<HTMLInputElement>('[role=combobox]'))
     input.focus()
-    input.dispatchEvent(new Event('focus'))
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     TestBed.tick()
     harness.detectChanges()
-    expect(root(harness).querySelector('[role=listbox]')?.textContent).toContain('Sam Driver')
-    present(root(harness).querySelector<HTMLButtonElement>('[role=option]')).click()
+    expect(document.body.querySelector('[role=option]')?.textContent).toContain('Sam Driver')
+    present(document.body.querySelector<HTMLButtonElement>('[role=option]')).click()
     await vi.waitFor(() =>
       expect(TestBed.inject(Router).url).toBe('/operators?q=0012345678&page=1'),
     )
@@ -230,18 +267,11 @@ describe('reusable driver routes', () => {
     expect(root(harness).textContent).toContain('Start with a person')
     expect(root(harness).textContent).not.toContain('Register a new person')
     expect(root(harness).textContent).not.toContain('Save driver')
-    root(harness)
-      .querySelector('form')
-      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-    TestBed.tick()
-    http
-      .expectOne('/directory/users/search')
-      .flush(page([{ id: 12, fullName: 'Sam Driver', nationalId: null, profileImage: null }]))
-    harness.detectChanges()
-    const select = Array.from(root(harness).querySelectorAll('button')).find(button =>
-      button.textContent?.includes('Select person'),
+    ;(await searchForPerson(harness, http)).flush(
+      page([{ id: 12, fullName: 'Sam Driver', nationalId: null, profileImage: null }]),
     )
-    select?.click()
+    harness.detectChanges()
+    selectPersonSuggestion(harness)
     flushNewDriverCheck(http)
     TestBed.tick()
     harness.detectChanges()
@@ -251,21 +281,11 @@ describe('reusable driver routes', () => {
   })
   it('creates a driver from a persisted Person and navigates to the hydrated detail view', async () => {
     const { harness, http } = await setup('/new')
-    root(harness)
-      .querySelector('form')
-      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-    TestBed.tick()
-    http
-      .expectOne('/directory/users/search')
-      .flush(
-        page([{ id: 12, fullName: 'Sam Driver', nationalId: '0012345678', profileImage: null }]),
-      )
+    ;(await searchForPerson(harness, http)).flush(
+      page([{ id: 12, fullName: 'Sam Driver', nationalId: '0012345678', profileImage: null }]),
+    )
     harness.detectChanges()
-    present(
-      Array.from(root(harness).querySelectorAll('button')).find(button =>
-        button.textContent?.includes('Select person'),
-      ),
-    ).click()
+    selectPersonSuggestion(harness)
     flushNewDriverCheck(http)
     TestBed.tick()
     harness.detectChanges()
@@ -288,8 +308,8 @@ describe('reusable driver routes', () => {
     flushDetail(http)
     TestBed.tick()
     harness.detectChanges()
-    expect(root(harness).textContent).toContain('Driver details')
     expect(root(harness).textContent).toContain('Sam Driver')
+    expect(root(harness).querySelector('h1')?.textContent?.trim()).toBe('Sam Driver')
     expect(root(harness).querySelector('a[href="/operators/12/edit"]')).not.toBeNull()
   })
   it('clears drafts and private documents when company scope changes', async () => {
@@ -306,19 +326,11 @@ describe('reusable driver routes', () => {
   })
   it('checks and hydrates an existing driver selected during onboarding', async () => {
     const { harness, http } = await setup('/new')
-    root(harness)
-      .querySelector('form')
-      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-    TestBed.tick()
-    http
-      .expectOne('/directory/users/search')
-      .flush(page([{ id: 12, fullName: 'Sam Driver', nationalId: null, profileImage: null }]))
+    ;(await searchForPerson(harness, http)).flush(
+      page([{ id: 12, fullName: 'Sam Driver', nationalId: null, profileImage: null }]),
+    )
     harness.detectChanges()
-    present(
-      Array.from(root(harness).querySelectorAll('button')).find(button =>
-        button.textContent?.includes('Select person'),
-      ),
-    ).click()
+    selectPersonSuggestion(harness)
     TestBed.tick()
     harness.detectChanges()
     expect(root(harness).textContent).toContain('Checking existing driver information')
@@ -330,25 +342,17 @@ describe('reusable driver routes', () => {
     expect(present(root(harness).querySelector<HTMLSelectElement>('#driver-licence')).value).toBe(
       '2',
     )
-    expect(
-      root(harness).querySelector('img[alt="Current National card front"]')?.getAttribute('src'),
-    ).toBe('/files/front.jpg')
+    expect(root(harness).querySelector('img[src="/files/front.jpg"]')?.getAttribute('alt')).toBe(
+      'Selected file preview',
+    )
   })
   it('can correct a selected existing Person without enabling account registration', async () => {
     const { harness, http } = await setup('/new')
-    root(harness)
-      .querySelector('form')
-      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-    TestBed.tick()
-    http
-      .expectOne('/directory/users/search')
-      .flush(page([{ id: 12, fullName: 'Sam Driver', nationalId: null, profileImage: null }]))
+    ;(await searchForPerson(harness, http)).flush(
+      page([{ id: 12, fullName: 'Sam Driver', nationalId: null, profileImage: null }]),
+    )
     harness.detectChanges()
-    present(
-      Array.from(root(harness).querySelectorAll('button')).find(button =>
-        button.textContent?.includes('Select person'),
-      ),
-    ).click()
+    selectPersonSuggestion(harness)
     flushNewDriverCheck(http)
     TestBed.tick()
     harness.detectChanges()
@@ -529,8 +533,8 @@ describe('reusable driver routes', () => {
     flushDetail(http)
     TestBed.tick()
     harness.detectChanges()
-    expect(root(harness).textContent).toContain('Driver details')
     expect(root(harness).textContent).toContain('Sam Driver')
+    expect(root(harness).querySelector('h1')?.textContent?.trim()).toBe('Sam Driver')
   })
   it('guards dirty navigation and releases the guard on logout', async () => {
     const { harness, http, user, version, changes } = await setup('/12/edit')

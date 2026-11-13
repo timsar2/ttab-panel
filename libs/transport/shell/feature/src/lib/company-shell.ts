@@ -80,7 +80,7 @@ import { COMPANY_SHELL_CONFIG } from './company-shell.routes'
         </button>
       </div>
       @if (context.status() === 'ready') {
-        <nav hlmBreadcrumb class="mb-4" [aria-label]="labels().breadcrumbs">
+        <nav hlmBreadcrumb class="theme-breadcrumb mb-4" [aria-label]="labels().breadcrumbs">
           <ol hlmBreadcrumbList>
             <li hlmBreadcrumbItem>
               <a hlmBreadcrumbLink [routerLink]="config.companiesCommands">{{

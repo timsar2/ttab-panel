@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, PLATFORM_ID, signal } from '@angular/core'
 import { TestBed } from '@angular/core/testing'
-import { FileUploadControl, UploadSelection } from '../index'
+import { AutocompleteLanguage, BilingualText, FileUploadControl, UploadSelection } from '../index'
 
 class ControlledReader {
   static instances: ControlledReader[] = []
@@ -33,7 +33,8 @@ class ControlledReader {
     <lib-file-upload
       [(value)]="image"
       id="logo"
-      label="Logo"
+      [language]="language()"
+      [label]="logoLabel"
       [allowedTypes]="imageTypes()"
       [maxBytes]="limit()"
       [policyDescription]="policyDescription()"
@@ -45,7 +46,8 @@ class ControlledReader {
     <lib-file-upload
       [(value)]="document"
       id="document"
-      label="Document"
+      [language]="language()"
+      [label]="documentLabel"
       [allowedTypes]="documentTypes"
       [maxBytes]="20"
       [allowRemove]="true"
@@ -53,15 +55,18 @@ class ControlledReader {
   `,
 })
 class Consumer {
+  readonly language = signal<AutocompleteLanguage>('en')
+  readonly logoLabel: BilingualText = { en: 'Logo', fa: 'نشان' }
+  readonly documentLabel: BilingualText = { en: 'Document', fa: 'سند' }
   readonly image = signal<UploadSelection>({ kind: 'keep' })
   readonly document = signal<UploadSelection>({ kind: 'keep' })
   readonly imageTypes = signal<readonly { mime: string; extensions: readonly string[] }[]>([
     { mime: 'image/png', extensions: ['.png'] },
   ])
   readonly documentTypes = [{ mime: 'application/pdf', extensions: ['.pdf'] }] as const
-  readonly existingName = signal<string | null>('existing.png')
+  readonly existingName = signal<BilingualText | null>({ en: 'existing.png', fa: 'existing.png' })
   readonly limit = signal(10)
-  readonly policyDescription = signal<string | null>(null)
+  readonly policyDescription = signal<BilingualText | null>(null)
   readonly locked = signal(false)
   readonly removal = signal(false)
   readonly contextKey = signal<string | number>(0)
@@ -128,7 +133,10 @@ describe('FileUploadControl consumers', () => {
     const policy = imageRoot.querySelector('#logo-policy')
     expect(policy?.textContent).toContain('image/png,.png')
     expect(policy?.textContent).toContain('10 bytes')
-    consumer.policyDescription.set('PNG images. Up to 10 bytes.')
+    consumer.policyDescription.set({
+      en: 'PNG images. Up to 10 bytes.',
+      fa: 'تصاویر PNG، حداکثر ۱۰ بایت.',
+    })
     await fixture.whenStable()
     expect(policy?.textContent?.trim()).toBe('PNG images. Up to 10 bytes.')
     expect(imageInput.accept).toBe('image/png,.png')
@@ -140,6 +148,20 @@ describe('FileUploadControl consumers', () => {
     await fixture.whenStable()
     expect(policy?.textContent).toContain('10 bytes')
   })
+
+  it('renders Attachment controls and switches all shared copy with the selected language', async () => {
+    const { fixture, consumer, imageRoot } = await setup()
+    expect(imageRoot.querySelector('[data-slot="attachment"]')).not.toBeNull()
+    consumer.language.set('fa')
+    await fixture.whenStable()
+    expect(imageRoot.querySelector('button')?.getAttribute('aria-label')).toBe('نشان: انتخاب فایل')
+    expect(imageRoot.textContent).toContain('فایل فعلی حفظ می‌شود: existing.png')
+    expect(imageRoot.textContent).toContain('انواع مجاز: image/png,.png')
+    expect(imageRoot.textContent).toContain('حداکثر اندازه: ۱۰ بایت')
+    consumer.language.set('en')
+    await fixture.whenStable()
+    expect(imageRoot.querySelector('button')?.getAttribute('aria-label')).toBe('Logo: Choose file')
+  })
   const png = (name = 'logo.PNG', contents = 'image') =>
     new File([contents], name, { type: 'image/png' })
 
@@ -148,15 +170,12 @@ describe('FileUploadControl consumers', () => {
     expect(imageInput.accept).toBe('image/png,.png')
     expect(documentInput.accept).toBe('application/pdf,.pdf')
     expect(root.querySelector('label[for="logo"]')?.textContent).toContain('Logo')
-    expect(imageInput.getAttribute('aria-label')).toBe('Logo')
+    expect(imageRoot.querySelector('button')?.getAttribute('aria-label')).toBe('Logo: Choose file')
     expect(imageInput.getAttribute('aria-describedby')).toBe('logo-policy logo-status')
     expect(root.querySelector('#logo-status')?.textContent).toContain(
       'Keeping existing file: existing.png',
     )
-    expect(imageRoot.querySelector('button')).toBeNull()
-    for (const control of root.querySelectorAll('input, button')) {
-      expect(control.classList.contains('min-h-11')).toBe(true)
-    }
+    expect(imageRoot.querySelector('button')?.classList.contains('min-h-11')).toBe(true)
   })
 
   it.each([
@@ -167,13 +186,13 @@ describe('FileUploadControl consumers', () => {
     ['oversized file', () => png('logo.png', '01234567890')],
     ['empty file', () => png('logo.png', '')],
   ])('rejects %s before reading or creating previews', async (_name, makeFile) => {
-    const { choose, consumer, imageInput, root } = await setup()
+    const { choose, consumer, imageInput, root, imageRoot } = await setup()
     await choose(makeFile())
     expect(consumer.image().kind).toBe('invalid')
     expect(ControlledReader.instances).toHaveLength(0)
     expect(createUrl).not.toHaveBeenCalled()
     expect(imageInput.value).toBe('')
-    expect(imageInput.getAttribute('aria-invalid')).toBe('true')
+    expect(imageRoot.querySelector('button')?.getAttribute('aria-invalid')).toBe('true')
     expect(imageInput.getAttribute('aria-describedby')).toContain('logo-error')
     expect(root.querySelector('#logo-error')?.textContent).toBeTruthy()
   })
@@ -195,7 +214,7 @@ describe('FileUploadControl consumers', () => {
     const file = png('logo.PNG', '0123456789')
     await choose(file)
     expect(consumer.image()).toEqual({ kind: 'reading' })
-    expect(imageRoot.textContent).toContain('Reading file...')
+    expect(imageRoot.textContent).toContain('Reading file…')
     ControlledReader.instances[0].complete('data:image/png;base64,aW1hZ2U=')
     await fixture.whenStable()
     expect(consumer.image()).toEqual({
@@ -210,7 +229,7 @@ describe('FileUploadControl consumers', () => {
     })
     expect(createUrl).toHaveBeenCalledWith(file)
     expect(imageRoot.querySelector('img')?.getAttribute('src')).toBe('blob:local-1')
-    expect(imageRoot.querySelector('img')?.alt).toBe('Logo preview')
+    expect(imageRoot.querySelector('img')?.alt).toBe('Selected file preview')
     expect(imageInput.value).toBe('')
   })
 

@@ -32,7 +32,7 @@ import {
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmFieldImports } from '@spartan-ng/helm/field'
 import { HlmAlertImports } from '@spartan-ng/helm/alert'
-import { COMPANY_FEATURE } from './company.routes'
+import { COMPANY_FEATURE, COMPANY_LANGUAGE } from './company.routes'
 
 @Component({
   selector: 'lib-company-editor',
@@ -134,18 +134,21 @@ import { COMPANY_FEATURE } from './company.routes'
           </div>
           <lib-lookup-select
             id="company-type"
+            [language]="language()"
             label="Company type"
             [field]="editorForm.companyTypeId"
             [options]="typeOptions()"
           />
           <lib-lookup-select
             id="company-province"
+            [language]="language()"
             label="Province"
             [field]="editorForm.provinceId"
             [options]="provinceOptions()"
           />
           <lib-lookup-select
             id="company-city"
+            [language]="language()"
             label="City"
             [field]="editorForm.cityId"
             [options]="cityOptions()"
@@ -214,6 +217,7 @@ import { COMPANY_FEATURE } from './company.routes'
           <lib-coordinate-fields
             class="md:col-span-2"
             idPrefix="company-location"
+            [language]="language()"
             [latitude]="editorForm.latitude"
             [longitude]="editorForm.longitude"
           />
@@ -221,11 +225,17 @@ import { COMPANY_FEATURE } from './company.routes'
             <lib-file-upload
               class="md:col-span-2"
               id="company-logo"
-              label="Company logo"
+              [language]="language()"
+              [label]="{ en: 'Company logo', fa: 'لوگوی شرکت' }"
               [(value)]="logo"
               [allowedTypes]="logoTypes"
               [maxBytes]="maximum"
-              [existingName]="store.original()?.companyLogo ? 'Current company logo' : null"
+              [existingName]="
+                store.original()?.companyLogo
+                  ? { en: 'Current company logo', fa: 'لوگوی فعلی شرکت' }
+                  : null
+              "
+              [existingPreview]="store.original()?.companyLogo ?? null"
               [disabled]="store.saving()"
               [allowRemove]="false"
               [resetKey]="store.revision()"
@@ -255,6 +265,7 @@ export class CompanyEditor {
   private leaveDecision: ((value: boolean) => void) | null = null
   private pendingLeave: Promise<boolean> | null = null
   protected readonly config = inject(COMPANY_FEATURE)
+  protected readonly language = inject(COMPANY_LANGUAGE)
   protected readonly store = inject(CompanyEditorStore)
   private readonly session = inject(SessionStore)
   private readonly route = inject(ActivatedRoute)

@@ -11,7 +11,7 @@ import {
   viewChildren,
 } from '@angular/core'
 import { toSignal } from '@angular/core/rxjs-interop'
-import { FormField, disabled, form, required, submit, validate } from '@angular/forms/signals'
+import { disabled, form, submit, validate } from '@angular/forms/signals'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import { SessionStore } from '@org/auth-data-access'
 import { DriverDraft, DriversApi, DriversStore } from '@org/transport-drivers-data-access'
@@ -21,24 +21,33 @@ import {
   TransportImageUpload,
   transportImageUpload,
 } from '@org/transport-http'
-import { DataTable, DataTableColumn, DataTablePage } from '@org/ui-data-table'
 import {
+  AutocompleteSearch,
   ConfirmDialog,
   FileUploadControl,
   LookupSelect,
-  SignalInput,
   UploadSelection,
+  type BilingualText,
 } from '@org/ui-forms'
 import { HlmAlertImports } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmFieldImports } from '@spartan-ng/helm/field'
 import {
   DRIVER_FEATURE,
+  DRIVER_LANGUAGE,
   DRIVER_MANAGE,
   DRIVER_REGISTER,
   DRIVER_PERSON_CITIES,
 } from '../driver.routes'
 import { DriverPersonEditorStore } from '../person-editor.store'
+import {
+  DRIVER_TEXT,
+  driverFieldLabel,
+  driverText,
+  driverTextPair,
+  safeDriverError,
+  type DriverTextKey,
+} from '../driver-text'
 import { driverDocuments, routeDriverId } from './driver-detail'
 import { DriverPersonForm, DriverPersonSubmission } from './person-form'
 
@@ -52,8 +61,7 @@ const emptyUploads = (): Record<DocumentKey, UploadSelection> => ({
 
 export function driverReplacement(selection: UploadSelection): TransportImageUpload | undefined {
   if (selection.kind === 'keep') return undefined
-  if (selection.kind !== 'replace')
-    throw new Error('Finish selecting valid replacement documents before saving.')
+  if (selection.kind !== 'replace') throw new Error('invalid-upload')
   return transportImageUpload(selection.file)
 }
 
@@ -61,13 +69,11 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
   selector: 'lib-driver-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    FormField,
     RouterLink,
     ConfirmDialog,
     FileUploadControl,
     LookupSelect,
-    SignalInput,
-    DataTable,
+    AutocompleteSearch,
     DriverPersonForm,
     HlmButton,
     HlmFieldImports,
@@ -79,9 +85,11 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
     <header class="mb-6 flex flex-wrap items-start justify-between gap-3">
       <div>
         <p class="text-muted-foreground mb-1 text-sm">
-          {{ id() === null ? 'Driver onboarding' : 'Driver record' }}
+          {{ text(id() === null ? 'driverOnboarding' : 'driverRecord') }}
         </p>
-        <h1 class="text-2xl font-semibold">{{ id() === null ? 'Add driver' : 'Edit driver' }}</h1>
+        <h1 class="text-2xl font-semibold">
+          {{ text(id() === null ? 'addDriverTitle' : 'editDriverTitle') }}
+        </h1>
       </div>
       <a
         hlmBtn
@@ -90,92 +98,75 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
         [routerLink]="['.']"
         [relativeTo]="route.parent"
         queryParamsHandling="preserve"
-        >Back to drivers</a
+        >{{ text('backToDrivers') }}</a
       >
     </header>
     <lib-confirm-dialog
       [(open)]="leaveOpen"
-      title="Discard unsaved changes?"
-      [description]="
-        busy()
-          ? 'A save is in progress. Stay here until it completes.'
-          : 'Unsaved person and driver changes will be lost.'
-      "
-      confirmLabel="Discard changes"
-      cancelLabel="Keep editing"
+      [title]="text('discardUnsaved')"
+      [description]="text(busy() ? 'saveInProgress' : 'discardChangesDescription')"
+      [confirmLabel]="text('discardChanges')"
+      [cancelLabel]="text('keepEditing')"
       [busy]="busy()"
       (confirmed)="finishLeave(true)"
       (canceled)="finishLeave(false)"
     />
     @if (id() === undefined) {
-      <p role="alert">Invalid driver URL.</p>
+      <p role="alert">{{ text('invalidDriverUrl') }}</p>
     } @else if (!canWrite()) {
       <p role="alert">
-        {{ config.deniedMessage ?? 'You do not have access to manage drivers in this company.' }}
+        {{ deniedMessage() }}
       </p>
     } @else if (id() !== null && store.detailStatus() === 'loading') {
-      <p role="status">Loading driver details...</p>
+      <p role="status">{{ text('loadingDriverDetails') }}</p>
     } @else if (id() !== null && store.detailStatus() === 'denied') {
-      <p role="alert">You do not have access to this driver.</p>
+      <p role="alert">{{ text('accessDriverDenied') }}</p>
     } @else if (id() !== null && store.detailStatus() === 'missing') {
-      <p role="alert">Driver not found.</p>
+      <p role="alert">{{ text('driverNotFound') }}</p>
     } @else if (id() !== null && store.detailStatus() === 'error') {
-      <p role="alert">{{ store.detailError()?.message }}</p>
-      <button hlmBtn variant="outline" (click)="reload()">Retry</button>
+      <p role="alert">{{ safeError(store.detailError(), 'detailFailedGeneric') }}</p>
+      <button hlmBtn variant="outline" (click)="reload()">{{ text('retry') }}</button>
     } @else {
       @if (id() === null) {
         <ol
-          aria-label="Onboarding progress"
+          [attr.aria-label]="text('onboardingProgress')"
           class="border-border mb-6 grid grid-cols-2 border-b pb-4 text-sm"
         >
           <li [attr.aria-current]="!selected() ? 'step' : null">
-            <span class="font-semibold">01</span> Select a persisted person
+            <span class="font-semibold">01</span> {{ text('selectPersistedPerson') }}
           </li>
           <li [attr.aria-current]="selected() ? 'step' : null">
-            <span class="font-semibold">02</span> Licence & documents
+            <span class="font-semibold">02</span> {{ text('licenceAndDocuments') }}
           </li>
         </ol>
       }
       @if (id() === null) {
         <section aria-labelledby="person-selection-title" [hidden]="selected() !== null">
           <h2 id="person-selection-title" class="mb-2 text-xl font-semibold">
-            Start with a person
+            {{ text('startWithPerson') }}
           </h2>
           <p class="text-muted-foreground mb-5">
-            Select an existing company person. A national ID alone is not a persisted identity.
+            {{ text('selectExistingCompanyPerson') }}
           </p>
-          <form class="mb-5 flex flex-wrap items-end gap-3" (submit)="searchPeople($event)">
-            <div hlmField class="min-w-0 flex-1">
-              <label hlmFieldLabel for="driver-person-search">Person name or national ID</label>
-              <input
-                libSignalInput
-                id="driver-person-search"
-                type="search"
-                class="min-h-11"
-                [formField]="personSearchForm.text"
-              />
-            </div>
-            <button hlmBtn variant="outline" type="submit" class="min-h-11">Find person</button>
-          </form>
-          @if (searched()) {
-            <lib-data-table
-              [rows]="people.page()?.items ?? []"
-              [columns]="personColumns"
-              [rowId]="personRowId"
-              [rowLabel]="personRowLabel"
-              caption="Existing people"
-              [loading]="people.loading()"
-              [error]="
-                people.error()?.message ??
-                (people.status() === 'denied' ? 'People access is not approved.' : null)
-              "
-              [page]="personPage()"
-              actionLabel="Select person"
-              (rowAction)="selectPerson($event)"
-              (pageChange)="pagePeople($event)"
-              (retry)="loadPeople()"
-            />
-          }
+          <lib-autocomplete-search
+            class="mb-5 w-full"
+            id="driver-person-search"
+            [language]="language()"
+            [label]="DRIVER_TEXT.personNameOrNationalId"
+            [placeholder]="DRIVER_TEXT.driverSearchHint"
+            [clearLabel]="DRIVER_TEXT.clearPersonSearch"
+            [loadingLabel]="DRIVER_TEXT.searching"
+            [minimumQueryLabel]="DRIVER_TEXT.minimumSearch"
+            [emptyLabel]="DRIVER_TEXT.noMatchingPeople"
+            [query]="personSearchText()"
+            [options]="people.page()?.items ?? []"
+            [loading]="people.loading()"
+            [optionId]="personRowId"
+            [optionLabel]="personRowLabel"
+            [optionDescription]="personOptionDescription"
+            (queryRequested)="searchPeople($event)"
+            (optionSelected)="selectPerson($event)"
+          />
           @if (canRegister()) {
             <button
               hlmBtn
@@ -184,7 +175,7 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
               class="my-5 min-h-11"
               (click)="registerOpen.set(!registerOpen())"
             >
-              {{ registerOpen() ? 'Hide registration' : 'Register a new person' }}
+              {{ text(registerOpen() ? 'hideRegistration' : 'registerNewPerson') }}
             </button>
             <section
               [hidden]="!registerOpen()"
@@ -192,7 +183,7 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
               aria-labelledby="person-registration-title"
             >
               <h2 id="person-registration-title" class="mb-4 text-xl font-semibold">
-                Register person
+                {{ text('registerPerson') }}
               </h2>
               <lib-driver-person-form
                 [cities]="cities()"
@@ -206,32 +197,31 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
       }
       @if (personStore.error(); as error) {
         <div hlmAlert variant="destructive" role="alert" class="my-4">
-          <h2 hlmAlertTitle>Person could not be saved</h2>
-          <p hlmAlertDescription>{{ error.message }}</p>
+          <h2 hlmAlertTitle>{{ text('personSaveFailed') }}</h2>
+          <p hlmAlertDescription>{{ safeError(error, 'personFailedGeneric') }}</p>
           @for (field of personErrors(); track field.key) {
-            <p>{{ field.key }}: {{ field.messages.join(' ') }}</p>
+            <p>{{ fieldLabel(field.key) }}: {{ text('serverFieldInvalid') }}</p>
           }
         </div>
       }
       @if (personStore.unconfirmed()) {
-        <p role="alert">
-          The server did not return a persisted person. Verify the people list before registering
-          again. Driver saving is unavailable.
-        </p>
+        <p role="alert">{{ text('persistedPersonMissing') }}</p>
       }
       @if (id() === null && selected()) {
         @switch (store.detailStatus()) {
           @case ('loading') {
-            <p role="status">Checking existing driver information...</p>
+            <p role="status">{{ text('checkExistingDriver') }}</p>
           }
           @case ('denied') {
             <p role="alert">
-              Existing driver information could not be authorized. Driver saving is unavailable.
+              {{ text('existingDriverDenied') }}
             </p>
           }
           @case ('error') {
-            <p role="alert">{{ store.detailError()?.message }}</p>
-            <button hlmBtn variant="outline" (click)="reload()">Retry driver check</button>
+            <p role="alert">{{ safeError(store.detailError(), 'detailFailedGeneric') }}</p>
+            <button hlmBtn variant="outline" (click)="reload()">
+              {{ text('retryDriverCheck') }}
+            </button>
           }
         }
         @if (!ready()) {
@@ -242,15 +232,14 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
             [disabled]="busy()"
             (click)="changePerson()"
           >
-            Choose another person
+            {{ text('chooseAnotherPerson') }}
           </button>
         }
       }
       @if (ready()) {
         @if (id() === null && store.detail()) {
           <p role="status" class="mb-4">
-            This person already has a driver record. Existing licence and documents are loaded;
-            saving will update that record.
+            {{ text('existingDriverNotice') }}
           </p>
         }
         <section
@@ -259,10 +248,10 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p class="text-muted-foreground text-sm">Persisted person</p>
+              <p class="text-muted-foreground text-sm">{{ text('persistedPerson') }}</p>
               <h2 id="selected-person-title" class="text-xl font-semibold">{{ personName() }}</h2>
               <p class="text-muted-foreground mt-1 text-sm">
-                Person ID {{ personId() }} | National ID {{ personNationalId() ?? '-' }}
+                {{ personIdentity() }}
               </p>
             </div>
             @if (id() === null) {
@@ -273,7 +262,7 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
                 [disabled]="busy() || personDirty()"
                 (click)="changePerson()"
               >
-                Choose another person
+                {{ text('chooseAnotherPerson') }}
               </button>
             }
             <button
@@ -283,11 +272,11 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
               [disabled]="busy()"
               (click)="togglePersonEditor()"
             >
-              {{ editPerson() ? 'Hide person editor' : 'Edit person details' }}
+              {{ text(editPerson() ? 'hidePersonEditor' : 'editPerson') }}
             </button>
           </div>
           @if (personStore.loading()) {
-            <p role="status" class="mt-4">Loading person details...</p>
+            <p role="status" class="mt-4">{{ text('loadingPerson') }}</p>
           }
           @if (currentPerson(); as person) {
             <div class="mt-5" [hidden]="!editPerson()">
@@ -302,26 +291,23 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
             </div>
           }
           @if (personStore.saved()) {
-            <p class="mt-3 text-sm" role="status">Person details saved.</p>
+            <p class="mt-3 text-sm" role="status">{{ text('personSaved') }}</p>
           }
         </section>
         @if (store.saveError(); as error) {
           <div hlmAlert variant="destructive" role="alert" class="mb-5">
-            <h2 hlmAlertTitle>Driver could not be saved</h2>
-            <p hlmAlertDescription>{{ error.message }}</p>
+            <h2 hlmAlertTitle>{{ text('driverSaveFailed') }}</h2>
+            <p hlmAlertDescription>{{ safeError(error, 'saveFailedGeneric') }}</p>
             @for (field of driverErrors(); track field.key) {
-              <p>{{ field.key }}: {{ field.messages.join(' ') }}</p>
+              <p>{{ fieldLabel(field.key) }}: {{ text('serverFieldInvalid') }}</p>
             }
           </div>
         }
         @if (localError()) {
-          <p role="alert" class="mb-4">{{ localError() }}</p>
+          <p role="alert" class="mb-4">{{ text(localError()!) }}</p>
         }
         @if (store.saveOutcome() === 'unconfirmed') {
-          <p role="alert" class="mb-4">
-            The server accepted the request without confirming the saved record. Verify driver
-            details before saving again.
-          </p>
+          <p role="alert" class="mb-4">{{ text('saveUnconfirmed') }}</p>
         }
         <form
           novalidate
@@ -330,48 +316,42 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
           [attr.aria-busy]="store.saving()"
         >
           <section aria-labelledby="licence-title" class="max-w-md">
-            <h2 id="licence-title" class="mb-4 text-xl font-semibold">Driver information</h2>
+            <h2 id="licence-title" class="mb-4 text-xl font-semibold">
+              {{ text('driverInformation') }}
+            </h2>
             <lib-lookup-select
               id="driver-licence"
-              label="Licence value"
-              placeholder="Select licence value"
+              [language]="language()"
+              [label]="DRIVER_TEXT.licenceValue"
+              [placeholder]="DRIVER_TEXT.selectLicence"
+              [errorLabel]="DRIVER_TEXT.selectLicenceRequired"
+              [validationText]="licenceValidationText"
               [field]="driverForm.licence"
               [options]="licenceOptions"
             />
             <p class="text-muted-foreground mt-2 text-sm">
-              Values are shown as stored. No qualification or availability is inferred.
+              {{ text('licenceStoredNote') }}
             </p>
           </section>
           <fieldset hlmFieldSet [disabled]="unavailable()">
-            <legend hlmFieldLegend>Document replacements</legend>
+            <legend hlmFieldLegend>{{ text('documentReplacements') }}</legend>
             <p class="text-muted-foreground mb-5 text-sm">
-              Optional. Existing documents are preserved unless you choose a replacement. Removal is
-              not available. Maximum 160 KiB per image.
+              {{ text('documentReplacementNote') }}
             </p>
             <div class="grid gap-6 sm:grid-cols-2">
               @for (document of documents; track document.key) {
                 <div>
-                  @if (store.detail()?.driver?.[document.key]; as image) {
-                    <figure class="border-border mb-3 border p-3">
-                      <figcaption class="text-muted-foreground mb-2 text-sm">
-                        Current {{ document.label }}
-                      </figcaption>
-                      <img
-                        [src]="image"
-                        [alt]="'Current ' + document.label"
-                        class="max-h-40 max-w-full object-contain"
-                      />
-                    </figure>
-                  }
                   <lib-file-upload
                     [id]="'driver-' + document.key"
+                    [language]="language()"
                     [label]="document.label"
                     [allowedTypes]="imageTypes"
                     [maxBytes]="163840"
-                    policyDescription="JPEG, PNG or WebP. Up to 160 KiB. Existing documents are kept unless replaced."
+                    [policyDescription]="DRIVER_TEXT.documentImagePolicy"
                     [existingName]="
-                      store.detail()?.driver?.[document.key] ? 'current document' : null
+                      store.detail()?.driver?.[document.key] ? document.currentLabel : null
                     "
+                    [existingPreview]="store.detail()?.driver?.[document.key] ?? null"
                     [disabled]="unavailable()"
                     [resetKey]="resetKey()"
                     [value]="uploads()[document.key]"
@@ -388,14 +368,14 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
               class="min-h-11"
               [disabled]="unavailable() || uploadsPending() || personDirty()"
             >
-              {{ store.saving() ? 'Saving driver...' : 'Save driver' }}
+              {{ text(store.saving() ? 'savingDriver' : 'saveDriver') }}
             </button>
             <p class="text-muted-foreground text-sm">
-              Saving may assign the linked account the Driver role.
+              {{ text('roleAssignmentNote') }}
             </p>
             @if (personDirty()) {
               <p role="status">
-                Save person changes first, or discard them before saving the driver.
+                {{ text('savePersonFirst') }}
               </p>
               <button
                 hlmBtn
@@ -404,7 +384,7 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
                 [disabled]="busy()"
                 (click)="discardPersonDraft()"
               >
-                Discard person changes
+                {{ text('discardPersonChanges') }}
               </button>
             }
           </footer>
@@ -415,6 +395,8 @@ export function driverReplacement(selection: UploadSelection): TransportImageUpl
 })
 export class DriverEditor {
   protected readonly route = inject(ActivatedRoute)
+  protected readonly language = inject(DRIVER_LANGUAGE)
+  protected readonly DRIVER_TEXT = DRIVER_TEXT
   protected readonly config = inject(DRIVER_FEATURE)
   protected readonly store = inject(DriversStore)
   protected readonly people = inject(PeopleSearchStore)
@@ -440,22 +422,17 @@ export class DriverEditor {
   protected readonly selected = signal<PersonRow | null>(null)
   protected readonly registerOpen = signal(false)
   protected readonly editPerson = signal(false)
-  protected readonly searched = signal(false)
-  private readonly searchDraft = signal({ text: '' })
+  protected readonly personSearchText = signal('')
   private readonly searchQuery = signal({ text: '', pageIndex: 0, pageSize: 10 })
-  protected readonly personSearchForm = form(this.searchDraft)
-  protected readonly personColumns: readonly DataTableColumn<PersonRow>[] = [
-    { accessorKey: 'fullName', header: 'Person' },
-    { accessorKey: 'nationalId', header: 'National ID' },
-  ]
   protected readonly personRowId = (row: PersonRow) => String(row.id)
-  protected readonly personRowLabel = (row: PersonRow) => row.fullName ?? `Person ${row.id}`
-  protected readonly personPage = computed<DataTablePage>(() => ({
-    ...this.searchQuery(),
-    totalPages: this.people.page()?.pagination.totalPages ?? 0,
-    hasPreviousPage: this.people.page()?.pagination.hasPreviousPage ?? false,
-    hasNextPage: this.people.page()?.pagination.hasNextPage ?? false,
-  }))
+  protected readonly personRowLabel = (row: PersonRow): BilingualText => ({
+    en: row.fullName ?? `${driverText('en', 'person')} ${row.id}`,
+    fa: row.fullName ?? `${driverText('fa', 'person')} ${row.id}`,
+  })
+  protected readonly personOptionDescription = (row: PersonRow): BilingualText | null =>
+    row.nationalId === null ? null : { en: row.nationalId, fa: row.nationalId }
+  protected readonly licenceValidationText = (kind: string) =>
+    driverTextPair(kind === 'required' ? 'selectLicenceRequired' : 'selectLicenceKnown')
   protected readonly ready = computed(() =>
     this.id() === null
       ? this.selected() !== null && ['missing', 'ready'].includes(this.store.detailStatus())
@@ -472,11 +449,12 @@ export class DriverEditor {
       ) ?? null
     )
   })
-  protected readonly personName = computed(
-    () =>
+  protected readonly personName = computed(() => {
+    const name =
       this.selected()?.fullName ??
-      [this.currentPerson()?.firstName, this.currentPerson()?.lastName].filter(Boolean).join(' '),
-  )
+      [this.currentPerson()?.firstName, this.currentPerson()?.lastName].filter(Boolean).join(' ')
+    return name || `${this.text('person')} ${this.personId() ?? ''}`
+  })
   protected readonly personNationalId = computed(
     () => this.selected()?.nationalId ?? this.currentPerson()?.nationalId,
   )
@@ -501,29 +479,23 @@ export class DriverEditor {
   )
   protected readonly driverForm = form(this.draft, path => {
     disabled(path, () => this.unavailable())
-    required(path.licence, { message: 'Choose a licence value.' })
-    validate(path.licence, ({ value }) =>
-      !value() || ['1', '2'].includes(value())
+    validate(path.licence, ({ value }) => {
+      if (!value()) return { kind: 'required', message: this.text('selectLicenceRequired') }
+      return ['1', '2'].includes(value())
         ? null
-        : { kind: 'licence', message: 'Choose licence value 1 or 2.' },
-    )
+        : { kind: 'licence', message: this.text('selectLicenceKnown') }
+    })
   })
   protected readonly licenceOptions = [
     { value: '1', label: '1' },
     { value: '2', label: '2' },
   ]
-  protected readonly localError = signal<string | null>(null)
+  protected readonly localError = signal<DriverTextKey | null>(null)
   protected readonly personErrors = computed(() =>
-    Object.entries(this.personStore.error()?.fieldErrors ?? {}).map(([key, messages]) => ({
-      key,
-      messages,
-    })),
+    Object.keys(this.personStore.error()?.fieldErrors ?? {}).map(key => ({ key })),
   )
   protected readonly driverErrors = computed(() =>
-    Object.entries(this.store.saveError()?.fieldErrors ?? {}).map(([key, messages]) => ({
-      key,
-      messages,
-    })),
+    Object.keys(this.store.saveError()?.fieldErrors ?? {}).map(key => ({ key })),
   )
   private readonly personForms = viewChildren(DriverPersonForm)
   protected readonly personDirty = computed(() => this.personForms().some(form => form.dirty()))
@@ -531,6 +503,28 @@ export class DriverEditor {
   private decision: ((value: boolean) => void) | null = null
   private pendingLeave: Promise<boolean> | null = null
   private saved = false
+
+  protected text(key: DriverTextKey): string {
+    return driverText(this.language(), key)
+  }
+
+  protected safeError(error: unknown, fallback: Parameters<typeof safeDriverError>[2]): string {
+    return safeDriverError(error, this.language(), fallback)
+  }
+
+  protected fieldLabel(key: string): string {
+    return driverFieldLabel(key, this.language())
+  }
+
+  protected deniedMessage(): string {
+    return this.config.deniedMessage?.[this.language()] ?? this.text('accessManageDenied')
+  }
+
+  protected personIdentity(): string {
+    return this.text('personIdNationalId')
+      .replace('{id}', String(this.personId() ?? '-'))
+      .replace('{nationalId}', this.personNationalId() ?? '-')
+  }
 
   constructor() {
     afterNextRender(() => this.hydrated.set(true))
@@ -550,13 +544,12 @@ export class DriverEditor {
         this.selected.set(null)
         this.registerOpen.set(false)
         this.editPerson.set(false)
-        this.searched.set(false)
         this.draft.set({ licence: '' })
         this.driverForm().reset()
         this.uploads.set(emptyUploads())
         this.resetKey.update(value => value + 1)
         this.localError.set(null)
-        this.searchDraft.set({ text: '' })
+        this.personSearchText.set('')
         this.finishLeave(false)
         if (allowed && id) this.store.loadDetail(id)
       })
@@ -619,17 +612,16 @@ export class DriverEditor {
     const id = this.id() ?? this.selected()?.id
     if (id) this.store.loadDetail(id)
   }
-  protected searchPeople(event: Event) {
-    event.preventDefault()
-    this.searchQuery.set({ ...this.searchQuery(), text: this.searchDraft().text, pageIndex: 0 })
-    this.loadPeople()
-  }
-  protected pagePeople(page: { pageIndex: number; pageSize: number }) {
-    this.searchQuery.update(query => ({ ...query, ...page }))
+  protected searchPeople(value: string) {
+    this.personSearchText.set(value)
+    this.searchQuery.set({ ...this.searchQuery(), text: value, pageIndex: 0 })
+    if (value.trim().length < 2) {
+      this.people.clear()
+      return
+    }
     this.loadPeople()
   }
   protected loadPeople() {
-    this.searched.set(true)
     const query = this.searchQuery()
     const numeric = /^\d+$/.test(query.text.trim())
     this.people.load({
@@ -645,6 +637,7 @@ export class DriverEditor {
       this.personStore.clear()
       this.editPerson.set(false)
       this.selected.set(person)
+      this.personSearchText.set(person.fullName ?? `${this.text('person')} ${person.id}`)
       this.store.loadDetail(person.id)
     }
   }
@@ -706,14 +699,14 @@ export class DriverEditor {
             JSON.stringify({ ...draft, id, companyId: this.api.companyId() }),
           ).length > 1048576
         )
-          throw new Error(
-            'Combined images exceed the 1 MiB request limit. Choose smaller replacements.',
-          )
+          throw new Error('combined-images-too-large')
         this.localError.set(null)
         this.store.save(id, draft)
       } catch (error) {
         this.localError.set(
-          error instanceof Error ? error.message : 'Unable to prepare driver documents.',
+          error instanceof Error && error.message === 'combined-images-too-large'
+            ? 'imageSizeExceeded'
+            : 'imagePrepareFailed',
         )
       }
     })

@@ -192,6 +192,7 @@ export const appRoutes: Route[] = [
   ...createCompanyRoutes({
     path: 'companies',
     apiUrl: '/api/v1',
+    language: () => inject(PreferencesStore).language,
     heading: 'Companies',
     actionLabel: 'Open workspace',
     actionCommands: company => ['/client', company.id],
@@ -256,7 +257,7 @@ export const appRoutes: Route[] = [
       {
         path: 'drivers',
         loadChildren: () =>
-          import('@org/panel-drivers').then(({ createDriverRoutes }) =>
+          import('@org/panel-drivers').then(({ createDriverRoutes, driverTextPair }) =>
             createDriverRoutes({
               path: '',
               apiUrl: '/api',
@@ -325,8 +326,7 @@ export const appRoutes: Route[] = [
                     )
                 },
               },
-              deniedMessage:
-                'Driver management requires an Admin or Manager role and an authorized company context.',
+              deniedMessage: driverTextPair('accessManageDenied'),
             }),
           ),
       },

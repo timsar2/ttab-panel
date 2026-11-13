@@ -3,13 +3,13 @@ import { Routes } from '@angular/router'
 import { authGuard } from '@org/auth-data-access'
 import { DriversDataConfig, provideDriversData } from '@org/transport-drivers-data-access'
 import { PeopleDataConfig, providePeopleData } from '@org/transport-people-data-access'
-import type { AutocompleteLanguage } from '@org/ui-forms'
+import type { AutocompleteLanguage, BilingualText } from '@org/ui-forms'
 import type { DriverEditor } from './ui/driver-editor'
 
 export interface DriverFeatureConfig extends DriversDataConfig {
   readonly path: string
   readonly heading?: string
-  readonly deniedMessage?: string
+  readonly deniedMessage?: BilingualText
   readonly language?: () => Signal<AutocompleteLanguage>
   readonly people: PeopleDataConfig
   readonly canManage?: () => Signal<boolean>
@@ -56,6 +56,7 @@ export function createDriverRoutes(config: DriverFeatureConfig): Routes {
         },
         {
           path: 'new',
+          data: { breadcrumb: null },
           canDeactivate: [canLeave],
           loadComponent: () => import('./ui/driver-editor').then(m => m.DriverEditor),
         },
@@ -63,12 +64,14 @@ export function createDriverRoutes(config: DriverFeatureConfig): Routes {
         { path: config.legacyPaths?.detail ?? 'detail/:id', pathMatch: 'full', redirectTo: ':id' },
         {
           path: ':id/edit',
+          data: { breadcrumb: null },
           canDeactivate: [canLeave],
           runGuardsAndResolvers: 'pathParamsChange',
           loadComponent: () => import('./ui/driver-editor').then(m => m.DriverEditor),
         },
         {
           path: ':id',
+          data: { breadcrumb: null },
           runGuardsAndResolvers: 'pathParamsChange',
           loadComponent: () => import('./ui/driver-detail').then(m => m.DriverDetailPage),
         },

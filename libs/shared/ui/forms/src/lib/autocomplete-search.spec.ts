@@ -8,6 +8,26 @@ interface Result {
 }
 
 describe('AutocompleteSearch', () => {
+  beforeAll(() => {
+    if (!HTMLElement.prototype.scrollIntoView) HTMLElement.prototype.scrollIntoView = vi.fn()
+    if (!globalThis.ResizeObserver) {
+      Object.defineProperty(globalThis, 'ResizeObserver', {
+        configurable: true,
+        value: class {
+          observe() {
+            return undefined
+          }
+          unobserve() {
+            return undefined
+          }
+          disconnect() {
+            return undefined
+          }
+        },
+      })
+    }
+  })
+
   async function setup() {
     await TestBed.configureTestingModule({ imports: [AutocompleteSearch] }).compileComponents()
     const fixture = TestBed.createComponent(AutocompleteSearch<Result>)
@@ -21,7 +41,6 @@ describe('AutocompleteSearch', () => {
       fa: 'نام یا کد ملی را وارد کنید',
     })
     fixture.componentRef.setInput('clearLabel', { en: 'Clear search', fa: 'پاک کردن جستجو' })
-    fixture.componentRef.setInput('clearText', { en: 'Clear', fa: 'پاک کردن' })
     fixture.componentRef.setInput('loadingLabel', { en: 'Searching...', fa: 'در حال جستجو...' })
     fixture.componentRef.setInput('minimumQueryLabel', {
       en: 'Enter at least 2 characters to search.',
@@ -63,17 +82,17 @@ describe('AutocompleteSearch', () => {
     expect(search).toHaveBeenCalledWith('Sam')
     expect(input.getAttribute('role')).toBe('combobox')
     expect(input.getAttribute('aria-expanded')).toBe('true')
-    expect(fixture.nativeElement.querySelector('[role=listbox]')).not.toBeNull()
-    expect(fixture.nativeElement.querySelector('[role=option]')?.textContent).toContain(
-      '0012345678',
-    )
+    expect(document.body.querySelector('[role=listbox]')).not.toBeNull()
+    expect(document.body.querySelector('[role=option]')?.textContent).toContain('0012345678')
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     fixture.detectChanges()
-    expect(input.getAttribute('aria-activedescendant')).toBe('driver-search-option-0')
+    const activeOptionId = input.getAttribute('aria-activedescendant')
+    expect(activeOptionId).toBeTruthy()
+    expect(document.body.querySelector(`#${activeOptionId}`)?.getAttribute('role')).toBe('option')
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     fixture.detectChanges()
     expect(selected).toHaveBeenCalledWith({ id: 12, name: 'Sam Driver', nationalId: '0012345678' })
-    expect(fixture.componentInstance.query()).toBe('Sam Driver')
+    expect(fixture.componentInstance.query()).toBe('Sam')
     expect(input.getAttribute('aria-expanded')).toBe('false')
     fixture.componentRef.setInput('language', 'fa')
     fixture.detectChanges()
@@ -100,10 +119,11 @@ describe('AutocompleteSearch', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }))
     fixture.detectChanges()
     expect(search).toHaveBeenCalledWith('')
-    expect(fixture.nativeElement.textContent).toContain('برای جستجو حداقل ۲ نویسه وارد کنید.')
-    const clear = fixture.nativeElement.querySelector('button') as HTMLButtonElement
+    expect(document.body.textContent).toContain('برای جستجو حداقل ۲ نویسه وارد کنید.')
+    const clear = fixture.nativeElement.querySelector(
+      '[data-slot="autocomplete-clear"]',
+    ) as HTMLButtonElement
     expect(clear.getAttribute('aria-label')).toBe('پاک کردن جستجو')
-    expect(clear.textContent).toContain('پاک کردن')
     clear.click()
     fixture.detectChanges()
     expect(fixture.componentInstance.query()).toBe('')

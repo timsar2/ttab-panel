@@ -171,7 +171,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   })
   const fetcher = options.fetch ?? globalThis.fetch
   const storage = options.storage ?? createMemorySessionStorage()
-  const maxSessionLifetime = config.production ? 12 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000
+  const maxSessionLifetime = config.production ? 12 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
   const report = (diagnostic: AuthDiagnostic) => {
     try {
       options.onDiagnostic?.(diagnostic)

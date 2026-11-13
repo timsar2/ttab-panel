@@ -15,14 +15,83 @@ import {
   untracked,
   viewChild,
 } from '@angular/core'
+import { NgIcon, provideIcons } from '@ng-icons/core'
+import { lucideFileCode, lucideUpload } from '@ng-icons/lucide'
 import { HlmButton } from '@spartan-ng/helm/button'
+import { HlmAttachmentImports } from '@spartan-ng/helm/attachment'
 import { HlmFieldImports } from '@spartan-ng/helm/field'
-import { HlmInput } from '@spartan-ng/helm/input'
+import { textForLanguage, type AutocompleteLanguage, type BilingualText } from './localized-text'
+import type { AttachmentState } from '@spartan-ng/helm/attachment'
+
+export type FileUploadErrorCode =
+  'fileTypeMismatch' | 'fileTooLarge' | 'readerUnavailable' | 'invalidDataUrl' | 'readFailure'
+
+export interface FileUploadCopy {
+  readonly chooseFile: BilingualText
+  readonly noFile: BilingualText
+  readonly keepingExisting: BilingualText
+  readonly readingFile: BilingualText
+  readonly replacementReady: BilingualText
+  readonly invalidUnchanged: BilingualText
+  readonly markedForRemoval: BilingualText
+  readonly keepExisting: BilingualText
+  readonly removeFile: BilingualText
+  readonly downloadSelected: BilingualText
+  readonly previewAlt: BilingualText
+  readonly noTypes: BilingualText
+  readonly allowedTypes: BilingualText
+  readonly maximumSize: BilingualText
+  readonly byteUnit: BilingualText
+  readonly errors: Readonly<Record<FileUploadErrorCode, BilingualText>>
+}
+
+export const DEFAULT_FILE_UPLOAD_COPY: FileUploadCopy = {
+  chooseFile: { en: 'Choose file', fa: 'انتخاب فایل' },
+  noFile: { en: 'No file chosen', fa: 'فایلی انتخاب نشده است' },
+  keepingExisting: { en: 'Keeping existing file', fa: 'فایل فعلی حفظ می‌شود' },
+  readingFile: { en: 'Reading file…', fa: 'در حال خواندن فایل…' },
+  replacementReady: { en: 'Replacement file ready', fa: 'فایل جایگزین آماده است' },
+  invalidUnchanged: {
+    en: 'File not accepted. Existing file is unchanged.',
+    fa: 'فایل پذیرفته نشد. فایل فعلی تغییری نکرده است.',
+  },
+  markedForRemoval: {
+    en: 'Existing file marked for removal',
+    fa: 'فایل فعلی برای حذف علامت‌گذاری شد',
+  },
+  keepExisting: { en: 'Keep existing / reset selection', fa: 'حفظ فایل فعلی / بازنشانی انتخاب' },
+  removeFile: { en: 'Remove file', fa: 'حذف فایل' },
+  downloadSelected: { en: 'Download selected file', fa: 'بارگیری فایل انتخاب‌شده' },
+  previewAlt: { en: 'Selected file preview', fa: 'پیش‌نمایش فایل انتخاب‌شده' },
+  noTypes: { en: 'No file types configured', fa: 'نوع فایلی پیکربندی نشده است' },
+  allowedTypes: { en: 'Allowed: {types}', fa: 'انواع مجاز: {types}' },
+  maximumSize: { en: 'Maximum: {size}', fa: 'حداکثر اندازه: {size}' },
+  byteUnit: { en: 'bytes', fa: 'بایت' },
+  errors: {
+    fileTypeMismatch: {
+      en: 'The file type and filename extension must match an allowed type.',
+      fa: 'نوع فایل و پسوند نام آن باید با یکی از انواع مجاز مطابقت داشته باشد.',
+    },
+    fileTooLarge: {
+      en: 'Choose a nonempty file within the maximum allowed size.',
+      fa: 'فایلی غیرخالی با اندازه کمتر از حداکثر مجاز انتخاب کنید.',
+    },
+    readerUnavailable: {
+      en: 'File reading is unavailable in this environment.',
+      fa: 'خواندن فایل در این محیط در دسترس نیست.',
+    },
+    invalidDataUrl: { en: 'The file could not be read.', fa: 'خواندن فایل امکان‌پذیر نبود.' },
+    readFailure: {
+      en: 'The file could not be read. Select it again to retry.',
+      fa: 'خواندن فایل ناموفق بود. برای تلاش دوباره آن را انتخاب کنید.',
+    },
+  },
+}
 
 export type UploadSelection =
   | { kind: 'keep' }
   | { kind: 'reading' }
-  | { kind: 'invalid'; message: string }
+  | { kind: 'invalid'; code: FileUploadErrorCode }
   | {
       kind: 'replace'
       file: { name: string; mime: string; size: number; extension: string; dataUrl: string }
@@ -31,23 +100,22 @@ export type UploadSelection =
 
 @Component({
   selector: 'lib-file-upload',
-  imports: [HlmButton, HlmFieldImports, HlmInput],
+  imports: [NgIcon, HlmAttachmentImports, HlmButton, HlmFieldImports],
+  providers: [provideIcons({ lucideFileCode, lucideUpload })],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block min-w-0', '[attr.id]': 'null' },
   template: `
-    <div hlmField class="min-w-0">
-      <label hlmFieldLabel [for]="id()">{{ label() }}</label>
+    <div hlmField class="min-w-0" [attr.dir]="language() === 'fa' ? 'rtl' : 'ltr'">
+      <label hlmFieldLabel [for]="id()">{{ text(label()) }}</label>
       <input
         #fileInput
-        hlmInput
-        class="h-auto min-h-11 w-full max-w-full min-w-0 file:min-h-11 file:min-w-11"
+        class="sr-only"
         type="file"
         [id]="id()"
         [accept]="accept()"
         [disabled]="unavailable()"
-        [forceInvalid]="value().kind === 'invalid'"
-        [attr.aria-label]="label()"
-        [attr.aria-invalid]="value().kind === 'invalid' ? 'true' : null"
+        tabindex="-1"
+        aria-hidden="true"
         [attr.aria-describedby]="
           id() +
           '-policy ' +
@@ -57,55 +125,73 @@ export type UploadSelection =
         "
         (change)="selectFile($event)"
       />
-      <p hlmFieldDescription class="wrap-anywhere" [id]="id() + '-policy'">
-        @if (policyDescription(); as description) {
-          {{ description }}
+      <div
+        hlmAttachment
+        orientation="vertical"
+        class="w-full max-w-full"
+        [state]="attachmentState()"
+      >
+        @if (attachmentPreview(); as image) {
+          <div hlmAttachmentMedia variant="image" class="h-36 min-h-36 w-full min-w-0 rounded-md">
+            <img
+              [src]="image"
+              [alt]="text(copy().previewAlt)"
+              class="h-full max-h-36 w-full max-w-full object-contain"
+            />
+          </div>
         } @else {
-          Allowed: {{ accept() || 'No file types configured' }}. Maximum: {{ maxBytes() }} bytes.
+          <div hlmAttachmentMedia class="h-36 min-h-36 w-full min-w-0 rounded-md">
+            <ng-icon name="lucideFileCode" aria-hidden="true" />
+          </div>
         }
-      </p>
-      <p hlmFieldDescription [id]="id() + '-status'" role="status" aria-live="polite">
-        @switch (value().kind) {
-          @case ('keep') {
-            {{ existingName() ? 'Keeping existing file: ' + existingName() : 'No file selected.' }}
+        <div hlmAttachmentContent class="w-full min-w-0 sm:flex-1">
+          <span hlmAttachmentTitle>{{ attachmentTitle() }}</span>
+          <span hlmAttachmentDescription [id]="id() + '-status'" role="status" aria-live="polite">
+            {{ attachmentStatus() }}
+          </span>
+          <span hlmAttachmentDescription [id]="id() + '-policy'">{{ policyText() }}</span>
+          @if (replacement(); as file) {
+            <span hlmAttachmentDescription>
+              {{ file.name }} · {{ file.mime }} · {{ formatBytes(file.size) }}
+            </span>
           }
-          @case ('reading') {
-            Reading file...
-          }
-          @case ('replace') {
-            Replacement file ready.
-          }
-          @case ('invalid') {
-            File not accepted. Existing file is unchanged.
-          }
-          @case ('remove') {
-            Existing file marked for removal.
-          }
-        }
-      </p>
+        </div>
+        <div hlmAttachmentActions class="w-full sm:w-auto">
+          <button
+            hlmAttachmentAction
+            size="sm"
+            class="min-h-11"
+            [attr.aria-label]="text(label()) + ': ' + text(copy().chooseFile)"
+            [attr.aria-invalid]="value().kind === 'invalid' ? 'true' : null"
+            [attr.aria-describedby]="
+              id() +
+              '-policy ' +
+              id() +
+              '-status' +
+              (value().kind === 'invalid' ? ' ' + id() + '-error' : '')
+            "
+            [disabled]="unavailable()"
+            (click)="openPicker()"
+          >
+            <ng-icon name="lucideUpload" aria-hidden="true" />
+            {{ text(copy().chooseFile) }}
+          </button>
+        </div>
+      </div>
       @if (invalidMessage(); as message) {
         <hlm-field-error [id]="id() + '-error'" [forceShow]="true">{{ message }}</hlm-field-error>
       }
       @if (replacement(); as file) {
-        <p hlmFieldDescription class="wrap-anywhere">
-          {{ file.name }} ({{ file.mime }}, {{ file.size }} bytes)
-        </p>
         @if (previewUrl(); as url) {
-          @if (file.mime.startsWith('image/')) {
-            <img
-              [src]="url"
-              [alt]="label() + ' preview'"
-              class="max-h-48 max-w-full object-contain"
-            />
-          } @else {
+          @if (!file.mime.startsWith('image/')) {
             <a
               hlmBtn
               variant="outline"
               class="min-h-11 min-w-11"
               [href]="url"
               [download]="file.name"
-              [disabled]="unavailable()"
-              >Download selected file</a
+              [attr.aria-disabled]="unavailable()"
+              >{{ text(copy().downloadSelected) }}</a
             >
           }
         }
@@ -120,7 +206,7 @@ export type UploadSelection =
             [disabled]="unavailable()"
             (click)="keep()"
           >
-            Keep existing / reset selection
+            {{ text(copy().keepExisting) }}
           </button>
         }
         @if (allowRemove()) {
@@ -132,7 +218,7 @@ export type UploadSelection =
             [disabled]="unavailable()"
             (click)="remove()"
           >
-            Remove
+            {{ text(copy().removeFile) }}
           </button>
         }
       </div>
@@ -141,13 +227,16 @@ export type UploadSelection =
 })
 export class FileUploadControl {
   readonly value = model<UploadSelection>({ kind: 'keep' })
+  readonly language = input<AutocompleteLanguage>('en')
+  readonly copy = input<FileUploadCopy>(DEFAULT_FILE_UPLOAD_COPY)
   readonly id = input.required<string>()
-  readonly label = input.required<string>()
+  readonly label = input.required<BilingualText>()
   readonly allowedTypes =
     input.required<readonly { mime: string; extensions: readonly string[] }[]>()
   readonly maxBytes = input.required<number>()
-  readonly policyDescription = input<string | null>(null)
-  readonly existingName = input<string | null>(null)
+  readonly policyDescription = input<BilingualText | null>(null)
+  readonly existingName = input<BilingualText | null>(null)
+  readonly existingPreview = input<string | null>(null)
   readonly disabled = input(false)
   readonly allowRemove = input(false)
   readonly resetKey = input<string | number>(0)
@@ -165,7 +254,57 @@ export class FileUploadControl {
   })
   protected readonly invalidMessage = computed(() => {
     const selection = this.value()
-    return selection.kind === 'invalid' ? selection.message : null
+    return selection.kind === 'invalid' ? this.text(this.copy().errors[selection.code]) : null
+  })
+  protected readonly attachmentState = computed<AttachmentState>(() => {
+    switch (this.value().kind) {
+      case 'invalid':
+        return 'error'
+      case 'reading':
+        return 'processing'
+      case 'replace':
+        return 'done'
+      case 'remove':
+        return 'error'
+      default:
+        return this.existingName() ? 'done' : 'idle'
+    }
+  })
+  protected readonly attachmentTitle = computed(() => {
+    const existingName = this.existingName()
+    return (
+      this.replacement()?.name ??
+      (existingName ? this.text(existingName) : this.text(this.copy().noFile))
+    )
+  })
+  protected readonly attachmentStatus = computed(() => {
+    switch (this.value().kind) {
+      case 'keep': {
+        const existingName = this.existingName()
+        return existingName
+          ? `${this.text(this.copy().keepingExisting)}: ${this.text(existingName)}`
+          : this.text(this.copy().noFile)
+      }
+      case 'reading':
+        return this.text(this.copy().readingFile)
+      case 'replace':
+        return this.text(this.copy().replacementReady)
+      case 'invalid':
+        return this.text(this.copy().invalidUnchanged)
+      case 'remove':
+        return this.text(this.copy().markedForRemoval)
+    }
+  })
+  protected readonly attachmentPreview = computed(() => {
+    const replacement = this.replacement()
+    return replacement?.mime.startsWith('image/') ? this.previewUrl() : this.existingPreview()
+  })
+  protected readonly policyText = computed(() => {
+    const description = this.policyDescription()
+    if (description) return this.text(description)
+    const copy = this.copy()
+    const types = this.accept() || this.text(copy.noTypes)
+    return `${this.text(copy.allowedTypes).replace('{types}', types)} · ${this.text(copy.maximumSize).replace('{size}', this.formatBytes(this.maxBytes()))}`
   })
   protected readonly previewUrl = signal<string | null>(null)
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID))
@@ -174,6 +313,7 @@ export class FileUploadControl {
     id: this.id(),
     key: this.resetKey(),
     name: this.existingName(),
+    preview: this.existingPreview(),
     types: this.allowedTypes(),
     maxBytes: this.maxBytes(),
   }))
@@ -181,6 +321,21 @@ export class FileUploadControl {
   private epoch = 0
   private objectUrl: string | null = null
   private ownedSelection: UploadSelection | null = null
+
+  protected text(value: BilingualText): string {
+    return textForLanguage(value, this.language())
+  }
+
+  protected formatBytes(bytes: number): string {
+    const locale = this.language() === 'fa' ? 'fa-IR' : 'en-US'
+    if (bytes >= 1024)
+      return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(bytes / 1024)} KiB`
+    return `${new Intl.NumberFormat(locale).format(bytes)} ${this.text(this.copy().byteUnit)}`
+  }
+
+  protected openPicker(): void {
+    if (!this.unavailable()) this.fileInput()?.nativeElement.click()
+  }
 
   constructor() {
     afterNextRender(() => {
@@ -225,7 +380,7 @@ export class FileUploadControl {
     if (!extension) {
       this.publish({
         kind: 'invalid',
-        message: 'The file MIME type and filename extension must match an allowed type.',
+        code: 'fileTypeMismatch',
       })
       return
     }
@@ -237,12 +392,12 @@ export class FileUploadControl {
     ) {
       this.publish({
         kind: 'invalid',
-        message: 'Choose a nonempty file within the configured maximum byte size.',
+        code: 'fileTooLarge',
       })
       return
     }
     if (!this.browser || typeof FileReader === 'undefined') {
-      this.publish({ kind: 'invalid', message: 'File reading is unavailable in this environment.' })
+      this.publish({ kind: 'invalid', code: 'readerUnavailable' })
       return
     }
     const reading: UploadSelection = { kind: 'reading' }
@@ -262,7 +417,7 @@ export class FileUploadControl {
         !reader.result.startsWith(`data:${file.type};base64,`)
       ) {
         this.release()
-        this.publish({ kind: 'invalid', message: 'The file could not be read as a data URL.' })
+        this.publish({ kind: 'invalid', code: 'invalidDataUrl' })
         return
       }
       this.reader = null
@@ -288,20 +443,14 @@ export class FileUploadControl {
     reader.onerror = reader.onabort = () => {
       if (!current()) return
       this.release()
-      this.publish({
-        kind: 'invalid',
-        message: 'The file could not be read. Select it again to retry.',
-      })
+      this.publish({ kind: 'invalid', code: 'readFailure' })
     }
     try {
       reader.readAsDataURL(file)
     } catch {
       if (current()) {
         this.release()
-        this.publish({
-          kind: 'invalid',
-          message: 'The file could not be read. Select it again to retry.',
-        })
+        this.publish({ kind: 'invalid', code: 'readFailure' })
       }
     }
   }

@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing'
 import { describe, expect, it } from 'vitest'
 import { AppLayout } from './app-layout'
 import { provideRouter } from '@angular/router'
+import { HlmSidebarService } from '@spartan-ng/helm/sidebar'
 
 @Component({
   imports: [AppLayout],
@@ -16,7 +17,39 @@ import { provideRouter } from '@angular/router'
 class Host {}
 
 describe('AppLayout', () => {
-  it('projects header, navigation and main without owning application state', async () => {
+  it('allows desktop icon collapse and exposes its current state accessibly', async () => {
+    await TestBed.configureTestingModule({
+      imports: [AppLayout],
+    }).compileComponents()
+    const fixture = TestBed.createComponent(AppLayout)
+    const sidebar = fixture.debugElement.injector.get(HlmSidebarService)
+    fixture.detectChanges()
+
+    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('[hlmSidebarTrigger]')
+    const wrapper: HTMLElement = fixture.nativeElement.querySelector('.theme-shell')
+    expect(trigger.getAttribute('aria-expanded')).toBe('true')
+    expect(trigger.getAttribute('aria-controls')).toBe('app-navigation')
+    expect(trigger.classList.contains('border')).toBe(true)
+    expect(fixture.nativeElement.querySelector('main[data-slot="sidebar-inset"]')).not.toBeNull()
+    expect(wrapper.style.getPropertyValue('--sidebar-width')).toBe(
+      'var(--app-layout-sidebar-width, 21.563rem)',
+    )
+    expect(wrapper.style.getPropertyValue('--sidebar-width')).not.toContain('var(--sidebar-width,')
+    expect(
+      fixture.nativeElement.querySelector('hlm-sidebar').getAttribute('data-collapsible'),
+    ).toBe('')
+
+    trigger.click()
+    fixture.detectChanges()
+
+    expect(sidebar.state()).toBe('collapsed')
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+    expect(
+      fixture.nativeElement.querySelector('hlm-sidebar').getAttribute('data-collapsible'),
+    ).toBe('icon')
+  })
+
+  it('projects header, navigation and main inside the Spartan inset', async () => {
     await TestBed.configureTestingModule({
       imports: [Host],
     }).compileComponents()
@@ -27,7 +60,7 @@ describe('AppLayout', () => {
     expect(element.querySelector('hlm-sidebar nav')?.textContent).toBe('Routes')
     expect(element.querySelector('.theme-brand')?.textContent).toBe('Example brand')
     expect(element.querySelector('main section')?.textContent).toBe('Workspace')
-    expect(element.querySelector('main')?.textContent).not.toContain('Account')
+    expect(element.querySelector('main')?.textContent).toContain('Account')
     expect(element.querySelector('main')?.textContent).not.toContain('Example brand')
   })
 
