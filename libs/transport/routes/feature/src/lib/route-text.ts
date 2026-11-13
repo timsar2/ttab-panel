@@ -46,8 +46,8 @@ export const ROUTE_TEXT = {
     fa: 'کلید نقشه وب نشان تنظیم نشده است. کلید قدیمی فقط برای سرویس مسیریابی است، نه کاشی‌های نقشه.',
   },
   mapOrderNote: {
-    en: 'The dotted connector shows station order only; no road geometry is stored for Routes.',
-    fa: 'خط نقطه‌چین فقط ترتیب ایستگاه‌ها را نشان می‌دهد؛ هندسه راه برای مسیر ذخیره نشده است.',
+    en: 'Stations are numbered in stored order; no road route geometry is stored for Routes.',
+    fa: 'ایستگاه‌ها به ترتیب ثبت‌شده شماره‌گذاری شده‌اند؛ هندسه راه برای مسیر ذخیره نشده است.',
   },
   linePending: {
     en: 'Line management is a separate feature and is not mounted yet.',

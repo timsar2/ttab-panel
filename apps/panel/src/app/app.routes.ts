@@ -26,6 +26,7 @@ import {
   lucideUserRoundCheck,
   lucideMap,
   lucideLifeBuoy,
+  lucideUserRoundCog,
 } from '@ng-icons/lucide'
 
 export function navigationFor(companyId: number | null, rtl: boolean): readonly LayoutNavItem[] {
@@ -112,6 +113,14 @@ export function navigationFor(companyId: number | null, rtl: boolean): readonly 
       hint: planned,
     },
     {
+      id: 'driver-line',
+      label: rtl ? 'خط راننده' : 'Driver-line assignments',
+      icon: lucideUserRoundCog,
+      group: operations,
+      commands: companyId ? ['/client', companyId, 'driver-line'] : undefined,
+      hint: choose,
+    },
+    {
       id: 'passengers',
       label: rtl ? 'مسافران' : 'Passengers',
       icon: lucideUsers,
@@ -176,6 +185,7 @@ function companyShellTranslations() {
           Breadcrumbs: 'مسیر راهنما',
           'Signed-in account': 'حساب واردشده',
           Drivers: 'رانندگان',
+          'Driver-line assignments': 'خط راننده',
           Routes: 'مسیرها',
           Route: 'مسیر',
           Vehicles: 'خودروها',
@@ -243,6 +253,7 @@ export const appRoutes: Route[] = [
         { path: 'people', label: 'People' },
         { path: 'users', label: 'Users' },
         { path: 'drivers', label: 'Drivers' },
+        { path: 'driver-line', label: 'Driver-line assignments' },
         { path: 'vehicles', label: 'Vehicles' },
         { path: 'direction', label: 'Routes' },
         { path: 'departure-times', label: 'Departure times' },
@@ -317,6 +328,13 @@ export const appRoutes: Route[] = [
         loadChildren: () =>
           import('./driver/driver.routes').then(({ createPanelDriverRoutes }) =>
             createPanelDriverRoutes(),
+          ),
+      },
+      {
+        path: 'driver-line',
+        loadChildren: () =>
+          import('./feature/driver-line/driver-line.routes').then(
+            ({ createPanelDriverLineRoutes }) => createPanelDriverLineRoutes(),
           ),
       },
     ],

@@ -50,7 +50,9 @@ Q13 gates calendar/timezone conversion; a valid date range does not prove an ava
 [ ] DRIVERLINE-17 Browser-test CRUD, conflict/failure recovery, company switching, RTL/LTR mobile, and keyboard overlays; verify protected SSR policy, no private transfer cache, and hydration safety if rendered.
 [ ] DRIVERLINE-18 Run discovered affected Bun/Nx verification targets and production build, recording mocked versus live results and independent Q15/resource-contract gate outcomes.
 
-## Evidence Placeholder
+## Evidence
 
-Implementation: pending. Contract decisions and owners: pending for Q05/Q13/Q15 and any resource extension.
-Verification: pending; attach dated commands, public-consumer results, browser artifacts, and live-backend gaps.
+Implementation (2026-11-13): Unified the legacy `/client/:companyId/driver-line/detail/:id` route into the existing assignment form. A route-scoped `DriverLineState` restores company ID from the parent URL, assignment ID from `:id`, and `directionId` from the URL query; the selected direction is kept in the query string so reloads restore it. The detail API hydrates the editable form on initial load/refresh. Driver selection uses the shared People autocomplete/search store and validates the selected person through `DriversApi`. The feature remains at `libs/panel/feature/driver-line`; it posts `{ companyId, driverId?, pageNumber, pageSize }` to `v1/lines/search-driver`, reads `v1/lines/driver/:id`, posts assignments to `v1/lines/driver`, and loads company Directions and dependent Lines. It does not add Vehicle/Shift fields or infer date-overlap rules. A dedicated typed assignment data-access store, full runtime response decoding, delete workflow, and authorization contract are not yet delivered.
+
+Contract decisions and owners: pending for Q01-Q05, Q13, Q15 and any resource extension. The panel currently limits writes and driver lookups to Admin/Manager; backend enforcement and read-role policy require confirmation.
+Verification: `bun nx test panel-driver-line`, `bun nx lint panel-driver-line`, and `bun nx build panel --configuration=development` passed on 2026-11-13 after this refactor. Unit/build evidence only; no browser flow or live-backend acceptance was run.

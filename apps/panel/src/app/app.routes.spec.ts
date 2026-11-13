@@ -14,4 +14,11 @@ describe('panel navigation', () => {
     expect(shift?.commands).toBeUndefined()
     expect(shift?.hint).toBe('Choose a company first')
   })
+
+  it('shows the Driver-Line link and opens its company list in Persian', () => {
+    const driverLine = navigationFor(2, true).find(item => item.id === 'driver-line')
+
+    expect(driverLine?.label).toBe('خط راننده')
+    expect(driverLine?.commands).toEqual(['/client', 2, 'driver-line'])
+  })
 })

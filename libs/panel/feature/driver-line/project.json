@@ -1,0 +1,10 @@
+{
+  "name": "panel-driver-line",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/panel/feature/driver-line/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:panel", "type:feature"],
+  "// targets": "to see all targets run: nx show project panel-driver-line --web",
+  "targets": {}
+}

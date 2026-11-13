@@ -100,30 +100,12 @@ export class NeshanMapComponent {
           order: point.order,
         },
       }))
-      const orderedLine =
-        points.length > 1
-          ? [
-              {
-                type: 'Feature' as const,
-                geometry: {
-                  type: 'LineString' as const,
-                  coordinates: points.map(point => [point.lng as number, point.lat as number]),
-                },
-                properties: { label: 'Station order' },
-              },
-            ]
-          : []
       const pointData: GeoJsonFeatureCollection = {
         type: 'FeatureCollection',
         features: pointFeatures,
       }
-      const lineData: GeoJsonFeatureCollection = {
-        type: 'FeatureCollection',
-        features: orderedLine,
-      }
 
-      this.setGeoJson(map, 'route-stations', pointData)
-      this.setGeoJson(map, 'route-station-order', lineData)
+      this.setStations(map, pointData)
       this.fit(map, points)
     })
     afterNextRender(() => void this.createMap())
@@ -165,52 +147,38 @@ export class NeshanMapComponent {
     }
   }
 
-  private setGeoJson(map: NeshanMap, sourceId: string, data: GeoJsonFeatureCollection) {
-    const existing = map.getSource(sourceId) as MutableGeoJsonSource | undefined
+  private setStations(map: NeshanMap, data: GeoJsonFeatureCollection) {
+    const existing = map.getSource('route-stations') as MutableGeoJsonSource | undefined
     if (existing?.setData) {
       existing.setData(data)
       return
     }
-    map.addSource(sourceId, { type: 'geojson', data: data as never })
-    if (sourceId === 'route-stations') {
-      map.addLayer({
-        id: 'route-station-points',
-        type: 'circle',
-        source: sourceId,
-        paint: {
-          'circle-radius': 8,
-          'circle-color': '#0f766e',
-          'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 2,
-        },
-      })
-      map.addLayer({
-        id: 'route-station-labels',
-        type: 'symbol',
-        source: sourceId,
-        layout: {
-          'text-field': ['get', 'label'],
-          'text-size': 12,
-          'text-offset': [0, 1.6],
-          'text-anchor': 'top',
-        },
-        paint: {
-          'text-color': '#172554',
-          'text-halo-color': '#ffffff',
-          'text-halo-width': 1.5,
-        },
-      })
-      return
-    }
+    map.addSource('route-stations', { type: 'geojson', data: data as never })
     map.addLayer({
-      id: 'route-station-order-line',
-      type: 'line',
-      source: sourceId,
+      id: 'route-station-points',
+      type: 'circle',
+      source: 'route-stations',
       paint: {
-        'line-color': '#0f766e',
-        'line-width': 3,
-        'line-dasharray': [1.5, 1.5],
-        'line-opacity': 0.7,
+        'circle-radius': 8,
+        'circle-color': '#0f766e',
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 2,
+      },
+    })
+    map.addLayer({
+      id: 'route-station-labels',
+      type: 'symbol',
+      source: 'route-stations',
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-size': 12,
+        'text-offset': [0, 1.6],
+        'text-anchor': 'top',
+      },
+      paint: {
+        'text-color': '#172554',
+        'text-halo-color': '#ffffff',
+        'text-halo-width': 1.5,
       },
     })
   }

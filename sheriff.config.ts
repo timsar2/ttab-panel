@@ -33,6 +33,8 @@ export const config: SheriffConfig = {
     'libs/transport/drivers/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/vehicles/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/vehicles/feature/src': ['scope:transport', 'type:feature'],
+    'libs/transport/lines/data-access/src': ['scope:transport', 'type:data'],
+    'libs/transport/lines/feature/src': ['scope:transport', 'type:feature'],
     'libs/transport/routes/data-access/src': ['scope:transport', 'type:data'],
     'libs/transport/routes/feature/src': ['scope:transport', 'type:feature'],
     'libs/transport/scheduling/data-access/src': ['scope:transport', 'type:data'],
@@ -44,6 +46,7 @@ export const config: SheriffConfig = {
     'libs/panel/drivers/src': ['scope:panel', 'type:feature'],
     'libs/panel/feature/user/src': ['scope:panel', 'type:feature'],
     'libs/panel/shift/src': ['scope:panel', 'type:feature'],
+    'libs/panel/feature/driver-line/src': ['scope:panel', 'type:feature'],
 
     'packages/shop/feature-<feature>/src': ['scope:shop', 'type:feature'],
     'packages/shop/data/src': ['scope:shop', 'type:data'],
