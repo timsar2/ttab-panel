@@ -10,8 +10,10 @@ import { Observable, defer, map, switchMap, take, throwError } from 'rxjs'
 import {
   ShiftDraft,
   ShiftGroupDraft,
-  ShiftTime,
-  decodeShift,
+  decodeShiftDetail,
+  decodeShiftListItem,
+  decodeShiftTime,
+  decodeShiftWriteResult,
   decodeShiftGroup,
   decodeShiftType,
   schedulingId,
@@ -88,7 +90,9 @@ export class SchedulingApi {
         value =>
           unwrapTransport(value, result => {
             const groups = this.rows(result, decodeShiftGroup)
-            if (groups.some(group => group.companyId !== companyId))
+            if (
+              groups.some(group => group.companyId !== undefined && group.companyId !== companyId)
+            )
               throw new TransportError(
                 'contract',
                 0,
@@ -105,7 +109,7 @@ export class SchedulingApi {
       this.http.request(
         'POST',
         this.config.endpoints.shifts,
-        value => unwrapTransport(value, result => this.rows(result, decodeShift)),
+        value => unwrapTransport(value, result => this.rows(result, decodeShiftListItem)),
         { companyId },
       ),
     )
@@ -122,19 +126,7 @@ export class SchedulingApi {
       this.http.request(
         'POST',
         this.config.endpoints.shiftTimes,
-        value =>
-          unwrapTransport(value, result =>
-            this.rows(result, row => {
-              const data = row as Record<string, unknown>
-              if (typeof data['name'] !== 'string' || typeof data['shiftTime'] !== 'string')
-                throw new TransportError('contract', 0, 'Invalid shift-time lookup.')
-              return {
-                id: schedulingId(data['id']),
-                name: data['name'],
-                shiftTime: data['shiftTime'],
-              } satisfies ShiftTime
-            }),
-          ),
+        value => unwrapTransport(value, result => this.rows(result, decodeShiftTime)),
         { companyId },
       ),
     )
@@ -143,29 +135,9 @@ export class SchedulingApi {
     const target = schedulingId(id)
     return this.run(
       'detail',
-      companyId =>
-        this.listGroups().pipe(
-          switchMap(groups =>
-            this.http.request('GET', `${this.config.endpoints.shiftDetail}/${target}`, value =>
-              unwrapTransport(value, result => {
-                if (result == null) return null
-                const shift = decodeShift(result)
-                if (shift.id !== target)
-                  throw new TransportError(
-                    'contract',
-                    0,
-                    'Shift response does not match the requested id.',
-                  )
-                if (
-                  !groups.some(
-                    group => group.id === shift.shiftGroupId && group.companyId === companyId,
-                  )
-                )
-                  return null
-                return shift
-              }),
-            ),
-          ),
+      () =>
+        this.http.request('GET', `${this.config.endpoints.shiftDetail}/${target}`, value =>
+          unwrapTransport(value, result => (result === null ? null : decodeShiftDetail(result))),
         ),
       target,
     )
@@ -179,7 +151,10 @@ export class SchedulingApi {
           unwrapTransport(value, result => {
             if (result == null) return null
             const group = decodeShiftGroup(result)
-            if (group.companyId !== companyId || (id !== undefined && group.id !== id))
+            if (
+              (group.companyId !== undefined && group.companyId !== companyId) ||
+              (id !== undefined && group.id !== id)
+            )
               throw new TransportError(
                 'contract',
                 0,
@@ -187,48 +162,25 @@ export class SchedulingApi {
               )
             return group
           }),
-        { ...draft, id, companyId },
+        { ...draft, id: id ?? null, companyId },
         { apiUrl: this.config.apiUrl },
       ),
     )
   }
   saveShift(draft: ShiftDraft, id?: number) {
-    const body = {
-      ...draft,
-      id,
-      ...(draft.offShift ? { entranceShiftTimeId: null, returnShiftTimeId: null } : {}),
-    }
-    return this.run(id === undefined ? 'create-shift' : 'update-shift', companyId =>
-      this.listGroups().pipe(
-        switchMap(groups => {
-          if (
-            !groups.some(group => group.id === body.shiftGroupId && group.companyId === companyId)
-          )
-            return throwError(
-              () => new TransportError('validation', 0, 'Select a shift group from this company.'),
-            )
-          return this.http.request(
-            'POST',
-            this.config.endpoints.saveShift,
-            value =>
-              unwrapTransport(value, result => {
-                if (result == null) return null
-                const shift = decodeShift(result)
-                if (
-                  shift.shiftGroupId !== body.shiftGroupId ||
-                  (id !== undefined && shift.id !== id)
-                )
-                  throw new TransportError(
-                    'contract',
-                    0,
-                    'Saved shift does not match the requested group or id.',
-                  )
-                return shift
-              }),
-            body,
-            { apiUrl: this.config.apiUrl },
-          )
-        }),
+    const { entranceShiftTimeId, returnShiftTimeId, ...base } = draft
+    const body = id === undefined ? base : { ...base, id }
+    const requestBody = draft.offShift ? body : { ...body, entranceShiftTimeId, returnShiftTimeId }
+    return this.run(id === undefined ? 'create-shift' : 'update-shift', () =>
+      this.http.request(
+        'POST',
+        this.config.endpoints.saveShift,
+        value =>
+          unwrapTransport(value, result =>
+            result === null ? null : decodeShiftWriteResult(result),
+          ),
+        requestBody,
+        { apiUrl: this.config.apiUrl },
       ),
     )
   }

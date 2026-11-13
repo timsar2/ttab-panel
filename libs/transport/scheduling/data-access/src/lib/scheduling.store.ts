@@ -9,16 +9,15 @@ import {
 } from '@ngrx/signals'
 import { SessionStore } from '@org/auth-data-access'
 import { normalizeTransportError } from '@org/transport-http'
-import { Subscription, forkJoin } from 'rxjs'
+import { Subscription } from 'rxjs'
 import { SchedulingApi } from './scheduling-api'
-import { Shift, ShiftGroup } from './scheduling.models'
+import { ShiftListItem } from './scheduling.models'
 
 export const SchedulingStore = signalStore(
   withState({
     _companyId: null as number | null,
     _sessionVersion: null as number | null,
-    _groups: [] as readonly ShiftGroup[],
-    _shifts: [] as readonly Shift[],
+    _shifts: [] as readonly ShiftListItem[],
     _loading: false,
     _error: null as string | null,
   }),
@@ -33,7 +32,6 @@ export const SchedulingStore = signalStore(
       ),
     )
     return {
-      groups: computed(() => (scoped() ? store._groups() : [])),
       shifts: computed(() => (scoped() ? store._shifts() : [])),
       loading: computed(() => scoped() && store._loading()),
       error: computed(() => (scoped() ? store._error() : null)),
@@ -51,7 +49,6 @@ export const SchedulingStore = signalStore(
       patchState(store, {
         _companyId: null,
         _sessionVersion: null,
-        _groups: [],
         _shifts: [],
         _loading: false,
         _error: null,
@@ -82,7 +79,6 @@ export const SchedulingStore = signalStore(
         patchState(store, {
           _companyId: companyId,
           _sessionVersion: sessionVersion,
-          _groups: [],
           _shifts: [],
           _loading: true,
           _error: null,
@@ -92,25 +88,10 @@ export const SchedulingStore = signalStore(
           companyId === store._api.companyId() &&
           sessionVersion === store._session.version() &&
           Boolean(store._session.user())
-        read = forkJoin({
-          groups: store._api.listGroups(),
-          shifts: store._api.listShifts(),
-        }).subscribe({
+        read = store._api.listShifts().subscribe({
           next: data => {
             if (!matches()) return
-            const groupIds = new Set(data.groups.map(group => group.id))
-            if (data.shifts.some(shift => !groupIds.has(shift.shiftGroupId))) {
-              patchState(store, {
-                _loading: false,
-                _error: 'Shift records contain a group outside the selected company.',
-              })
-              return
-            }
-            patchState(store, {
-              _groups: data.groups,
-              _shifts: data.shifts,
-              _loading: false,
-            })
+            patchState(store, { _shifts: data, _loading: false })
           },
           error: error => {
             if (!matches()) return

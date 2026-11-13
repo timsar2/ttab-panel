@@ -87,7 +87,8 @@ export function navigationFor(companyId: number | null, rtl: boolean): readonly 
       label: rtl ? 'مسیرها' : 'Routes',
       icon: lucideRoute,
       group: operations,
-      hint: planned,
+      commands: companyId ? ['/client', companyId, 'direction'] : undefined,
+      hint: choose,
     },
     {
       id: 'lines',
@@ -175,6 +176,8 @@ function companyShellTranslations() {
           Breadcrumbs: 'مسیر راهنما',
           'Signed-in account': 'حساب واردشده',
           Drivers: 'رانندگان',
+          Routes: 'مسیرها',
+          Route: 'مسیر',
           Vehicles: 'خودروها',
           Vehicle: 'خودرو',
           Users: 'کاربران',
@@ -183,6 +186,7 @@ function companyShellTranslations() {
           People: 'افراد',
           'Departure times': 'زمان‌های حرکت',
           Shifts: 'شیفت‌ها',
+          'Shift details': 'جزئیات شیفت',
           'Shift list': 'فهرست شیفت‌ها',
           'Shift groups': 'گروه‌های شیفت',
           'Shift group': 'گروه شیفت',
@@ -240,6 +244,7 @@ export const appRoutes: Route[] = [
         { path: 'users', label: 'Users' },
         { path: 'drivers', label: 'Drivers' },
         { path: 'vehicles', label: 'Vehicles' },
+        { path: 'direction', label: 'Routes' },
         { path: 'departure-times', label: 'Departure times' },
         { path: 'shift', label: 'Shifts' },
       ],
@@ -291,6 +296,13 @@ export const appRoutes: Route[] = [
         loadChildren: () =>
           import('./features/user/user.routes').then(({ createPanelUserRoutes }) =>
             createPanelUserRoutes(),
+          ),
+      },
+      {
+        path: 'direction',
+        loadChildren: () =>
+          import('./routes/routes.routes').then(({ createPanelRouteRoutes }) =>
+            createPanelRouteRoutes(),
           ),
       },
       {

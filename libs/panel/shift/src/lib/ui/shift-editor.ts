@@ -10,12 +10,13 @@ import {
   untracked,
 } from '@angular/core'
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop'
-import { FormField, form, required, submit, validate } from '@angular/forms/signals'
+import { FormField, form, submit, validate } from '@angular/forms/signals'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import { forkJoin, of } from 'rxjs'
 import {
   SchedulingApi,
   ShiftDraft,
+  ShiftGroup,
   ShiftGroupDraft,
   ShiftType,
   ShiftTime,
@@ -26,14 +27,15 @@ import { HlmAlertImports } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmDialogImports } from '@spartan-ng/helm/dialog'
 import { HlmFieldImports } from '@spartan-ng/helm/field'
-import { SHIFT_FEATURE, SHIFT_LANGUAGE, SHIFT_MANAGE } from '../shift.routes'
+import { SHIFT_LANGUAGE, SHIFT_MANAGE } from '../shift.routes'
+import { ShiftTextKey, shiftText } from '../shift-i18n'
 
 const emptyShift = (): ShiftDraft => ({
   shiftGroupId: 0,
   name: '',
-  rateCycle: 0,
+  rateCycle: 1,
   offShift: false,
-  orderNo: 0,
+  orderNo: null,
   entranceShiftTimeId: null,
   returnShiftTimeId: null,
 })
@@ -42,10 +44,10 @@ const emptyGroup = (): ShiftGroupDraft => ({
   name: '',
   startDate: '',
   rateCycle: 1,
-  saturdayHoliday: false,
-  thursdayHoliday: false,
-  fridayHoliday: false,
-  publicHoliday: false,
+  saturdayHoliday: true,
+  thursdayHoliday: true,
+  fridayHoliday: true,
+  publicHoliday: true,
 })
 
 @Component({
@@ -60,74 +62,61 @@ const emptyGroup = (): ShiftGroupDraft => ({
     HlmDialogImports,
     HlmFieldImports,
   ],
-  host: { class: 'block min-w-0 p-4 md:p-8' },
+  host: {
+    class: 'block min-w-0 p-4 md:p-8',
+    '[attr.dir]': "language() === 'fa' ? 'rtl' : 'ltr'",
+  },
   template: `
     <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-semibold">
-        {{
-          language() === 'fa'
-            ? id()
-              ? 'ویرایش شیفت'
-              : 'ایجاد شیفت'
-            : id()
-              ? 'Edit shift'
-              : 'Create shift'
-        }}
+        {{ t(id() ? 'editShift' : 'createShift') }}
       </h1>
-      <a hlmBtn variant="outline" class="min-h-11" routerLink="..">{{
-        language() === 'fa' ? 'بازگشت به فهرست' : 'Back to shifts'
-      }}</a>
+      <a hlmBtn variant="outline" class="min-h-11" routerLink="..">{{ t('back') }}</a>
     </header>
     @if (!canManage()) {
       <p role="alert">
-        {{ config.deniedMessage ?? 'You do not have permission to manage shifts in this company.' }}
+        {{ t('accessDenied') }}
       </p>
     } @else if (id() === undefined) {
       <p role="alert">
-        {{ language() === 'fa' ? 'شناسه شیفت معتبر نیست.' : 'Invalid shift URL.' }}
+        {{ t('invalidUrl') }}
       </p>
     } @else if (loading() || !hydrated()) {
       <p role="status">
-        {{ language() === 'fa' ? 'در حال بارگذاری...' : 'Loading shift data...' }}
+        {{ t('loading') }}
       </p>
     } @else if (error()) {
       <div hlmAlert variant="destructive" role="alert">
         <h2 hlmAlertTitle>
-          {{ language() === 'fa' ? 'بارگذاری ناموفق بود' : 'Unable to load shift data' }}
+          {{ t('loadFailed') }}
         </h2>
-        <p hlmAlertDescription>{{ error() }}</p>
+        <p hlmAlertDescription>{{ t('requestFailed') }}</p>
       </div>
     } @else if (missing()) {
       <p role="alert">
-        {{
-          language() === 'fa'
-            ? 'شیفت پیدا نشد یا به این شرکت تعلق ندارد.'
-            : 'Shift not found in this company.'
-        }}
+        {{ t('notFound') }}
       </p>
     } @else {
       @if (saveError()) {
-        <p role="alert" class="text-destructive mb-4">{{ saveError() }}</p>
+        <p role="alert" class="text-destructive mb-4">{{ t('saveFailed') }}: {{ saveError() }}</p>
       }
       @if (saved()) {
         <p role="status" class="mb-4">
-          {{ language() === 'fa' ? 'شیفت ذخیره شد.' : 'Shift saved.' }}
+          {{ t('saved') }}
         </p>
       }
       <form class="grid max-w-2xl gap-5" novalidate (submit)="saveShift($event)">
         <div hlmField>
-          <label hlmFieldLabel for="shift-group">{{
-            language() === 'fa' ? 'گروه شیفت' : 'Shift group'
-          }}</label>
+          <label hlmFieldLabel for="shift-group">{{ t('group') }}</label>
           <div class="flex gap-2">
             <select
               id="shift-group"
               class="bg-background min-h-11 min-w-0 flex-1 rounded-md border px-3"
               [value]="draft().shiftGroupId || ''"
               (change)="setGroup($event)"
-              [disabled]="!canManage()"
+              [disabled]="!canManage() || id() !== null"
             >
-              <option value="">{{ language() === 'fa' ? 'انتخاب گروه' : 'Select a group' }}</option>
+              <option value="">{{ t('selectGroup') }}</option>
               @for (group of groups(); track group.id) {
                 <option [value]="group.id">{{ group.name }}</option>
               }
@@ -137,34 +126,26 @@ const emptyGroup = (): ShiftGroupDraft => ({
               type="button"
               variant="outline"
               class="min-h-11 min-w-11"
-              [attr.aria-label]="language() === 'fa' ? 'ایجاد گروه شیفت' : 'Create shift group'"
+              [attr.aria-label]="t('createGroup')"
               (click)="groupDialog.set(true)"
             >
               +
             </button>
           </div>
           @if (shiftForm.shiftGroupId().touched() && shiftForm.shiftGroupId().invalid()) {
-            <hlm-field-error [forceShow]="true">{{
-              shiftForm.shiftGroupId().errors()[0]?.message
-            }}</hlm-field-error>
+            <hlm-field-error [forceShow]="true">{{ t('groupRequired') }}</hlm-field-error>
           }
         </div>
         <div hlmField>
-          <label hlmFieldLabel for="shift-name">{{
-            language() === 'fa' ? 'نام شیفت' : 'Shift name'
-          }}</label>
+          <label hlmFieldLabel for="shift-name">{{ t('shiftName') }}</label>
           <input libSignalInput id="shift-name" class="min-h-11" [formField]="shiftForm.name" />
           @if (shiftForm.name().touched() && shiftForm.name().invalid()) {
-            <hlm-field-error [forceShow]="true">{{
-              shiftForm.name().errors()[0]?.message
-            }}</hlm-field-error>
+            <hlm-field-error [forceShow]="true">{{ t('shiftNameRequired') }}</hlm-field-error>
           }
         </div>
         <div class="grid gap-4 sm:grid-cols-2">
           <div hlmField>
-            <label hlmFieldLabel for="shift-order">{{
-              language() === 'fa' ? 'ترتیب' : 'Order'
-            }}</label
+            <label hlmFieldLabel for="shift-order">{{ t('order') }}</label
             ><input
               libSignalInput
               id="shift-order"
@@ -173,15 +154,11 @@ const emptyGroup = (): ShiftGroupDraft => ({
               [formField]="shiftForm.orderNo"
             />
             @if (shiftForm.orderNo().touched() && shiftForm.orderNo().invalid()) {
-              <hlm-field-error [forceShow]="true">{{
-                shiftForm.orderNo().errors()[0]?.message
-              }}</hlm-field-error>
+              <hlm-field-error [forceShow]="true">{{ t('orderRequired') }}</hlm-field-error>
             }
           </div>
           <div hlmField>
-            <label hlmFieldLabel for="shift-cycle">{{
-              language() === 'fa' ? 'چرخه' : 'Cycle'
-            }}</label
+            <label hlmFieldLabel for="shift-cycle">{{ t('cycle') }}</label
             ><input
               libSignalInput
               id="shift-cycle"
@@ -190,22 +167,18 @@ const emptyGroup = (): ShiftGroupDraft => ({
               [formField]="shiftForm.rateCycle"
             />
             @if (shiftForm.rateCycle().touched() && shiftForm.rateCycle().invalid()) {
-              <hlm-field-error [forceShow]="true">{{
-                shiftForm.rateCycle().errors()[0]?.message
-              }}</hlm-field-error>
+              <hlm-field-error [forceShow]="true">{{ t('cycleRequired') }}</hlm-field-error>
             }
           </div>
         </div>
         <label class="flex min-h-11 items-center gap-3"
           ><input type="checkbox" [checked]="draft().offShift" (change)="setOffShift($event)" />{{
-            language() === 'fa' ? 'شیفت بدون سرویس' : 'Off shift'
+            t('offShift')
           }}</label
         >
         <div class="grid gap-4 sm:grid-cols-2">
           <div hlmField>
-            <label hlmFieldLabel for="shift-outbound">{{
-              language() === 'fa' ? 'سرویس رفت' : 'Outbound time'
-            }}</label
+            <label hlmFieldLabel for="shift-outbound">{{ t('outbound') }}</label
             ><select
               id="shift-outbound"
               class="bg-background min-h-11 rounded-md border px-3"
@@ -220,9 +193,7 @@ const emptyGroup = (): ShiftGroupDraft => ({
             </select>
           </div>
           <div hlmField>
-            <label hlmFieldLabel for="shift-return">{{
-              language() === 'fa' ? 'سرویس برگشت' : 'Return time'
-            }}</label
+            <label hlmFieldLabel for="shift-return">{{ t('return') }}</label
             ><select
               id="shift-return"
               class="bg-background min-h-11 rounded-md border px-3"
@@ -237,33 +208,8 @@ const emptyGroup = (): ShiftGroupDraft => ({
             </select>
           </div>
         </div>
-        @if (id() !== null && offShiftUnknown()) {
-          <div role="alert" class="flex flex-wrap items-center gap-3">
-            <p>
-              {{
-                language() === 'fa'
-                  ? 'وضعیت شیفت تعطیل در پاسخ سرور مشخص نبود. مقدار را صریحاً تأیید کنید.'
-                  : 'The server omitted the existing off-shift value. Confirm it explicitly before saving.'
-              }}
-            </p>
-            <button
-              hlmBtn
-              variant="outline"
-              type="button"
-              class="min-h-11"
-              (click)="confirmOffShift(false)"
-            >
-              {{ language() === 'fa' ? 'شیفت تعطیل نیست' : 'Confirm regular shift' }}
-            </button>
-          </div>
-        }
-        <button
-          hlmBtn
-          type="submit"
-          class="min-h-11 justify-self-start"
-          [disabled]="saving() || (id() !== null && offShiftUnknown())"
-        >
-          {{ language() === 'fa' ? 'ثبت' : 'Save shift' }}
+        <button hlmBtn type="submit" class="min-h-11 justify-self-start" [disabled]="saving()">
+          {{ t('saveShift') }}
         </button>
       </form>
     }
@@ -275,14 +221,10 @@ const emptyGroup = (): ShiftGroupDraft => ({
       >
         <hlm-dialog-header
           ><h2 hlmDialogTitle>
-            {{ language() === 'fa' ? 'ایجاد گروه شیفت' : 'Create shift group' }}
+            {{ t('createGroup') }}
           </h2>
           <p hlmDialogDescription>
-            {{
-              language() === 'fa'
-                ? 'اطلاعات گروه را وارد کنید.'
-                : 'Configure a company shift group.'
-            }}
+            {{ t('groupDescription') }}
           </p></hlm-dialog-header
         >
         @if (typesError()) {
@@ -290,9 +232,7 @@ const emptyGroup = (): ShiftGroupDraft => ({
         }
         <form class="mt-5 grid gap-4" novalidate (submit)="saveGroup($event)">
           <div hlmField>
-            <label hlmFieldLabel for="group-type">{{
-              language() === 'fa' ? 'نوع شیفت' : 'Shift type'
-            }}</label
+            <label hlmFieldLabel for="group-type">{{ t('selectType') }}</label
             ><select
               id="group-type"
               class="bg-background min-h-11 rounded-md border px-3"
@@ -305,27 +245,19 @@ const emptyGroup = (): ShiftGroupDraft => ({
               }
             </select>
             @if (groupForm.shiftTypeId().touched() && groupForm.shiftTypeId().invalid()) {
-              <hlm-field-error [forceShow]="true">{{
-                groupForm.shiftTypeId().errors()[0]?.message
-              }}</hlm-field-error>
+              <hlm-field-error [forceShow]="true">{{ t('typeRequired') }}</hlm-field-error>
             }
           </div>
           <div hlmField>
-            <label hlmFieldLabel for="group-name">{{
-              language() === 'fa' ? 'نام گروه' : 'Group name'
-            }}</label
+            <label hlmFieldLabel for="group-name">{{ t('groupName') }}</label
             ><input libSignalInput id="group-name" class="min-h-11" [formField]="groupForm.name" />
             @if (groupForm.name().touched() && groupForm.name().invalid()) {
-              <hlm-field-error [forceShow]="true">{{
-                groupForm.name().errors()[0]?.message
-              }}</hlm-field-error>
+              <hlm-field-error [forceShow]="true">{{ t('groupNameRequired') }}</hlm-field-error>
             }
           </div>
           <div class="grid gap-4 sm:grid-cols-2">
             <div hlmField>
-              <label hlmFieldLabel for="group-date">{{
-                language() === 'fa' ? 'تاریخ شروع' : 'Start date'
-              }}</label
+              <label hlmFieldLabel for="group-date">{{ t('startDate') }}</label
               ><input
                 libSignalInput
                 id="group-date"
@@ -334,15 +266,11 @@ const emptyGroup = (): ShiftGroupDraft => ({
                 [formField]="groupForm.startDate"
               />
               @if (groupForm.startDate().touched() && groupForm.startDate().invalid()) {
-                <hlm-field-error [forceShow]="true">{{
-                  groupForm.startDate().errors()[0]?.message
-                }}</hlm-field-error>
+                <hlm-field-error [forceShow]="true">{{ t('dateRequired') }}</hlm-field-error>
               }
             </div>
             <div hlmField>
-              <label hlmFieldLabel for="group-cycle">{{
-                language() === 'fa' ? 'چرخه' : 'Cycle'
-              }}</label
+              <label hlmFieldLabel for="group-cycle">{{ t('cycle') }}</label
               ><input
                 libSignalInput
                 id="group-cycle"
@@ -351,55 +279,53 @@ const emptyGroup = (): ShiftGroupDraft => ({
                 [formField]="groupForm.rateCycle"
               />
               @if (groupForm.rateCycle().touched() && groupForm.rateCycle().invalid()) {
-                <hlm-field-error [forceShow]="true">{{
-                  groupForm.rateCycle().errors()[0]?.message
-                }}</hlm-field-error>
+                <hlm-field-error [forceShow]="true">{{ t('cycleRequired') }}</hlm-field-error>
               }
             </div>
           </div>
           <fieldset class="grid gap-2 sm:grid-cols-2">
             <legend class="mb-2 font-medium">
-              {{ language() === 'fa' ? 'روزهای تعطیل' : 'Holiday flags' }}
+              {{ t('holidayDays') }}
             </legend>
             <label class="flex gap-2"
               ><input
                 type="checkbox"
                 [checked]="groupDraft().saturdayHoliday"
                 (change)="setHoliday($event, 'saturdayHoliday')"
-              />{{ language() === 'fa' ? 'شنبه' : 'Saturday' }}</label
+              />{{ t('saturday') }}</label
             >
             <label class="flex gap-2"
               ><input
                 type="checkbox"
                 [checked]="groupDraft().thursdayHoliday"
                 (change)="setHoliday($event, 'thursdayHoliday')"
-              />{{ language() === 'fa' ? 'پنجشنبه' : 'Thursday' }}</label
+              />{{ t('thursday') }}</label
             >
             <label class="flex gap-2"
               ><input
                 type="checkbox"
                 [checked]="groupDraft().fridayHoliday"
                 (change)="setHoliday($event, 'fridayHoliday')"
-              />{{ language() === 'fa' ? 'جمعه' : 'Friday' }}</label
+              />{{ t('friday') }}</label
             >
             <label class="flex gap-2"
               ><input
                 type="checkbox"
                 [checked]="groupDraft().publicHoliday"
                 (change)="setHoliday($event, 'publicHoliday')"
-              />{{ language() === 'fa' ? 'تعطیلات رسمی' : 'Public holidays' }}</label
+              />{{ t('publicHoliday') }}</label
             >
           </fieldset>
           <div class="flex justify-end gap-2">
             <button hlmBtn type="button" variant="outline" class="min-h-11" hlmDialogClose>
-              {{ language() === 'fa' ? 'انصراف' : 'Cancel' }}</button
+              {{ t('cancel') }}</button
             ><button
               hlmBtn
               type="submit"
               class="min-h-11"
               [disabled]="groupSaving() || types().length === 0"
             >
-              {{ language() === 'fa' ? 'ثبت گروه' : 'Save group' }}
+              {{ t('saveGroup') }}
             </button>
           </div>
         </form>
@@ -408,7 +334,6 @@ const emptyGroup = (): ShiftGroupDraft => ({
   `,
 })
 export class ShiftEditor {
-  protected readonly config = inject(SHIFT_FEATURE)
   protected readonly language = inject(SHIFT_LANGUAGE)
   protected readonly canManage = inject(SHIFT_MANAGE)
   protected readonly api = inject(SchedulingApi)
@@ -434,7 +359,6 @@ export class ShiftEditor {
   protected readonly groupSaving = signal(false)
   protected readonly saved = signal(false)
   protected readonly missing = signal(false)
-  protected readonly offShiftUnknown = signal(false)
   protected readonly error = signal<string | null>(null)
   protected readonly saveError = signal<string | null>(null)
   protected readonly typesError = signal<string | null>(null)
@@ -445,32 +369,35 @@ export class ShiftEditor {
   protected readonly draft = signal<ShiftDraft>(emptyShift())
   protected readonly groupDraft = signal<ShiftGroupDraft>(emptyGroup())
   protected readonly shiftForm = form(this.draft, path => {
-    required(path.name, { message: 'Enter a shift name.' })
     validate(path.name, ({ value }) =>
-      value().trim() ? null : { kind: 'required', message: 'Enter a shift name.' },
+      value().trim() ? null : { kind: 'required', message: 'required' },
     )
     validate(path.shiftGroupId, ({ value }) =>
-      value() > 0 ? null : { kind: 'required', message: 'Select a shift group.' },
+      value() > 0 ? null : { kind: 'required', message: 'required' },
     )
-    validate(path.orderNo, ({ value }) =>
-      value() > 0 ? null : { kind: 'required', message: 'Enter an order number.' },
-    )
-    validate(path.rateCycle, ({ value }) =>
-      value() > 0 ? null : { kind: 'required', message: 'Enter a cycle value.' },
-    )
+    validate(path.orderNo, ({ value }) => {
+      const current = value()
+      return current !== null && current > 0 ? null : { kind: 'required', message: 'required' }
+    })
+    validate(path.rateCycle, ({ value }) => {
+      const current = value()
+      return current !== null && current > 0 ? null : { kind: 'required', message: 'required' }
+    })
   })
   protected readonly groupForm = form(this.groupDraft, path => {
-    required(path.name, { message: 'Enter a group name.' })
     validate(path.name, ({ value }) =>
-      value().trim() ? null : { kind: 'required', message: 'Enter a group name.' },
+      value().trim() ? null : { kind: 'required', message: 'required' },
     )
-    required(path.startDate, { message: 'Choose a start date.' })
+    validate(path.startDate, ({ value }) =>
+      value().trim() ? null : { kind: 'required', message: 'required' },
+    )
     validate(path.shiftTypeId, ({ value }) =>
-      value() > 0 ? null : { kind: 'required', message: 'Select a shift type.' },
+      value() > 0 ? null : { kind: 'required', message: 'required' },
     )
-    validate(path.rateCycle, ({ value }) =>
-      value() > 0 ? null : { kind: 'required', message: 'Enter a cycle value.' },
-    )
+    validate(path.rateCycle, ({ value }) => {
+      const current = value()
+      return current !== null && current > 0 ? null : { kind: 'required', message: 'required' }
+    })
   })
 
   constructor() {
@@ -482,7 +409,6 @@ export class ShiftEditor {
       this.error.set(null)
       this.draft.set(emptyShift())
       this.missing.set(false)
-      this.offShiftUnknown.set(false)
       this.shiftForm().reset()
       if (!companyId || !this.canManage() || id === undefined) {
         this.loading.set(false)
@@ -499,15 +425,18 @@ export class ShiftEditor {
             this.groups.set(data.groups)
             this.types.set(data.types)
             this.times.set(data.times)
-            this.missing.set(id !== null && data.detail === null)
-            if (data.detail) {
-              this.offShiftUnknown.set(data.detail.offShift === null)
+            const detailInCompany = Boolean(
+              data.detail?.shiftGroupId &&
+              data.groups.some((group: ShiftGroup) => group.id === data.detail?.shiftGroupId),
+            )
+            this.missing.set(id !== null && (!data.detail || !detailInCompany))
+            if (data.detail && (id === null || detailInCompany)) {
               this.draft.set({
-                shiftGroupId: data.detail.shiftGroupId,
+                shiftGroupId: data.detail.shiftGroupId ?? 0,
                 name: data.detail.name,
-                rateCycle: data.detail.rateCycle ?? 0,
-                offShift: data.detail.offShift ?? false,
-                orderNo: data.detail.orderNo ?? 0,
+                rateCycle: 1,
+                offShift: false,
+                orderNo: data.detail.orderNo,
                 entranceShiftTimeId: data.detail.entranceShiftTimeId,
                 returnShiftTimeId: data.detail.returnShiftTimeId,
               })
@@ -515,8 +444,8 @@ export class ShiftEditor {
             }
             this.loading.set(false)
           },
-          error: error => {
-            this.error.set(this.message(error))
+          error: () => {
+            this.error.set(this.message())
             this.loading.set(false)
           },
         }),
@@ -539,16 +468,11 @@ export class ShiftEditor {
   }
   protected setOffShift(event: Event) {
     const checked = (event.target as HTMLInputElement).checked
-    this.offShiftUnknown.set(false)
     this.draft.update(value => ({
       ...value,
       offShift: checked,
       ...(checked ? { entranceShiftTimeId: null, returnShiftTimeId: null } : {}),
     }))
-  }
-  protected confirmOffShift(value: boolean) {
-    this.draft.update(current => ({ ...current, offShift: value }))
-    this.offShiftUnknown.set(false)
   }
   protected setTime(event: Event, field: 'entranceShiftTimeId' | 'returnShiftTimeId') {
     const value = Number((event.target as HTMLSelectElement).value) || null
@@ -567,6 +491,10 @@ export class ShiftEditor {
     this.groupDialog.set(state === 'open')
   }
 
+  protected t(key: ShiftTextKey) {
+    return shiftText(this.language(), key)
+  }
+
   protected saveShift(event: Event) {
     event.preventDefault()
     if (!this.canManage() || this.saving()) return
@@ -581,15 +509,15 @@ export class ShiftEditor {
           next: result => {
             this.saving.set(false)
             if (!result) {
-              this.saveError.set('The server did not confirm the saved shift.')
+              this.saveError.set(this.t('saveNotConfirmed'))
               return
             }
             this.saved.set(true)
-            if (id === undefined)
+            if (id === undefined && result.id !== undefined)
               void this.router.navigate(['../detail', result.id], { relativeTo: this.route })
           },
-          error: error => {
-            this.saveError.set(this.message(error))
+          error: () => {
+            this.saveError.set(this.message())
             this.saving.set(false)
           },
         })
@@ -609,7 +537,7 @@ export class ShiftEditor {
           next: group => {
             this.groupSaving.set(false)
             if (!group) {
-              this.typesError.set('The server did not confirm the saved group.')
+              this.typesError.set(this.t('saveNotConfirmed'))
               return
             }
             this.groups.update(groups => [...groups, group])
@@ -618,19 +546,15 @@ export class ShiftEditor {
             this.groupDraft.set(emptyGroup())
             this.groupForm().reset()
           },
-          error: error => {
-            this.typesError.set(this.message(error))
+          error: () => {
+            this.typesError.set(this.message())
             this.groupSaving.set(false)
           },
         })
     })
   }
 
-  private message(error: unknown) {
-    return (
-      (error as { message?: string })?.message ??
-      this.config.deniedMessage ??
-      'Unable to complete the scheduling request.'
-    )
+  private message() {
+    return this.t('requestFailed')
   }
 }

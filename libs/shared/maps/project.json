@@ -1,0 +1,10 @@
+{
+  "name": "shared-maps",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/maps/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:ui"],
+  "// targets": "to see all targets run: nx show project shared-maps --web",
+  "targets": {}
+}

@@ -118,7 +118,10 @@
       "@org/transport-scheduling-data-access": [
         "./libs/transport/scheduling/data-access/src/index.ts"
       ],
-      "@org/panel-shifts": ["./libs/panel/shift/src/index.ts"]
+      "@org/panel-shifts": ["./libs/panel/shift/src/index.ts"],
+      "@org/transport-routes-data-access": ["./libs/transport/routes/data-access/src/index.ts"],
+      "@org/transport-routes-feature": ["./libs/transport/routes/feature/src/index.ts"],
+      "@org/shared-maps": ["./libs/shared/maps/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

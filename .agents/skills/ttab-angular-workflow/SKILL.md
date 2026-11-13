@@ -10,6 +10,12 @@ description: >-
 
 # TTab Angular Workflow
 
+## File Reading
+
+Read repository files from line 1 in consecutive windows of at most 500 lines:
+read lines 1-500, then 501-1000, and continue until EOF. Never start at an offset
+or stop early when the file has more content.
+
 ## Start With the Contract
 
 Read [the architecture guide](../../../apps/panel/ARCHITECTURE.md) before changing
@@ -29,6 +35,36 @@ checklist, and verify `git status` from that root before choosing source files. 
 treat the active editor tab or a previous turn's modified path as proof of the target
 project. After work, confirm every implementation file is under the requested app or
 its libraries, and do not claim a legacy change implemented the new app.
+
+### Port the Existing API Contract, Not an Inference
+
+For migrated features, inspect the old feature's API service, request/response
+interfaces, environment base URL, and call site before writing an adapter. Preserve
+the exact HTTP verb, route, JSON body, response envelope spelling, and list/detail
+DTOs. Add a contract test using a real legacy response fixture; do not substitute a
+backend entity/detail DTO for the old UI response model. Keep lookup calls (such as
+Shift Groups) on the form/detail route that uses them; do not make an unrelated
+lookup a prerequisite for a list request. In the new app, preserve the old upstream
+base through the authenticated same-origin `/api` BFF rather than inventing a host
+or calling production APIs directly from the browser.
+
+All feature-owned user-visible text must have Persian and English translations,
+including table column/action/empty/loading/error/paging labels, form validation,
+dialog copy, and accessible names. Do not leave shared table defaults in English
+when the selected language is Persian. Test the actual table and form labels under
+both language settings.
+
+The Shift migration caught a concrete regression: the new list store joined
+`get-shift` with a Shift Group lookup, and its invented detail-shaped group decoder
+failed on the legacy group-list model. That prevented the valid Shift list response
+from reaching the page. The verified list contract is `POST
+v1/shifts/get-shift` with `{ companyId }` and a `code`/`massage`/`result` envelope
+(`massage` is the legacy spelling). The list row contains `name`, `shiftGroupId`,
+`shiftGroupName`, `startTime`, `endTime`, service names, `orderNo`, and `id`; it does
+not require Shift Group detail fields. Keep Shift Group/type/time lookups on the
+add/edit form, test the exact supplied envelope and payload, and assert list loading
+does not call the group endpoint. Build Persian/English table column headers from
+the active language instead of hardcoding English shared-table defaults.
 
 Work from `front` using Bun-prefixed Nx commands. Discover resolved targets with
 `bun nx show project PROJECT --json`. Load the Nx generation skill before
