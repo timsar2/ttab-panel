@@ -31,6 +31,8 @@ Resolve gates independently; confirmed read/search work can proceed without inve
 
 ## Pending Tasks
 
+[ ] PASSENGER-19 Implement the reusable passenger feature library, lazy panel mount, company-scoped list reads, direction/shift/station/line lookups, selection and legacy batch registration UI; preserve unknown assignment policy as legacy behavior pending approval.
+[ ] PASSENGER-20 Verify exact read/write contracts, access policy, race handling, translations, accessibility, route-entry fetching, library boundaries, and affected Nx targets; record mocked versus live evidence.
 [ ] PASSENGER-01 Confirm passenger search/detail and bulk endpoint contracts, IDs, flags, envelopes, paging, atomicity/partial failures, error payloads, and assignment-versus-person deletion semantics.
 [ ] PASSENGER-02 Define typed passenger/search/bulk/result DTOs and date/error adapters with explicit omitted Line handling only after Q16 approval.
 [ ] PASSENGER-03 Reuse or Bun/Nx-generate assignment libraries, registering public aliases, Nx/Sheriff edges, and library-owned feature pages, components, services, and helpers.
@@ -52,5 +54,6 @@ Resolve gates independently; confirmed read/search work can proceed without inve
 
 ## Evidence Placeholder
 
-Implementation and verification: pending; record dated commands, selected-ID scenarios, browser artifacts, and live gaps.
-Decisions: pending for Q16 optionality, Q17 partial states, Q18 reconciliation, and Q05 safe removal.
+Implementation: 2026-11-13, passenger library and lazy `/client/:companyId/passengers` mount added; list/lookup entry reads, selection, and legacy batch payload are implemented. Legacy read wrappers use POST for directions/shifts while the current task specified GET; implementation follows the task and this contract needs backend confirmation.
+Verification: `bun nx run passengers:typecheck`, `bun nx run passengers:lint`, and `bun nx run passengers:test` pass. The route-entry fixture asserts GET requests to passenger search, direction search, and shift lookup with company scope, then verifies passenger rows and both lookup selectors render. `bun nx run panel:build` was blocked by existing `lineText` template errors in concurrently modified `libs/transport/lines/feature` files. No live API or browser acceptance was run.
+Decisions: pending for Q16 optionality, Q17 partial states, Q18 reconciliation, company/entity authorization, and Q05 safe removal. PASSENGER-19/20 remain unchecked until these contracts and route/browser acceptance are verified.

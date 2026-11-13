@@ -125,7 +125,8 @@ export function navigationFor(companyId: number | null, rtl: boolean): readonly 
       label: rtl ? 'مسافران' : 'Passengers',
       icon: lucideUsers,
       group: operations,
-      hint: planned,
+      commands: companyId ? ['/client', companyId, 'passengers'] : undefined,
+      hint: companyId ? undefined : choose,
     },
     {
       id: 'departure-times',
@@ -185,6 +186,7 @@ function companyShellTranslations() {
           Breadcrumbs: 'مسیر راهنما',
           'Signed-in account': 'حساب واردشده',
           Drivers: 'رانندگان',
+          Passengers: 'مسافران',
           'Driver-line assignments': 'خط راننده',
           Routes: 'مسیرها',
           Route: 'مسیر',
@@ -253,6 +255,7 @@ export const appRoutes: Route[] = [
         { path: 'people', label: 'People' },
         { path: 'users', label: 'Users' },
         { path: 'drivers', label: 'Drivers' },
+        { path: 'passengers', label: 'Passengers' },
         { path: 'driver-line', label: 'Driver-line assignments' },
         { path: 'vehicles', label: 'Vehicles' },
         { path: 'direction', label: 'Routes' },
@@ -261,6 +264,8 @@ export const appRoutes: Route[] = [
       ],
     },
     [
+      { path: 'passenger', pathMatch: 'full', redirectTo: 'passengers' },
+      { path: 'passenger/add', pathMatch: 'full', redirectTo: 'passengers/add' },
       { path: 'shift-time', pathMatch: 'full', redirectTo: 'departure-times' },
       { path: 'shift-time/add', pathMatch: 'full', redirectTo: 'departure-times/new' },
       { path: 'shift-time/detail/:id', pathMatch: 'full', redirectTo: 'departure-times/:id/edit' },
@@ -328,6 +333,13 @@ export const appRoutes: Route[] = [
         loadChildren: () =>
           import('./driver/driver.routes').then(({ createPanelDriverRoutes }) =>
             createPanelDriverRoutes(),
+          ),
+      },
+      {
+        path: 'passengers',
+        loadChildren: () =>
+          import('./passengers/passengers.routes').then(({ createPanelPassengerRoutes }) =>
+            createPanelPassengerRoutes(),
           ),
       },
       {

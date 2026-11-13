@@ -10,7 +10,10 @@ test('Direction route entry loads company routes, detail, ordered stations, and 
 
   const directionSearchBodies: unknown[] = []
   const stationSearchBodies: unknown[] = []
+  const lineSearchBodies: unknown[] = []
+  const shiftTimeBodies: unknown[] = []
   let routeDetails = 0
+  let lineDetails = 0
   await page.route('**/api/v1/companys/2', route =>
     route.fulfill({
       json: {
@@ -92,6 +95,67 @@ test('Direction route entry loads company routes, detail, ordered stations, and 
       },
     })
   })
+  await page.route('**/api/v1/lines/search', route => {
+    lineSearchBodies.push(route.request().postDataJSON())
+    return route.fulfill({
+      json: {
+        code: '2000',
+        massage: 'Success',
+        result: {
+          list: [
+            {
+              id: 5,
+              directionId: 42,
+              directionName: 'االا',
+              name: 'اداری ثابت',
+              entranceShiftTimeName: 'سرویس صبح',
+              returnShiftTimeName: 'سرویس عصر',
+            },
+          ],
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalCount: 1,
+            pageSize: 10,
+            hasPreviousPage: false,
+            hasNextPage: false,
+          },
+        },
+      },
+    })
+  })
+  await page.route('**/api/v1/lines/5', route => {
+    lineDetails++
+    return route.fulfill({
+      json: {
+        code: '2000',
+        massage: 'Success',
+        result: {
+          id: 5,
+          directionId: 42,
+          directionName: 'االا',
+          name: 'اداری ثابت',
+          entranceShiftTimeId: 10,
+          returnShiftTimeId: 11,
+          entranceShiftTimeName: 'سرویس صبح',
+          returnShiftTimeName: 'سرویس عصر',
+        },
+      },
+    })
+  })
+  await page.route('**/api/v1/shiftTimes', route => {
+    shiftTimeBodies.push(route.request().postDataJSON())
+    return route.fulfill({
+      json: {
+        code: '2000',
+        massage: 'Success',
+        result: [
+          { id: 10, companyId: 2, name: 'سرویس صبح', shiftTime: '07:30:00' },
+          { id: 11, companyId: 2, name: 'سرویس عصر', shiftTime: '18:30:00' },
+        ],
+      },
+    })
+  })
 
   await page.goto('/login')
   await page.locator('#username').fill(credentials.username)
@@ -109,6 +173,30 @@ test('Direction route entry loads company routes, detail, ordered stations, and 
   await expect(page.getByRole('link', { name: /مشاهده و ویرایش|View \/ edit route/ })).toBeVisible()
   await expect(page.getByRole('link', { name: /^خطوط$|^Lines$/ })).toBeVisible()
   await expect(page.getByRole('link', { name: /ایستگاه‌ها|Stations/ })).toBeVisible()
+  await page.getByRole('link', { name: /^خطوط$|^Lines$/ }).click()
+  await expect(page.getByRole('heading', { name: /Lines|خطوط/ })).toBeVisible()
+  await expect(page.getByRole('cell', { name: 'اداری ثابت', exact: true })).toBeVisible()
+  expect(lineSearchBodies).toEqual([{ companyId: 2, directionId: 42, pageNumber: 1, pageSize: 10 }])
+
+  await page.goto('/client/2/direction/detail/42/lines/detail/5')
+  await expect(
+    page.getByRole('heading', { name: /View \/ edit Line|مشاهده و ویرایش خط/ }),
+  ).toBeVisible()
+  await page.getByRole('button', { name: /View \/ edit Line|مشاهده و ویرایش خط/ }).click()
+  await expect(page.locator('#line-name')).toHaveValue('اداری ثابت')
+  await expect(page.locator('#line-outbound-time option', { hasText: 'سرویس صبح' })).toHaveCount(1)
+  expect(lineDetails).toBe(1)
+  expect(shiftTimeBodies).toEqual([{ companyId: 2, name: null }])
+
+  await page.goto('/client/2/direction/detail/42/lines/add')
+  await expect(page.getByRole('heading', { name: /Add Line|افزودن خط/ })).toBeVisible()
+  await expect(page.locator('#line-outbound-time option', { hasText: 'سرویس صبح' })).toHaveCount(1)
+  expect(shiftTimeBodies).toEqual([
+    { companyId: 2, name: null },
+    { companyId: 2, name: null },
+  ])
+
+  await page.goto('/client/2/direction')
   await page.getByRole('link', { name: /مشاهده و ویرایش|View \/ edit route/ }).click()
   await expect(
     page.getByRole('heading', { name: /مشاهده و ویرایش|View \/ edit route/ }),

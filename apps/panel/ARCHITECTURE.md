@@ -55,6 +55,7 @@ this Nx workspace. Run the commands below from the `front` workspace root.
 | `apps/panel/src/app/feature/shift/`          | Thin app-owned Shift route/access adapter and RouterOutlet host; Shift UI remains in `libs/panel/shift`.                                                                      |
 | `apps/panel/src/app/vehicles/`               | Panel-owned route/access adapter and thin outlet host; Admin/Manager reads require the active company, while vehicle writes remain gated on ownership/history policy.         |
 | `apps/panel/src/app/routes/routes.routes.ts` | Panel-owned Direction read/access and map-key adapter; mounts legacy `/client/:companyId/direction` through the lazy library route factory.                                   |
+| `apps/panel/src/app/routes/line.routes.ts`   | Adapter for nested Line Route context, company/role policy, and server-backed Departure Time lookup configuration.                                                            |
 | `apps/panel/src/app/app.routes.server.ts`    | Render routes per request with validated, request-scoped authentication.                                                                                                      |
 | `apps/panel/src/app/core/preferences/`       | Panel's direction/language adapter; not a second theme store.                                                                                                                 |
 | `@org/auth-data-access`                      | Configurable backend contract, public session metadata, HTTP interception, guards, and auth helpers.                                                                          |
@@ -93,6 +94,13 @@ this Nx workspace. Run the commands below from the `front` workspace root.
 | `libs/base-theme.css`                        | Shared semantic design tokens and base theme rules.                                                                                                                           |
 | `apps/panel/src/styles.css`                  | Font/CSS imports and explicit Tailwind source discovery.                                                                                                                      |
 | `apps/panel-e2e/`                            | Browser acceptance tests and reusable controlled API fixtures.                                                                                                                |
+
+Direction and Line UIs are implemented in `@org/transport-routes-feature` and
+`@org/transport-lines-feature`, backed by their matching data-access libraries.
+The Line route factory is injected beneath the Route detail path so its API/store
+scope carries the parent Direction ID. `@org/shared-maps` owns the lazy,
+browser-only Neshan MapLibre adapter; deployment supplies the Web Map key through
+the environment rather than embedding it in a library.
 
 ## App Feature Entry Pattern
 

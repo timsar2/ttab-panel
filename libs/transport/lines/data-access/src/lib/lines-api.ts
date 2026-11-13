@@ -13,7 +13,6 @@ import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop'
 import { SessionStore } from '@org/auth-data-access'
 import {
   TransportError,
-  TransportPage,
   TransportHttp,
   decodeTransportPage,
   normalizeTransportError,
@@ -22,7 +21,9 @@ import {
   transportRecord,
   unwrapTransport,
 } from '@org/transport-http'
-import { RouteId, routeId } from '@org/transport-routes-data-access'
+import type { TransportPage } from '@org/transport-http'
+import { routeId } from '@org/transport-routes-data-access'
+import type { RouteId } from '@org/transport-routes-data-access'
 import {
   Observable,
   catchError,
@@ -42,6 +43,8 @@ import {
   LineId,
   LineRow,
   LineSearch,
+  decodeLine,
+  decodeLineRow,
   lineId,
   lineWrite,
 } from './line.models'

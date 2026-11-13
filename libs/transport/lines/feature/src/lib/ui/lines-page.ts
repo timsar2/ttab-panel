@@ -103,6 +103,7 @@ export function linePageQuery(page: string | null, size: string | null) {
 export class LinesPage {
   protected readonly feature = inject(LINE_FEATURE)
   protected readonly language = inject(LINE_LANGUAGE)
+  protected readonly lineText = lineText
   protected readonly canManage = inject(LINE_MANAGE)
   protected readonly store = inject(LinesStore)
   protected readonly routeStore = inject(RoutesStore)

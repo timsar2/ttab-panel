@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core'
 import { SessionStore, hasAnyRole, requireAnyRole } from '@org/auth-data-access'
-import { createRouteRoutes } from '@org/transport-routes-feature'
+import { createRouteRoutes, ROUTE_DIRECTION_ID } from '@org/transport-routes-feature'
+import { createPanelLineRoutes } from './line.routes'
 import type { RouteAccessRequest } from '@org/transport-routes-data-access'
 import { CompanyContextStore } from '@org/transport-company-data-access'
 import { PreferencesStore } from '../core/preferences/preferences.store'
@@ -51,6 +52,7 @@ export function createPanelRouteRoutes() {
       return computed(() => hasAnyRole(session.user()?.roles, routeManagementRoles))
     },
     neshanMapApiKey: panelConfig.neshanMapApiKey,
+    lineRoutes: () => createPanelLineRoutes(inject(ROUTE_DIRECTION_ID)),
     heading: 'Routes',
     deniedMessage: {
       en: 'Route reads require an Admin/Manager role and the selected company. Writes await ownership approval.',

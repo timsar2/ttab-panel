@@ -124,7 +124,8 @@
       "@org/shared-maps": ["./libs/shared/maps/src/index.ts"],
       "@org/panel-driver-line": ["./libs/panel/feature/driver-line/src/index.ts"],
       "@org/transport-lines-data-access": ["./libs/transport/lines/data-access/src/index.ts"],
-      "@org/transport-lines-feature": ["./libs/transport/lines/feature/src/index.ts"]
+      "@org/transport-lines-feature": ["./libs/transport/lines/feature/src/index.ts"],
+      "@org/panel-passengers": ["./libs/panel/passengers/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

@@ -8,8 +8,9 @@ import {
   withState,
 } from '@ngrx/signals'
 import { SessionStore } from '@org/auth-data-access'
-import { TransportError, TransportPage, normalizeTransportError } from '@org/transport-http'
-import { RouteId } from '@org/transport-routes-data-access'
+import { TransportError, normalizeTransportError } from '@org/transport-http'
+import type { TransportPage } from '@org/transport-http'
+import type { RouteId } from '@org/transport-routes-data-access'
 import { Subscription } from 'rxjs'
 import { LINES_ACCESS_DENIED, LinesApi } from './lines-api'
 import { LineDetail, LineDraft, LineId, LineRow, LineSearch } from './line.models'

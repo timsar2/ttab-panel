@@ -1,0 +1,10 @@
+{
+  "name": "passengers",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/panel/passengers/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:panel", "type:feature"],
+  "// targets": "to see all targets run: nx show project passengers --web",
+  "targets": {}
+}

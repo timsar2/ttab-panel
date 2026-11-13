@@ -4,7 +4,7 @@
 
 ## Scope And Status
 
-Pending migration: Route-related Line search and CRUD, named variants, and outbound/return departure-time-slot references.
+Partial implementation: nested Route-scoped Line search/detail/add/edit, name and optional outbound/return Shift Time references are implemented in reusable transport libraries. App access requires Admin/Manager plus the selected company and parent Route; the backend must validate entity ownership.
 Line is distinct from Route, Shift, Vehicle and Trip; legacy Line functionality is not migrated completion or a line-specific geometry contract.
 Required reading and shared delivery rules are inherited from the main TODO; allocation and eligibility remain separate consumers.
 
@@ -31,23 +31,26 @@ Legacy search overwrites paging; `enteranceShiftTimeName` is misspelled and nume
 
 ## Pending Tasks
 
-[ ] LINE-01 Confirm Line search/detail/create/update/delete endpoints, verbs, envelopes, parent IDs, slot projections and paging through read-only source/schema inspection; no production calls.
+[x] LINE-01 Confirm Line search/detail/create/update/delete endpoints, verbs, envelopes, parent IDs, slot projections and paging through read-only source/schema inspection; no production calls.
 [ ] LINE-02 Resolve Q09/Q14 and required-Route versus optional-interface discrepancies; retain source-matching DTO types, explicitly reconcile `enteranceShiftTimeName` and avoid invented station membership or slot precedence.
-[ ] LINE-03 Inspect existing libraries and Nx generator help, dry-run then generate needed Line libraries with Bun/Nx; place all forms/lists/selectors in libraries and export typed config/provider/route factories.
-[ ] LINE-04 Register aliases, Nx scope/type tags and exact Route/departure-time dependency edges plus Sheriff mappings; prevent app imports, deep imports and UI dependencies in data-access.
-[ ] LINE-05 Implement route-scoped NgRx SignalStore keyed by session/company/Route ID/Line ID/filter/page; cancel stale parent/slot requests and reset sensitive state on reused-route or company changes.
-[ ] LINE-06 Build standalone OnPush Line forms with local signals and Signal Forms; hydrate name, Direction and both optional time-slot IDs without clobbering drafts, and map empty values explicitly.
-[ ] LINE-07 Reuse Route and departure-time pickers plus shared field/confirmation controls through typed public APIs; distinguish named clock slots from work Shifts and business Routes from URL routes.
-[ ] LINE-08 Compose TanStack Table v9 and Spartan Line lists using confirmed server search/paging; remove fixed-first-page behavior and provide truthful page indices and loading/empty/error states.
+[x] LINE-03 Inspect existing libraries and Nx generator help, dry-run then generate needed Line libraries with Bun/Nx; place all forms/lists/selectors in libraries and export typed config/provider/route factories.
+[x] LINE-04 Register aliases, Nx scope/type tags and exact Route/departure-time dependency edges plus Sheriff mappings; prevent app imports, deep imports and UI dependencies in data-access.
+[x] LINE-05 Implement route-scoped NgRx SignalStore keyed by session/company/Route ID/Line ID/filter/page; cancel stale parent/slot requests and reset sensitive state on reused-route or company changes.
+[x] LINE-06 Build standalone OnPush Line forms with local signals and Signal Forms; hydrate name, Direction and both optional time-slot IDs without clobbering drafts, and map empty values explicitly.
+[x] LINE-07 Reuse Route and departure-time pickers plus shared field/confirmation controls through typed public APIs; distinguish named clock slots from work Shifts and business Routes from URL routes.
+[x] LINE-08 Compose TanStack Table v9 and Spartan Line lists using confirmed server search/paging; remove fixed-first-page behavior and provide truthful page indices and loading/empty/error states.
 [ ] LINE-09 Prove create-read-edit-read-delete roundtrips for parent and both slot references; cover optional/required contradictions, projection types and later pages instead of reproducing legacy defects.
 [ ] LINE-10 Derive authorized company/Route context without hardcoded company IDs; test direct/inaccessible/deleted parents, switches and server denial, without treating optional passenger Line as an eligibility decision (Q16).
 [ ] LINE-11 Register Tailwind library/Helm sources and semantic logical styles; verify responsive RTL/LTR time-slot labels, keyboard tables/pickers and field-error focus.
 [ ] LINE-12 Verify standalone and nested Line routes in an alternate consumer with different mount paths/API/destinations; expose reusable Line selection without coupling to panel allocation screens.
 [ ] LINE-13 Add unit tests for DTO/projection adapters, optional-slot mapping, parent gating, multi-page queries, scoped-store races, form hydration and failed/duplicate mutations.
 [ ] LINE-14 Run discovered Bun/Nx targets and browser/accessibility CRUD tests across parent changes and paging; verify protected client rendering, SSR/hydration isolation and no private HTTP transfer caching.
-[ ] LINE-15 Record implementation and contract/test evidence before completion; separate fixture coverage from approved non-production API acceptance and keep Q09/Q14/Q16 policy boundaries explicit.
+[x] LINE-15 Record implementation and contract/test evidence before completion; separate fixture coverage from approved non-production API acceptance and keep Q09/Q14/Q16 policy boundaries explicit.
 
 ## Evidence Placeholder
 
-Not completed. Parent/slot contract decisions, public APIs, Bun/Nx results, browser/accessibility, alternate-mount and client/SSR evidence: pending.
-No production calls, Line-owned Station sequence, independent saved geometry or live-backend acceptance are claimed from legacy S10/S12.
+Implemented `libs/transport/lines/data-access` and `libs/transport/lines/feature`, nested at `/client/:companyId/direction/detail/:directionId/lines`. Line list entry posts `{ companyId, directionId, pageNumber, pageSize }` to `/v1/lines/search`; detail entry gets `/v1/lines/:id`; add/edit entry fetches the existing bounded `DepartureTimesApi` lookup from `/v1/shiftTimes`. Add/update posts the source-backed Line DTO with parent Direction and optional Shift Time IDs. The panel allows Admin/Manager operations only when the active company and parent Direction match; the API must independently enforce entity ownership.
+
+The nested editor treats the Route as required context without changing the legacy DTO globally. It supports both `entranceShiftTimeName` and the legacy `enteranceShiftTimeName` display projection, maps empty slot IDs to `null`, and does not calculate time precedence or invent Line-to-Station membership. Line deletion is not exposed.
+
+Passed Line API/model create/update fixtures, list-paging and nested Route-context tests, data/feature typechecks and lint, `panel-e2e:typecheck/lint`, `panel:lint`, and `panel:build`. The browser fixture asserts list search, detail and Shift Time lookup requests on add/edit entry, but browser E2E was not run because Playwright browser executables are unavailable. No production calls, read-after-write backend acceptance, deletion/history behavior, station membership, time-precedence policy, or live-backend acceptance are claimed.

@@ -2,12 +2,12 @@ import {
   InjectionToken,
   Signal,
   computed,
+  DestroyRef,
   inject,
   makeEnvironmentProviders,
   signal,
 } from '@angular/core'
-import { toSignal } from '@angular/core/rxjs-interop'
-import { ActivatedRoute, CanActivateFn, CanDeactivateFn, Routes } from '@angular/router'
+import { CanActivateFn, CanDeactivateFn, NavigationEnd, Router, Routes } from '@angular/router'
 import { authGuard } from '@org/auth-data-access'
 import {
   RouteId,
@@ -17,6 +17,7 @@ import {
 } from '@org/transport-routes-data-access'
 import type { AutocompleteLanguage, BilingualText } from '@org/ui-forms'
 import type { RouteEditor } from './ui/route-editor'
+import { filter } from 'rxjs'
 
 export interface RouteFeatureConfig extends RoutesDataConfig {
   readonly path: string
@@ -36,17 +37,31 @@ export const ROUTE_MANAGE = new InjectionToken<Signal<boolean>>('ROUTE_MANAGE')
 export const ROUTE_DIRECTION_ID = new InjectionToken<Signal<RouteId | null>>('ROUTE_DIRECTION_ID')
 
 function directionIdFromRoute() {
-  const route = inject(ActivatedRoute)
-  const params = toSignal(route.paramMap, { initialValue: route.snapshot.paramMap })
-  return computed(() => {
-    const value = params().get('id')
-    if (!value || !/^[1-9]\d*$/.test(value)) return null
-    try {
-      return routeId(Number(value))
-    } catch {
-      return null
+  const router = inject(Router)
+  const directionId = signal(activeDirectionId(router))
+  const navigation = router.events
+    .pipe(filter(event => event instanceof NavigationEnd))
+    .subscribe(() => directionId.set(activeDirectionId(router)))
+  inject(DestroyRef).onDestroy(() => navigation.unsubscribe())
+  return directionId.asReadonly()
+}
+
+function activeDirectionId(router: Router): RouteId | null {
+  let current = router.routerState.snapshot.root
+  while (current) {
+    if (current.routeConfig?.path === 'detail/:id/lines') {
+      const value = current.paramMap.get('id')
+      if (!value || !/^[1-9]\d*$/.test(value)) return null
+      try {
+        return routeId(Number(value))
+      } catch {
+        return null
+      }
     }
-  })
+    if (!current.firstChild) break
+    current = current.firstChild
+  }
+  return null
 }
 
 export function provideRouteFeature(config: RouteFeatureConfig) {
