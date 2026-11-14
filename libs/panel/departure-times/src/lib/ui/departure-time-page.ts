@@ -24,13 +24,17 @@ import { HlmFieldImports } from '@spartan-ng/helm/field'
 import {
   DEPARTURE_TIME_CREATE,
   DEPARTURE_TIME_FEATURE,
+  DEPARTURE_TIME_LANGUAGE,
   DEPARTURE_TIME_UPDATE,
 } from '../departure-time.routes'
+import { departureTimeText, DepartureTimeTextKey } from '../departure-time-text'
 
-const columns: readonly DataTableColumn<DepartureTimeDto>[] = [
-  { accessorKey: 'name', header: 'Name' },
-  { accessorKey: 'shiftTime', header: 'Stored time' },
-]
+function columns(language: 'en' | 'fa'): readonly DataTableColumn<DepartureTimeDto>[] {
+  return [
+    { accessorKey: 'name', header: departureTimeText(language, 'name') },
+    { accessorKey: 'shiftTime', header: departureTimeText(language, 'time') },
+  ]
+}
 
 @Component({
   selector: 'lib-departure-time-page',
@@ -39,72 +43,79 @@ const columns: readonly DataTableColumn<DepartureTimeDto>[] = [
   providers: [DepartureTimesStore],
   host: { class: 'block min-w-0 p-4 md:p-8' },
   template: `
-    <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold">{{ config.heading ?? 'Departure times' }}</h1>
-      @if (canCreate()) {
-        <a hlmBtn class="min-h-11" [routerLink]="['new']">Create departure time</a>
+    <main [attr.dir]="language() === 'fa' ? 'rtl' : 'ltr'">
+      <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 class="text-2xl font-semibold">{{ t('title') }}</h1>
+        @if (canCreate()) {
+          <a hlmBtn class="min-h-11" [routerLink]="['new']">{{ t('create') }}</a>
+        }
+      </header>
+      <p class="text-muted-foreground mb-4">{{ t('description') }}</p>
+      <form class="mb-6 flex flex-wrap items-end gap-3" (submit)="search($event)">
+        <div hlmField class="min-w-0 flex-1">
+          <label hlmFieldLabel for="departure-search">{{ t('searchName') }}</label>
+          <input
+            libSignalInput
+            id="departure-search"
+            type="search"
+            class="min-h-11"
+            [formField]="searchForm.name"
+          />
+        </div>
+        <button hlmBtn variant="outline" type="submit" class="min-h-11">{{ t('search') }}</button>
+      </form>
+      <p class="text-muted-foreground mb-4" role="note">{{ t('limitNote') }}</p>
+      @if (store.list()?.atLimit) {
+        <p role="status" class="mb-4">{{ t('limitReached') }}</p>
       }
-    </header>
-    <p class="text-muted-foreground mb-4">
-      Named travel-time slots, not work shifts or Route departure rules.
-    </p>
-    <form class="mb-6 flex flex-wrap items-end gap-3" (submit)="search($event)">
-      <div hlmField class="min-w-0 flex-1">
-        <label hlmFieldLabel for="departure-search">Departure-time name</label>
-        <input
-          libSignalInput
-          id="departure-search"
-          type="search"
-          class="min-h-11"
-          [formField]="searchForm.name"
-        />
-      </div>
-      <button hlmBtn variant="outline" type="submit" class="min-h-11">Search</button>
-    </form>
-    <p class="text-muted-foreground mb-4" role="note">
-      The server returns at most 1,000 matching records without a total count. This list is not
-      guaranteed to be complete.
-    </p>
-    @if (store.list()?.atLimit) {
-      <p role="status" class="mb-4">The 1,000-record limit was reached. Narrow the name filter.</p>
-    }
-    <lib-data-table
-      [rows]="store.list()?.items ?? []"
-      [columns]="columns"
-      [rowId]="rowId"
-      [rowLabel]="rowLabel"
-      [caption]="config.heading ?? 'Departure times'"
-      [loading]="store.loading()"
-      [error]="error()"
-      [page]="page"
-      [showPagination]="false"
-      [rowActions]="actions"
-      (retry)="reload()"
-    />
-    <ng-template #actions let-item>
-      <a
-        hlmBtn
-        variant="outline"
-        class="min-h-11"
-        [routerLink]="[item.id]"
-        [attr.aria-label]="'View departure time: ' + item.name"
-        >View</a
-      >
-      @if (canUpdate()) {
+      <lib-data-table
+        [rows]="store.list()?.items ?? []"
+        [columns]="columns"
+        [rowId]="rowId"
+        [rowLabel]="rowLabel"
+        [caption]="t('listCaption')"
+        [loading]="store.loading()"
+        [error]="error()"
+        [loadingLabel]="t('loading')"
+        [emptyLabel]="t('empty')"
+        [errorTitle]="t('loadFailed')"
+        [retryLabel]="t('retry')"
+        [actionHeading]="t('actions')"
+        [pagingLabel]="t('paging')"
+        [pageLabel]="t('page')"
+        [previousLabel]="t('previous')"
+        [nextLabel]="t('next')"
+        [page]="page"
+        [showPagination]="false"
+        [rowActions]="actions"
+        (retry)="reload()"
+      />
+      <ng-template #actions let-item>
         <a
           hlmBtn
           variant="outline"
           class="min-h-11"
-          [routerLink]="[item.id, 'edit']"
-          [attr.aria-label]="'Edit departure time: ' + item.name"
-          >Edit</a
+          [routerLink]="[item.id]"
+          [attr.aria-label]="t('viewNamed').replace('{name}', item.name)"
+          >{{ t('view') }}</a
         >
-      }
-    </ng-template>
+        @if (canUpdate()) {
+          <a
+            hlmBtn
+            variant="outline"
+            class="min-h-11"
+            [routerLink]="[item.id, 'edit']"
+            [attr.aria-label]="t('editNamed').replace('{name}', item.name)"
+            >{{ t('edit') }}</a
+          >
+        }
+      </ng-template>
+    </main>
   `,
 })
 export class DepartureTimePage {
   protected readonly config = inject(DEPARTURE_TIME_FEATURE)
+  protected readonly language = inject(DEPARTURE_TIME_LANGUAGE)
   protected readonly canCreate = inject(DEPARTURE_TIME_CREATE)
   protected readonly canUpdate = inject(DEPARTURE_TIME_UPDATE)
   protected readonly store = inject(DepartureTimesStore)
@@ -122,7 +133,7 @@ export class DepartureTimePage {
     return { ...this.query() }
   })
   protected readonly searchForm = form(this.draft)
-  protected readonly columns = columns
+  protected readonly columns = computed(() => columns(this.language()))
   protected readonly rowId = (row: DepartureTimeDto) => String(row.id)
   protected readonly rowLabel = (row: DepartureTimeDto) => row.name
   protected readonly page: DataTablePage = {
@@ -136,8 +147,8 @@ export class DepartureTimePage {
     const error = this.store.error()
     return error &&
       (error.code === DEPARTURE_TIME_ACCESS_DENIED || error.status === 401 || error.status === 403)
-      ? (this.config.deniedMessage ?? 'You do not have access to departure times in this company.')
-      : (error?.message ?? null)
+      ? (this.config.deniedMessage?.[this.language()] ?? this.t('accessDenied'))
+      : (error?.message ?? this.t('requestFailed'))
   })
   constructor() {
     effect(() => {
@@ -149,6 +160,9 @@ export class DepartureTimePage {
   }
   protected reload() {
     this.store.load(this.query())
+  }
+  protected t(key: DepartureTimeTextKey) {
+    return departureTimeText(this.language(), key)
   }
   protected search(event: Event) {
     event.preventDefault()

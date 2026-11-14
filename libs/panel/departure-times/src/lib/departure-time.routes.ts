@@ -6,11 +6,12 @@ import {
   provideDepartureTimesData,
 } from '@org/transport-departure-times-data-access'
 import type { DepartureTimeEditor } from './ui/departure-time-editor'
+import type { DepartureTimeLanguage } from './departure-time-text'
 
 export interface DepartureTimeFeatureConfig extends DepartureTimesDataConfig {
   readonly path: string
-  readonly heading?: string
-  readonly deniedMessage?: string
+  readonly language: () => Signal<DepartureTimeLanguage>
+  readonly deniedMessage?: Partial<Record<DepartureTimeLanguage, string>>
   /** UI affordance only; the data access decision and backend must enforce the operation. */
   readonly canManage: () => Signal<boolean>
   readonly canCreate?: () => Signal<boolean>
@@ -23,6 +24,9 @@ export const DEPARTURE_TIME_FEATURE = new InjectionToken<DepartureTimeFeatureCon
 export const DEPARTURE_TIME_MANAGE = new InjectionToken<Signal<boolean>>('DEPARTURE_TIME_MANAGE')
 export const DEPARTURE_TIME_CREATE = new InjectionToken<Signal<boolean>>('DEPARTURE_TIME_CREATE')
 export const DEPARTURE_TIME_UPDATE = new InjectionToken<Signal<boolean>>('DEPARTURE_TIME_UPDATE')
+export const DEPARTURE_TIME_LANGUAGE = new InjectionToken<Signal<DepartureTimeLanguage>>(
+  'DEPARTURE_TIME_LANGUAGE',
+)
 
 export function provideDepartureTimeFeature(config: DepartureTimeFeatureConfig) {
   return makeEnvironmentProviders([
@@ -31,6 +35,7 @@ export function provideDepartureTimeFeature(config: DepartureTimeFeatureConfig) 
     { provide: DEPARTURE_TIME_MANAGE, useFactory: config.canManage },
     { provide: DEPARTURE_TIME_CREATE, useFactory: config.canCreate ?? config.canManage },
     { provide: DEPARTURE_TIME_UPDATE, useFactory: config.canUpdate ?? config.canManage },
+    { provide: DEPARTURE_TIME_LANGUAGE, useFactory: config.language },
   ])
 }
 

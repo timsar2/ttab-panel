@@ -34,3 +34,44 @@
 - Use [the linked migration TODO](docs/migration/TODO.md) as the active backlog;
   read its mandatory business/architecture instructions and update the matching
   feature checklist when implementing or verifying work.
+
+  <!-- nx configuration start-->
+
+# Graphiti Persistent Memory
+
+Use the connected Graphiti MCP server for persistent
+project memory.
+
+Project group_id: ttab
+
+## Before starting a task
+
+- Search Graphiti using search_nodes and search_memory_facts.
+- Retrieve relevant architecture decisions, requirements,
+  conventions, and previously resolved problems.
+- Use the same group_id for all operations.
+- Verify recalled information against the current codebase.
+- Never treat stored memory as more authoritative than
+  current source code.
+
+## During development
+
+- Follow existing architectural decisions.
+- Avoid repeating previously resolved mistakes.
+- If a stored decision conflicts with the current code,
+  investigate before changing anything.
+
+## After completing a task
+
+- Save confirmed architectural decisions using add_memory.
+- Record important bug fixes and their root causes.
+- Record new requirements and coding conventions.
+- Save a concise summary, not the entire conversation.
+- Avoid duplicate or trivial memory entries.
+- Never store passwords, tokens, API keys, or secrets.
+- Do not save unverified assumptions as facts.
+
+## Memory isolation
+
+- Always use group_id: commerce-api
+- Do not mix information from different projects.

@@ -9,7 +9,7 @@ import {
   untracked,
 } from '@angular/core'
 import { toSignal } from '@angular/core/rxjs-interop'
-import { FormField, disabled, form, required, submit, validate } from '@angular/forms/signals'
+import { FormField, disabled, form, submit, validate } from '@angular/forms/signals'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import { SessionStore } from '@org/auth-data-access'
 import {
@@ -24,7 +24,12 @@ import { ConfirmDialog, SignalInput } from '@org/ui-forms'
 import { HlmAlertImports } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmFieldImports } from '@spartan-ng/helm/field'
-import { DEPARTURE_TIME_CREATE, DEPARTURE_TIME_UPDATE } from '../departure-time.routes'
+import {
+  DEPARTURE_TIME_CREATE,
+  DEPARTURE_TIME_LANGUAGE,
+  DEPARTURE_TIME_UPDATE,
+} from '../departure-time.routes'
+import { departureTimeText, DepartureTimeTextKey } from '../departure-time-text'
 
 @Component({
   selector: 'lib-departure-time-editor',
@@ -43,64 +48,62 @@ import { DEPARTURE_TIME_CREATE, DEPARTURE_TIME_UPDATE } from '../departure-time.
   template: `
     <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-semibold">
-        {{ id() === null ? 'Create departure time' : 'Edit departure time' }}
+        {{ t(id() === null ? 'createTitle' : 'editTitle') }}
       </h1>
-      <a hlmBtn variant="outline" class="min-h-11" [routerLink]="['.']" [relativeTo]="route.parent"
-        >Back to departure times</a
+      <a
+        hlmBtn
+        variant="outline"
+        class="min-h-11"
+        [routerLink]="['.']"
+        [relativeTo]="route.parent"
+        >{{ t('back') }}</a
       >
     </header>
     <lib-confirm-dialog
       [(open)]="leaveOpen"
-      [title]="store.saving() ? 'Save in progress' : 'Discard unsaved changes?'"
-      [description]="
-        store.saving()
-          ? 'Stay here until the save completes.'
-          : 'Your unsaved changes will be lost.'
-      "
-      confirmLabel="Discard changes"
-      cancelLabel="Keep editing"
+      [title]="store.saving() ? t('saveProgress') : t('discardTitle')"
+      [description]="store.saving() ? t('discardBusyDescription') : t('discardDescription')"
+      [confirmLabel]="t('discardConfirm')"
+      [cancelLabel]="t('discardCancel')"
       [busy]="store.saving()"
       (confirmed)="finishLeave(true)"
       (canceled)="finishLeave(false)"
     />
     @if (id() === undefined) {
-      <p role="alert">Invalid departure-time URL.</p>
+      <p role="alert">{{ t('invalidUrl') }}</p>
     } @else if (!canWrite()) {
-      <p role="alert">You do not have access to edit departure times in this company.</p>
+      <p role="alert">{{ t('accessEditDenied') }}</p>
     } @else if (id() !== null && store.detailStatus() === 'loading') {
-      <p role="status">Loading departure time...</p>
+      <p role="status">{{ t('loading') }}</p>
     } @else if (id() !== null && store.detailStatus() === 'missing') {
-      <p role="alert">Departure time not found.</p>
+      <p role="alert">{{ t('notFound') }}</p>
     } @else if (id() !== null && store.detailStatus() === 'denied') {
-      <p role="alert">You do not have access to this departure time.</p>
+      <p role="alert">{{ t('accessRecordDenied') }}</p>
     } @else if (id() !== null && store.detailStatus() === 'error') {
       <div hlmAlert variant="destructive" role="alert">
-        <h2 hlmAlertTitle>Unable to load departure time</h2>
-        <p hlmAlertDescription>{{ store.detailError()?.message }}</p>
+        <h2 hlmAlertTitle>{{ t('loadFailed') }}</h2>
+        <p hlmAlertDescription>{{ store.detailError()?.message ?? t('requestFailed') }}</p>
         <button hlmBtn variant="outline" class="min-h-11" type="button" (click)="reload()">
-          Retry
+          {{ t('retryLoad') }}
         </button>
       </div>
     } @else if (ready()) {
       @if (store.saveError(); as error) {
         <div hlmAlert variant="destructive" role="alert" class="mb-4">
-          <h2 hlmAlertTitle>Unable to save departure time</h2>
-          <p hlmAlertDescription>{{ error.message }}</p>
+          <h2 hlmAlertTitle>{{ t('saveFailed') }}</h2>
+          <p hlmAlertDescription>{{ error.message ?? t('requestFailed') }}</p>
           @for (field of serverErrors(); track field.key) {
             <p>{{ field.messages.join(' ') }}</p>
           }
         </div>
       }
       @if (store.saveOutcome() === 'confirmed') {
-        <p role="status" class="mb-4">Departure time saved.</p>
+        <p role="status" class="mb-4">{{ t('saved') }}</p>
       }
       @if (store.saveOutcome() === 'unconfirmed') {
         <div hlmAlert role="alert" class="mb-4">
-          <h2 hlmAlertTitle>Save returned no record</h2>
-          <p hlmAlertDescription>
-            The server accepted the request but did not confirm the saved record. Verify the list
-            before submitting again.
-          </p>
+          <h2 hlmAlertTitle>{{ t('saveNotConfirmedTitle') }}</h2>
+          <p hlmAlertDescription>{{ t('saveNotConfirmedDescription') }}</p>
         </div>
       }
       <form
@@ -110,7 +113,7 @@ import { DEPARTURE_TIME_CREATE, DEPARTURE_TIME_UPDATE } from '../departure-time.
         [attr.aria-busy]="store.saving()"
       >
         <div hlmField>
-          <label hlmFieldLabel for="departure-name">Name</label>
+          <label hlmFieldLabel for="departure-name">{{ t('name') }}</label>
           <input
             libSignalInput
             id="departure-name"
@@ -126,7 +129,7 @@ import { DEPARTURE_TIME_CREATE, DEPARTURE_TIME_UPDATE } from '../departure-time.
           }
         </div>
         <div hlmField>
-          <label hlmFieldLabel for="departure-time">Time value</label>
+          <label hlmFieldLabel for="departure-time">{{ t('time') }}</label>
           <input
             libSignalInput
             id="departure-time"
@@ -134,10 +137,7 @@ import { DEPARTURE_TIME_CREATE, DEPARTURE_TIME_UPDATE } from '../departure-time.
             [formField]="editorForm.shiftTime"
             aria-describedby="departure-time-help"
           />
-          <p hlmFieldDescription id="departure-time-help">
-            Enter HH:mm, or preserve the exact stored .NET TimeSpan. This does not select a date or
-            timezone.
-          </p>
+          <p hlmFieldDescription id="departure-time-help">{{ t('timeHelp') }}</p>
           @if (editorForm.shiftTime().touched() && editorForm.shiftTime().invalid()) {
             <hlm-field-error [forceShow]="true">
               @for (error of editorForm.shiftTime().errors(); track $index) {
@@ -152,7 +152,7 @@ import { DEPARTURE_TIME_CREATE, DEPARTURE_TIME_UPDATE } from '../departure-time.
           type="submit"
           [disabled]="store.saving() || store.saveOutcome() === 'unconfirmed'"
         >
-          Save departure time
+          {{ t('save') }}
         </button>
       </form>
     }
@@ -160,6 +160,7 @@ import { DEPARTURE_TIME_CREATE, DEPARTURE_TIME_UPDATE } from '../departure-time.
 })
 export class DepartureTimeEditor {
   protected readonly route = inject(ActivatedRoute)
+  protected readonly language = inject(DEPARTURE_TIME_LANGUAGE)
   protected readonly store = inject(DepartureTimesStore)
   private readonly api = inject(DepartureTimesApi)
   private readonly session = inject(SessionStore)
@@ -206,18 +207,16 @@ export class DepartureTimeEditor {
       path,
       () => this.store.saving() || this.store.saveOutcome() === 'unconfirmed' || !this.canWrite(),
     )
-    required(path.name, { message: 'Enter a name.' })
     validate(path.name, ({ value }) =>
-      value().trim() ? null : { kind: 'required', message: 'Enter a name.' },
+      value().trim() ? null : { kind: 'required', message: this.t('nameRequired') },
     )
-    required(path.shiftTime, { message: 'Enter a time value.' })
     validate(path.shiftTime, ({ value }) => {
-      if (!value()) return null
+      if (!value()) return { kind: 'required', message: this.t('timeRequired') }
       try {
         departureTimeInput(value())
         return null
       } catch {
-        return { kind: 'time', message: 'Enter HH:mm or an exact .NET TimeSpan.' }
+        return { kind: 'time', message: this.t('timeInvalid') }
       }
     })
     for (const field of ['name', 'shiftTime'] as const) {
@@ -277,6 +276,9 @@ export class DepartureTimeEditor {
   protected reload() {
     const id = this.id()
     if (id) this.store.loadDetail(id)
+  }
+  protected t(key: DepartureTimeTextKey) {
+    return departureTimeText(this.language(), key)
   }
   protected save(event: Event) {
     event.preventDefault()

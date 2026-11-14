@@ -1,0 +1,87 @@
+{
+  "name": "driver",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/driver/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/driver",
+        "browser": "apps/driver/src/main.ts",
+        "tsConfig": "apps/driver/tsconfig.app.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/driver/public"
+          }
+        ],
+        "styles": ["apps/driver/src/styles.css"],
+        "server": "apps/driver/src/main.server.ts",
+        "ssr": {
+          "entry": "apps/driver/src/server.ts"
+        },
+        "outputMode": "server",
+        "security": {
+          "allowedHosts": []
+        }
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "readyWhen": {
+        "signal": true
+      },
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "configurations": {
+        "production": {
+          "buildTarget": "driver:build:production"
+        },
+        "development": {
+          "buildTarget": "driver:build:development"
+        }
+      }
+    },
+    "serve-static": {
+      "continuous": true,
+      "readyWhen": {
+        "signal": true
+      },
+      "dependsOn": ["build"],
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "driver:build",
+        "port": 4200,
+        "staticFilePath": "dist/apps/driver/browser",
+        "spa": true
+      }
+    }
+  }
+}
