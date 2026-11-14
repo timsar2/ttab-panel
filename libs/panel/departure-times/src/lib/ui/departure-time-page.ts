@@ -21,7 +21,11 @@ import { DataTable, DataTableColumn, DataTablePage } from '@org/ui-data-table'
 import { SignalInput } from '@org/ui-forms'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmFieldImports } from '@spartan-ng/helm/field'
-import { DEPARTURE_TIME_FEATURE, DEPARTURE_TIME_MANAGE } from '../departure-time.routes'
+import {
+  DEPARTURE_TIME_CREATE,
+  DEPARTURE_TIME_FEATURE,
+  DEPARTURE_TIME_UPDATE,
+} from '../departure-time.routes'
 
 const columns: readonly DataTableColumn<DepartureTimeDto>[] = [
   { accessorKey: 'name', header: 'Name' },
@@ -37,7 +41,7 @@ const columns: readonly DataTableColumn<DepartureTimeDto>[] = [
   template: `
     <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-semibold">{{ config.heading ?? 'Departure times' }}</h1>
-      @if (canManage()) {
+      @if (canCreate()) {
         <a hlmBtn class="min-h-11" [routerLink]="['new']">Create departure time</a>
       }
     </header>
@@ -86,7 +90,7 @@ const columns: readonly DataTableColumn<DepartureTimeDto>[] = [
         [attr.aria-label]="'View departure time: ' + item.name"
         >View</a
       >
-      @if (canManage()) {
+      @if (canUpdate()) {
         <a
           hlmBtn
           variant="outline"
@@ -101,7 +105,8 @@ const columns: readonly DataTableColumn<DepartureTimeDto>[] = [
 })
 export class DepartureTimePage {
   protected readonly config = inject(DEPARTURE_TIME_FEATURE)
-  protected readonly canManage = inject(DEPARTURE_TIME_MANAGE)
+  protected readonly canCreate = inject(DEPARTURE_TIME_CREATE)
+  protected readonly canUpdate = inject(DEPARTURE_TIME_UPDATE)
   protected readonly store = inject(DepartureTimesStore)
   private readonly api = inject(DepartureTimesApi)
   private readonly session = inject(SessionStore)

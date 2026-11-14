@@ -14,6 +14,7 @@ import {
   viewChild,
 } from '@angular/core'
 import type { Map as NeshanMap } from '@neshan-maps-platform/maplibre-sdk'
+import { MapCoordinate, neshanDirectionsUrl, neshanRouteCoordinates } from './neshan-directions'
 
 export interface NeshanMapPoint {
   readonly id: number
@@ -67,11 +68,19 @@ interface MutableGeoJsonSource {
         role="region"
         aria-busy="true"
       ></div>
+      @if (routeError()) {
+        <p class="text-muted-foreground mt-2 text-sm" role="status">
+          {{
+            language() === 'fa' ? 'نمایش مسیر جاده‌ای در دسترس نیست.' : 'Road route is unavailable.'
+          }}
+        </p>
+      }
     }
   `,
 })
 export class NeshanMapComponent {
   readonly apiKey = input<string | null>(null)
+  readonly serviceApiKey = input<string | null>(null)
   readonly points = input<readonly NeshanMapPoint[]>([])
   readonly language = input<'en' | 'fa'>('en')
   private readonly mapHost = viewChild<ElementRef<HTMLDivElement>>('mapHost')
@@ -79,7 +88,9 @@ export class NeshanMapComponent {
   private readonly map = signal<NeshanMap | null>(null)
   private readonly ready = signal(false)
   protected readonly error = signal<string | null>(null)
+  protected readonly routeError = signal(false)
   private disposed = false
+  private routeRequestVersion = 0
 
   constructor() {
     effect(() => {
@@ -108,9 +119,31 @@ export class NeshanMapComponent {
       this.setStations(map, pointData)
       this.fit(map, points)
     })
+    effect(() => {
+      const map = this.map()
+      const ready = this.ready()
+      const points = this.points()
+      const serviceApiKey = this.serviceApiKey()?.trim()
+      if (!map || !ready) return
+      const requestVersion = ++this.routeRequestVersion
+      const url = neshanDirectionsUrl(points)
+      if (!url) {
+        this.clearRoute(map)
+        this.routeError.set(false)
+        return
+      }
+      if (!serviceApiKey) {
+        this.clearRoute(map)
+        this.routeError.set(true)
+        return
+      }
+      this.routeError.set(false)
+      void this.loadRoute(map, url, serviceApiKey, requestVersion)
+    })
     afterNextRender(() => void this.createMap())
     this.destroyRef.onDestroy(() => {
       this.disposed = true
+      this.routeRequestVersion++
       this.map()?.remove()
       this.map.set(null)
     })
@@ -183,14 +216,73 @@ export class NeshanMapComponent {
     })
   }
 
-  private fit(map: NeshanMap, points: readonly NeshanMapPoint[]) {
-    if (points.length === 0) return
-    if (points.length === 1) {
-      map.easeTo({ center: [points[0].lng as number, points[0].lat as number], zoom: 13 })
+  private async loadRoute(
+    map: NeshanMap,
+    url: string,
+    serviceApiKey: string,
+    requestVersion: number,
+  ) {
+    try {
+      const response = await fetch(url, { headers: { 'Api-Key': serviceApiKey } })
+      if (!response.ok) throw new Error('Neshan route request failed.')
+      const coordinates = neshanRouteCoordinates(await response.json())
+      if (this.disposed || requestVersion !== this.routeRequestVersion) return
+      this.setRoute(map, coordinates)
+      this.fitCoordinates(map, coordinates)
+      this.routeError.set(false)
+    } catch {
+      if (this.disposed || requestVersion !== this.routeRequestVersion) return
+      this.clearRoute(map)
+      this.routeError.set(true)
+    }
+  }
+
+  private setRoute(map: NeshanMap, coordinates: readonly MapCoordinate[]) {
+    const data: GeoJsonFeatureCollection = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates },
+          properties: {},
+        },
+      ],
+    }
+    const existing = map.getSource('route-road') as MutableGeoJsonSource | undefined
+    if (existing?.setData) {
+      existing.setData(data)
       return
     }
-    const longitudes = points.map(point => point.lng as number)
-    const latitudes = points.map(point => point.lat as number)
+    map.addSource('route-road', { type: 'geojson', data: data as never })
+    map.addLayer({
+      id: 'route-road-line',
+      type: 'line',
+      source: 'route-road',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#2563eb', 'line-width': 5, 'line-opacity': 0.85 },
+    })
+  }
+
+  private clearRoute(map: NeshanMap) {
+    if (map.getLayer('route-road-line')) map.removeLayer('route-road-line')
+    if (map.getSource('route-road')) map.removeSource('route-road')
+  }
+
+  private fit(map: NeshanMap, points: readonly NeshanMapPoint[]) {
+    this.fitCoordinates(
+      map,
+      points.map(point => [point.lng as number, point.lat as number] as const),
+    )
+  }
+
+  private fitCoordinates(map: NeshanMap, coordinates: readonly MapCoordinate[]) {
+    if (coordinates.length === 0) return
+    if (coordinates.length === 1) {
+      map.easeTo({ center: [...coordinates[0]], zoom: 13 })
+      return
+    }
+    const longitudes = coordinates.map(([longitude]) => longitude)
+    const latitudes = coordinates.map(([, latitude]) => latitude)
     map.fitBounds(
       [
         [Math.min(...longitudes), Math.min(...latitudes)],

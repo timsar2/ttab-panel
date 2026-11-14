@@ -1,0 +1,87 @@
+{
+  "name": "passenger",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/passenger/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/passenger",
+        "browser": "apps/passenger/src/main.ts",
+        "tsConfig": "apps/passenger/tsconfig.app.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/passenger/public"
+          }
+        ],
+        "styles": ["apps/passenger/src/styles.css"],
+        "server": "apps/passenger/src/main.server.ts",
+        "ssr": {
+          "entry": "apps/passenger/src/server.ts"
+        },
+        "outputMode": "server",
+        "security": {
+          "allowedHosts": []
+        }
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "readyWhen": {
+        "signal": true
+      },
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "configurations": {
+        "production": {
+          "buildTarget": "passenger:build:production"
+        },
+        "development": {
+          "buildTarget": "passenger:build:development"
+        }
+      }
+    },
+    "serve-static": {
+      "continuous": true,
+      "readyWhen": {
+        "signal": true
+      },
+      "dependsOn": ["build"],
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "passenger:build",
+        "port": 4200,
+        "staticFilePath": "dist/apps/passenger/browser",
+        "spa": true
+      }
+    }
+  }
+}

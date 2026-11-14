@@ -82,6 +82,38 @@ describe('LinesApi', () => {
     await expect(result).resolves.toMatchObject({ items: [{ id: 5, name: 'اداری ثابت' }] })
   })
 
+  it('uses the requested Direction when list rows omit directionId', async () => {
+    const result = firstValueFrom(api.list({ pageIndex: 0, pageSize: 10 }))
+    const request = http.expectOne('/test-api/v1/lines/search')
+    request.flush({
+      code: '2000',
+      massage: 'Success',
+      result: {
+        list: [
+          {
+            name: 'اداری ثابت',
+            directionName: 'خرمدره از فردوسی',
+            entranceShiftTimeName: 'سرویس صبح',
+            returnShiftTimeName: 'سرویس بعد ازظهر',
+            id: 2,
+          },
+        ],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalCount: 1,
+          pageSize: 10,
+          hasPreviousPage: false,
+          hasNextPage: false,
+        },
+      },
+    })
+
+    await expect(result).resolves.toMatchObject({
+      items: [{ id: 2, directionId: 42, directionName: 'خرمدره از فردوسی' }],
+    })
+  })
+
   it('loads detail and serializes add/update with the nested parent and optional time IDs', async () => {
     const detail = firstValueFrom(api.detail(lineId(5)))
     const get = http.expectOne('/test-api/v1/lines/5')

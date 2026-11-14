@@ -14,7 +14,7 @@ import {
   departureTimeId,
 } from '@org/transport-departure-times-data-access'
 import { HlmButton } from '@spartan-ng/helm/button'
-import { DEPARTURE_TIME_FEATURE, DEPARTURE_TIME_MANAGE } from '../departure-time.routes'
+import { DEPARTURE_TIME_FEATURE, DEPARTURE_TIME_UPDATE } from '../departure-time.routes'
 
 @Component({
   selector: 'lib-departure-time-detail',
@@ -25,7 +25,7 @@ import { DEPARTURE_TIME_FEATURE, DEPARTURE_TIME_MANAGE } from '../departure-time
   template: `
     <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-semibold">Departure time details</h1>
-      @if (canManage()) {
+      @if (canUpdate()) {
         <a hlmBtn variant="outline" class="min-h-11" [routerLink]="['edit']">Edit</a>
       }
     </header>
@@ -69,7 +69,7 @@ import { DEPARTURE_TIME_FEATURE, DEPARTURE_TIME_MANAGE } from '../departure-time
 })
 export class DepartureTimeDetail {
   protected readonly config = inject(DEPARTURE_TIME_FEATURE)
-  protected readonly canManage = inject(DEPARTURE_TIME_MANAGE)
+  protected readonly canUpdate = inject(DEPARTURE_TIME_UPDATE)
   protected readonly store = inject(DepartureTimesStore)
   private readonly route = inject(ActivatedRoute)
   private readonly id = toSignal(this.route.paramMap, {

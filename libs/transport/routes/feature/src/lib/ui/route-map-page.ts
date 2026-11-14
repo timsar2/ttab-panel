@@ -106,6 +106,7 @@ export function routeMapPoints(stations: readonly RouteStation[]): readonly Nesh
               }
               <lib-neshan-map
                 [apiKey]="config.neshanMapApiKey ?? null"
+                [serviceApiKey]="config.neshanServiceApiKey ?? null"
                 [language]="language()"
                 [points]="mapPoints()"
               />

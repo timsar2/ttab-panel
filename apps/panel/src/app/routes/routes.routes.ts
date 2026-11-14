@@ -52,6 +52,7 @@ export function createPanelRouteRoutes() {
       return computed(() => hasAnyRole(session.user()?.roles, routeManagementRoles))
     },
     neshanMapApiKey: panelConfig.neshanMapApiKey,
+    neshanServiceApiKey: panelConfig.neshanServiceApiKey,
     lineRoutes: () => createPanelLineRoutes(inject(ROUTE_DIRECTION_ID)),
     heading: 'Routes',
     deniedMessage: {

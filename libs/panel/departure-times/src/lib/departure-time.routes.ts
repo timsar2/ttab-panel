@@ -13,18 +13,24 @@ export interface DepartureTimeFeatureConfig extends DepartureTimesDataConfig {
   readonly deniedMessage?: string
   /** UI affordance only; the data access decision and backend must enforce the operation. */
   readonly canManage: () => Signal<boolean>
+  readonly canCreate?: () => Signal<boolean>
+  readonly canUpdate?: () => Signal<boolean>
 }
 
 export const DEPARTURE_TIME_FEATURE = new InjectionToken<DepartureTimeFeatureConfig>(
   'DEPARTURE_TIME_FEATURE',
 )
 export const DEPARTURE_TIME_MANAGE = new InjectionToken<Signal<boolean>>('DEPARTURE_TIME_MANAGE')
+export const DEPARTURE_TIME_CREATE = new InjectionToken<Signal<boolean>>('DEPARTURE_TIME_CREATE')
+export const DEPARTURE_TIME_UPDATE = new InjectionToken<Signal<boolean>>('DEPARTURE_TIME_UPDATE')
 
 export function provideDepartureTimeFeature(config: DepartureTimeFeatureConfig) {
   return makeEnvironmentProviders([
     provideDepartureTimesData(config),
     { provide: DEPARTURE_TIME_FEATURE, useValue: config },
     { provide: DEPARTURE_TIME_MANAGE, useFactory: config.canManage },
+    { provide: DEPARTURE_TIME_CREATE, useFactory: config.canCreate ?? config.canManage },
+    { provide: DEPARTURE_TIME_UPDATE, useFactory: config.canUpdate ?? config.canManage },
   ])
 }
 

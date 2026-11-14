@@ -7,5 +7,6 @@ export const panelConfig = {
   loginUrl: '/login',
   afterLoginUrl: '/workspace',
   brandName: 'Panel',
+  neshanServiceApiKey: environment.neshanServiceApiKey,
   neshanMapApiKey: environment.neshanMapApiKey,
 } as const

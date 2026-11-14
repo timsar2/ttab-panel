@@ -27,6 +27,7 @@ export interface RouteFeatureConfig extends RoutesDataConfig {
   readonly canActivate?: CanActivateFn
   readonly deniedMessage?: BilingualText
   readonly neshanMapApiKey?: string | null
+  readonly neshanServiceApiKey?: string | null
   readonly lineRoutes?: () => Routes
   readonly legacyPaths?: { readonly add?: string; readonly map?: string }
 }

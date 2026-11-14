@@ -60,7 +60,7 @@ function optionalDisplayName(value: unknown, field: string): string | null {
   throw new TransportError('contract', 0, `The Line response contains an invalid ${field}.`)
 }
 
-export function decodeLineRow(value: unknown): LineRow {
+export function decodeLineRow(value: unknown, scopedDirectionId?: RouteId): LineRow {
   const row = transportRecord(value)
   if (typeof row['name'] !== 'string')
     throw new TransportError('contract', 0, 'The Line response is missing its name.')
@@ -69,7 +69,8 @@ export function decodeLineRow(value: unknown): LineRow {
     throw new TransportError('contract', 0, 'The Line response contains an invalid Direction name.')
   return {
     id: lineId(row['id']),
-    directionId: routeId(row['directionId']),
+    directionId:
+      row['directionId'] == null ? routeId(scopedDirectionId) : routeId(row['directionId']),
     directionName: directionName ?? null,
     name: row['name'],
     // Accept the legacy typo and the current API spelling; keep the value display-only.

@@ -18,8 +18,37 @@ test('departure-time company routes preserve the permission gate and truthful bo
   await mockAuthentication(page)
   let requests = 0
   const listBodies: unknown[] = []
+  const detailUrls: string[] = []
+  const saveBodies: unknown[] = []
   await page.route('**/api/v1/shiftTimes**', route => {
     requests++
+    const url = new URL(route.request().url())
+    if (route.request().method() === 'GET') {
+      detailUrls.push(route.request().url())
+      return route.fulfill({
+        json: {
+          code: '2000',
+          massage: 'Success',
+          result: {
+            companyId: 2,
+            name: 'سرویس بعد ازظهر',
+            shiftTime: '16:30:00',
+            id: 3,
+          },
+        },
+      })
+    }
+    if (url.pathname.endsWith('/set-shift-time')) {
+      const body = route.request().postDataJSON()
+      saveBodies.push(body)
+      return route.fulfill({
+        json: {
+          code: '2000',
+          massage: 'Success',
+          result: { ...(body as object), shiftTime: '16:30:00' },
+        },
+      })
+    }
     listBodies.push(route.request().postDataJSON())
     return route.fulfill({
       json: {
@@ -98,12 +127,25 @@ test('departure-time company routes preserve the permission gate and truthful bo
     await expect(page.locator('lib-departure-time-editor form')).toHaveCount(0)
   }
   await page.goto('/client/2/shift-time/detail/3')
-  await expect(page).toHaveURL(/\/client\/2\/shift-time\/3$/)
-  await expect(page.getByRole('alert')).toContainText('Departure-time access is not enabled')
-  await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await expect(page).toHaveURL(/\/client\/2\/shift-time\/3\/edit$/)
+  await expect(page.locator('#departure-name')).toHaveValue('سرویس بعد ازظهر')
+  await expect(page.locator('#departure-time')).toHaveValue('16:30:00')
+  expect(new URL(detailUrls[0]).pathname).toBe('/api/v1/shiftTimes/3')
+  await page.locator('#departure-name').fill('Edited afternoon service')
+  await page.getByRole('button', { name: 'Save departure time', exact: true }).click()
+  await expect(page.getByRole('status')).toContainText('Departure time saved.')
+  expect(saveBodies).toEqual([
+    {
+      id: 3,
+      companyId: 2,
+      name: 'Edited afternoon service',
+      shiftTime: '16:30:00',
+    },
+  ])
+  await page.getByRole('button', { name: /Sign out|خروج/ }).click()
   await expect(page).toHaveURL(/\/login$/)
   await page.goto('/client/2/departure-times/3/edit')
   await expect(page).toHaveURL(/\/login/)
-  expect(requests).toBe(3)
+  expect(requests).toBe(5)
   expect(errors).toEqual([])
 })

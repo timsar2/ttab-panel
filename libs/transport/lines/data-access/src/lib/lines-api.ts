@@ -147,7 +147,7 @@ export class LinesApi {
         this.config.endpoints.search,
         value =>
           unwrapTransport(value, result => {
-            const decoded = decodeTransportPage(result, item => decodeLineRow(item))
+            const decoded = decodeTransportPage(result, item => decodeLineRow(item, directionId))
             if (
               decoded.items.length > paging.pageSize ||
               decoded.pagination.currentPage !== paging.pageNumber ||

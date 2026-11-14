@@ -15,7 +15,7 @@ export function createPanelShiftTimeRoutes() {
     {
       path: 'detail/:shiftTimeId',
       pathMatch: 'full' as const,
-      redirectTo: ':shiftTimeId',
+      redirectTo: ':shiftTimeId/edit',
     },
     ...createDepartureTimeRoutes({
       path: '',
@@ -33,13 +33,17 @@ export function createPanelShiftTimeRoutes() {
         const session = inject(SessionStore)
         return request =>
           of(
-            request.action === 'list' &&
+            (request.action === 'list' ||
+              request.action === 'detail' ||
+              request.action === 'update') &&
               !!session.user() &&
               context.status() === 'ready' &&
               context.company()?.id === request.companyId,
           )
       },
-      canManage: () => signal(false),
+      canManage: () => signal(true),
+      canCreate: () => signal(false),
+      canUpdate: () => signal(true),
       heading: 'Departure times',
       deniedMessage:
         'Departure-time access is not enabled until company and entity permissions are approved.',

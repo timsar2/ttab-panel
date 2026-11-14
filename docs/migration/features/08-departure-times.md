@@ -147,11 +147,12 @@ All commands ran from `front` using Bun, with no production requests or writes.
   regressions. Context loss clears drafts, pending reads and saved/error state.
 - Panel mounts `/client/:companyId/shift-time`, `/:id`, `/new` and `/:id/edit` under
   private client rendering. The app-owned shift-time route adapter preserves
-  legacy `/shift-time/add` and `/shift-time/detail/:shiftTimeId`; the equivalent
-  `/departure-times` route remains available. A read-only detail page uses the
-  scoped detail API independently from the editor. The shift-time list now makes
-  an authenticated request only for the active company context through the same-origin
-  `/api` BFF. Detail and mutation access remain denied pending Q03/Q04. The BFF's
+  legacy `/shift-time/add` and `/shift-time/detail/:shiftTimeId`; legacy detail
+  opens the hydrated editor at `/:id/edit`, and the equivalent `/departure-times`
+  route remains available. A separate `/:id` route is read-only. The shift-time
+  list/detail pages make authenticated requests only for the active company context
+  through the same-origin `/api` BFF, and company-matched updates use its upsert
+  endpoint. Create access remains denied pending Q03/Q04. The BFF's
   configured upstream is `https://api.ttabline.com/api`; backend authorization is
   still required, and no destructive delete operation is exposed.
 - `bun nx run-many -p panel-departure-times,transport-departure-times-data-access,transport-support-data-access,shared-ui-data-table,panel,panel-e2e -t test,lint,typecheck`

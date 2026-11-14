@@ -24,7 +24,7 @@ import { ConfirmDialog, SignalInput } from '@org/ui-forms'
 import { HlmAlertImports } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmFieldImports } from '@spartan-ng/helm/field'
-import { DEPARTURE_TIME_MANAGE } from '../departure-time.routes'
+import { DEPARTURE_TIME_CREATE, DEPARTURE_TIME_UPDATE } from '../departure-time.routes'
 
 @Component({
   selector: 'lib-departure-time-editor',
@@ -163,7 +163,8 @@ export class DepartureTimeEditor {
   protected readonly store = inject(DepartureTimesStore)
   private readonly api = inject(DepartureTimesApi)
   private readonly session = inject(SessionStore)
-  private readonly manage = inject(DEPARTURE_TIME_MANAGE)
+  private readonly canCreate = inject(DEPARTURE_TIME_CREATE)
+  private readonly canUpdate = inject(DEPARTURE_TIME_UPDATE)
   private readonly router = inject(Router)
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
@@ -179,7 +180,10 @@ export class DepartureTimeEditor {
     }
   })
   protected readonly canWrite = computed(
-    () => this.manage() && !!this.session.user() && this.api.companyId() !== null,
+    () =>
+      (this.id() === null ? this.canCreate() : this.canUpdate()) &&
+      !!this.session.user() &&
+      this.api.companyId() !== null,
   )
   protected readonly ready = computed(
     () =>
