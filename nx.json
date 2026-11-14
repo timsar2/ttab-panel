@@ -12,7 +12,10 @@
       "!{projectRoot}/jest.config.[jt]s",
       "!{projectRoot}/test-setup.[jt]s"
     ],
-    "sharedGlobals": ["{workspaceRoot}/libs/base-theme.css"]
+    "sharedGlobals": [
+      "{workspaceRoot}/libs/shared/platform/src/styles/base-theme.css",
+      "{workspaceRoot}/libs/shared/platform/src/styles/global.css"
+    ]
   },
   "targetDefaults": {
     "lint": {

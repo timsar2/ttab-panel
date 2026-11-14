@@ -36,6 +36,7 @@ describe('departure-time reusable routes', () => {
   ) {
     const company = signal<DepartureCompanyId | null>(departureCompanyId(7))
     const canManage = signal(manage)
+    const language = signal<'en' | 'fa'>('en')
     const user = signal<{ id: string; roles: string[] } | null>({ id: 'staff', roles: [] })
     const version = signal(1)
     const changes = new Subject<number>()
@@ -65,6 +66,7 @@ describe('departure-time reusable routes', () => {
             company: () => company,
             access: () => () => of(allowed),
             canManage: () => canManage,
+            language: () => language,
           }),
         ),
       ],
@@ -78,6 +80,7 @@ describe('departure-time reusable routes', () => {
       http: TestBed.inject(HttpTestingController),
       company,
       canManage,
+      language,
       user,
       version,
       changes,
@@ -115,6 +118,7 @@ describe('departure-time reusable routes', () => {
     expect(request.request.body).toEqual({ companyId: 7, name: null })
     request.flush(envelope([detail()]))
     harness.detectChanges()
+    expect(harness.routeDebugElement?.injector.get(DepartureTimesStore).error()).toBeNull()
     expect(root(harness).textContent).toContain('07:15:01.1234567')
     expect(root(harness).textContent).toContain('not guaranteed to be complete')
     expect(root(harness).querySelector('nav')).toBeNull()
@@ -127,7 +131,44 @@ describe('departure-time reusable routes', () => {
     expect(search.request.body).toEqual({ companyId: 7, name: 'Morning' })
     search.flush(envelope([]))
     harness.detectChanges()
-    expect(root(harness).textContent).toContain('No records found')
+    expect(root(harness).textContent).toContain('No departure times found.')
+  })
+
+  it('reacts to the selected language across list and editor labels', async () => {
+    const { harness, http, language } = await setup()
+    http.expectOne('/api/times').flush(envelope([]))
+    harness.detectChanges()
+    expect(root(harness).textContent).toContain('Departure times')
+    expect(root(harness).textContent).toContain('Departure-time name')
+    expect(root(harness).querySelector('thead th')?.textContent).toContain('Name')
+
+    language.set('fa')
+    harness.detectChanges()
+    expect(root(harness).textContent).toContain('زمان‌های حرکت')
+    expect(root(harness).textContent).toContain('نام زمان حرکت')
+    expect(root(harness).textContent).toContain('زمان حرکتی پیدا نشد.')
+    expect(root(harness).querySelector('thead th')?.textContent).toContain('نام')
+    expect(root(harness).querySelector('main')?.getAttribute('dir')).toBe('rtl')
+
+    await harness.navigateByUrl('/slots/3/edit')
+    TestBed.tick()
+    http.expectOne('/api/times/3').flush(envelope(detail()))
+    harness.detectChanges()
+    expect(root(harness).textContent).toContain('ویرایش زمان حرکت')
+    expect(root(harness).textContent).toContain('ساعت ثبت‌شده')
+    expect(root(harness).textContent).toContain('ذخیره زمان حرکت')
+
+    await harness.navigateByUrl('/slots/3')
+    TestBed.tick()
+    http.expectOne('/api/times/3').flush(envelope(detail()))
+    harness.detectChanges()
+    expect(root(harness).textContent).toContain('جزئیات زمان حرکت')
+    expect(root(harness).textContent).toContain('بازگشت به زمان‌های حرکت')
+
+    language.set('en')
+    harness.detectChanges()
+    expect(root(harness).textContent).toContain('Departure time details')
+    expect(root(harness).textContent).toContain('Back to departure times')
   })
 
   it('hydrates exact time once, retains failed drafts, maps field errors and blocks duplicate writes', async () => {

@@ -1,5 +1,5 @@
 import { computed, inject } from '@angular/core'
-import { SessionStore, hasAnyRole, requireAnyRole } from '@org/auth-data-access'
+import { SessionStore, hasAnyRole, requireAnyRole, PreferencesStore } from '@org/platform'
 import { createVehicleRoutes } from '@org/transport-vehicles-feature'
 import { carCompanyId } from '@org/transport-vehicles-data-access'
 import type { VehicleAccessRequest } from '@org/transport-vehicles-data-access'
@@ -7,7 +7,6 @@ import { driverCompanyId } from '@org/transport-drivers-data-access'
 import { peopleCompanyId } from '@org/transport-people-data-access'
 import { of } from 'rxjs'
 import { CompanyContextStore } from '@org/transport-company-data-access'
-import { PreferencesStore } from '../core/preferences/preferences.store'
 import { VehiclesPageHost } from './vehicle.page'
 
 const manageRoles = ['Admin', 'Manager'] as const

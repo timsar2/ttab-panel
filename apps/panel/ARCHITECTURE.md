@@ -44,56 +44,53 @@ this Nx workspace. Run the commands below from the `front` workspace root.
 
 ## Current Structure
 
-| Location / Public Entry                      | Responsibility                                                                                                                                                                |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/panel/src/app/app.config.ts`           | Compose providers, hydration, routing, auth/theme adapters, and directionality.                                                                                               |
-| `apps/panel/src/app/panel.config.ts`         | App-owned API prefix, tenant, branding, and login/success paths.                                                                                                              |
-| `apps/panel/src/app/app.routes.ts`           | Mount reusable auth routes, protect the workspace, and lazily load app-local feature entries.                                                                                 |
-| `apps/panel/src/app/driver/`                 | Panel-owned driver route/provider adapter and thin RouterOutlet page host; it consumes the reusable library, not embedded page markup.                                        |
-| `apps/panel/src/app/driver/driver.routes.ts` | Adapt panel session, company, permission, and language signals into the reusable `@org/panel-drivers` route factory.                                                          |
-| `apps/panel/src/app/driver/driver.page.ts`   | Thin app-owned RouterOutlet host; driver list/detail/editor UI remains in `libs/panel/drivers`.                                                                               |
-| `apps/panel/src/app/feature/shift/`          | Thin app-owned Shift route/access adapter and RouterOutlet host; Shift UI remains in `libs/panel/shift`.                                                                      |
-| `apps/panel/src/app/vehicles/`               | Panel-owned route/access adapter and thin outlet host; Admin/Manager reads require the active company, while vehicle writes remain gated on ownership/history policy.         |
-| `apps/panel/src/app/routes/routes.routes.ts` | Panel-owned Direction read/access and map-key adapter; mounts legacy `/client/:companyId/direction` through the lazy library route factory.                                   |
-| `apps/panel/src/app/routes/line.routes.ts`   | Adapter for nested Line Route context, company/role policy, and server-backed Departure Time lookup configuration.                                                            |
-| `apps/panel/src/app/app.routes.server.ts`    | Render routes per request with validated, request-scoped authentication.                                                                                                      |
-| `apps/panel/src/app/core/preferences/`       | Panel's direction/language adapter; not a second theme store.                                                                                                                 |
-| `@org/auth-data-access`                      | Configurable backend contract, public session metadata, HTTP interception, guards, and auth helpers.                                                                          |
-| `@org/auth-data-access/node`                 | Node-only cookie BFF, server-held tokens, session storage contract, and SSR restoration.                                                                                      |
-| `@org/auth-feature`                          | Auth presentation providers and the lazy login route factory.                                                                                                                 |
-| `@org/auth-feature/ui`                       | Explicit public entry for embedding `LoginForm` or `LoginPage`.                                                                                                               |
-| `@org/layout`                                | Projected `AuthLayout` and `AppLayout`, independent of auth/theme stores; optional typed navigation metadata composes the owned Spartan sidebar/menu and mobile sheet.        |
-| `@org/ui-forms`                              | Reusable Signal Forms input/lookup/coordinate bridges, Spartan Autocomplete/Attachment compositions, bilingual copy models, typed file selection and accessible confirmation. |
-| `@org/transport-http`                        | Opt-in transport envelope/page/error decoders and safe configured requests through the existing scoped HttpClient.                                                            |
-| `@org/transport-company-data-access`         | Typed company read/write/lookup APIs, scoped search/editor stores and navigation-committed context; no inferred membership policy.                                            |
-| `@org/transport-company-feature`             | Configurable lazy search/create/edit route and provider entry; media/delete/approved-policy acceptance remains open.                                                          |
-| `@org/transport-company-feature/ui`          | Explicit component entry for embedding CompanyPage/CompanyEditor without eagerly loading UI from the route entry.                                                             |
-| `@org/transport-shell-feature`               | Configurable lazy landing/company shell, navigation-committed context, breadcrumbs/account/navigation and explicit error states.                                              |
-| `@org/transport-people-data-access`          | Explicit company/access-configured Person adapters, API and cancellable search state; live access/mutation policy remains gated.                                              |
-| `@org/panel-people`                          | Lazy configurable company-scoped Person search/page and typed selection intent, with UI under `libs/panel/people/src/lib/ui`.                                                 |
-| `@org/panel-people/ui`                       | Explicit embedding entry, separate from the light provider/route entry.                                                                                                       |
-| `@org/transport-departure-times-data-access` | Source-backed bounded-list, TimeSpan and scoped list/detail/upsert state; deletion and live policy acceptance remain open.                                                    |
-| `@org/panel-departure-times`                 | Configurable lazy bounded-list/create/edit pages, with library-owned `ui` components, explicit access and guarded local drafts.                                               |
-| `@org/transport-scheduling-data-access`      | Typed company/group-scoped Shift and Shift Group adapters plus a route-scoped NgRx SignalStore; backend role authorization and full-list paging remain open.                  |
-| `@org/panel-shifts`                          | Configurable lazy shift list/create/edit routes, group/type/travel-time lookups, Signal Forms, and a Shift Group creation dialog.                                             |
-| `@org/panel-driver-line`                     | Configurable lazy company-scoped Driver-Line list/detail/create/edit routes, shared driver autocomplete, and Direction/Line lookups.                                          |
-| `@org/panel-departure-times/ui`              | Separate entry for embedding departure-time page/editor components without eager UI in route configuration.                                                                   |
-| `@org/transport-drivers-data-access`         | Configured Person-backed driver search/detail/upsert adapters and scoped SignalStore; explicit authorization, document preservation/replacement, no deletion.                 |
-| `@org/panel-drivers`                         | Lazy configurable company-scoped driver list, onboarding, details and editor routes with local Signal Forms and guarded drafts.                                               |
-| `@org/panel-drivers/ui`                      | Separate embedding entry for driver pages and Person form, without eager UI in route configuration.                                                                           |
-| `@org/transport-vehicles-data-access`        | Source-backed company-scoped vehicle/type CRUD adapters and SignalStore; app access remains denied pending ownership, deletion/history and image-semantics decisions.         |
-| `@org/transport-vehicles-feature`            | Configurable lazy vehicle list/detail/editor, Driver API autocomplete, server car-type lookup/creation and replacement-only shared uploads.                                   |
-| `@org/transport-routes-data-access`          | Company-scoped Direction list/detail and Route-station search APIs plus route-scoped NgRx SignalStore; app write access remains gated.                                        |
-| `@org/transport-routes-feature`              | Lazy Direction list/detail/editor/map pages, row actions, server-loaded Stations and typed reusable route configuration.                                                      |
-| `@org/shared-maps`                           | Browser-only Neshan MapLibre station-marker adapter with injected Web Map key, RTL labels, fallback and teardown.                                                             |
-| `@org/transport-support-data-access`         | Explicit-scope read-only search/detail/case-file adapters and independent cancellable stores; no messages, mutations or inferred applicant types.                             |
-| `@org/ui-data-table`                         | Typed TanStack v9/Spartan server-page composition, stable row IDs and optional typed action intent.                                                                           |
-| `@org/theme`                                 | Validated theme model, NgRx ThemeStore, palette/token generation, persistence, and safe custom CSS.                                                                           |
-| `@org/theme-ui`                              | Configurable Spartan customization sheet.                                                                                                                                     |
-| `libs/spartan/*`                             | Existing owned Helm source; inspect its actual exports before adding controls.                                                                                                |
-| `libs/base-theme.css`                        | Shared semantic design tokens and base theme rules.                                                                                                                           |
-| `apps/panel/src/styles.css`                  | Font/CSS imports and explicit Tailwind source discovery.                                                                                                                      |
-| `apps/panel-e2e/`                            | Browser acceptance tests and reusable controlled API fixtures.                                                                                                                |
+| Location / Public Entry                                                                                     | Responsibility                                                                                                                                                               |
+| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/panel/src/app/app.config.ts`                                                                          | Supply the Panel manifest to `providePlatformApp`; shared provider composition lives in `@org/platform`.                                                                     |
+| `apps/panel/src/app/panel.config.ts`                                                                        | App-owned API prefix, tenant, branding, and login/success paths.                                                                                                             |
+| `apps/panel/src/app/app.routes.ts`                                                                          | Mount reusable auth routes, protect the workspace, and lazily load app-local feature entries.                                                                                |
+| `apps/panel/src/app/driver/`                                                                                | Panel-owned driver route/provider adapter and thin RouterOutlet page host; it consumes the reusable library, not embedded page markup.                                       |
+| `apps/panel/src/app/driver/driver.routes.ts`                                                                | Adapt panel session, company, permission, and language signals into the reusable `@org/panel-drivers` route factory.                                                         |
+| `apps/panel/src/app/driver/driver.page.ts`                                                                  | Thin app-owned RouterOutlet host; driver list/detail/editor UI remains in `libs/panel/drivers`.                                                                              |
+| `apps/panel/src/app/feature/shift/`                                                                         | Thin app-owned Shift route/access adapter and RouterOutlet host; Shift UI remains in `libs/panel/shift`.                                                                     |
+| `apps/panel/src/app/vehicles/`                                                                              | Panel-owned route/access adapter and thin outlet host; Admin/Manager reads require the active company, while vehicle writes remain gated on ownership/history policy.        |
+| `apps/panel/src/app/routes/routes.routes.ts`                                                                | Panel-owned Direction read/access and map-key adapter; mounts legacy `/client/:companyId/direction` through the lazy library route factory.                                  |
+| `apps/panel/src/app/routes/line.routes.ts`                                                                  | Adapter for nested Line Route context, company/role policy, and server-backed Departure Time lookup configuration.                                                           |
+| `apps/panel/src/app/app.routes.server.ts`                                                                   | Supply Panel's client-rendered path exceptions to `createPlatformServerRoutes`; other routes use the shared SSR default.                                                     |
+| `@org/platform`                                                                                             | Shared browser composition/facade: auth/session policy, login routes, guards, layouts, menu, theme and preference stores, shared component exports and portal route factory. |
+| `@org/platform/node`                                                                                        | Node-only server API: shared Express/BFF/session middleware, SSR engine integration, render-route factory and server application config.                                     |
+| `libs/shared/platform/src/styles/`                                                                          | Shared design tokens, fonts, framework CSS and base global styles consumed by all app style entrypoints.                                                                     |
+| `@org/auth-data-access`, `@org/auth-feature`, `@org/layout`, `@org/theme`, `@org/theme-ui`, `@org/ui-forms` | Internal focused implementation libraries exposed to applications through `@org/platform`; keep their boundaries until their source migration is verified.                   |
+| `@org/transport-http`                                                                                       | Opt-in transport envelope/page/error decoders and safe configured requests through the existing scoped HttpClient.                                                           |
+| `@org/transport-company-data-access`                                                                        | Typed company read/write/lookup APIs, scoped search/editor stores and navigation-committed context; no inferred membership policy.                                           |
+| `@org/transport-company-feature`                                                                            | Configurable lazy search/create/edit route and provider entry; media/delete/approved-policy acceptance remains open.                                                         |
+| `@org/transport-company-feature/ui`                                                                         | Explicit component entry for embedding CompanyPage/CompanyEditor without eagerly loading UI from the route entry.                                                            |
+| `@org/transport-shell-feature`                                                                              | Configurable lazy landing/company shell, navigation-committed context, breadcrumbs/account/navigation and explicit error states.                                             |
+| `@org/transport-people-data-access`                                                                         | Explicit company/access-configured Person adapters, API and cancellable search state; live access/mutation policy remains gated.                                             |
+| `@org/panel-people`                                                                                         | Lazy configurable company-scoped Person search/page and typed selection intent, with UI under `libs/panel/people/src/lib/ui`.                                                |
+| `@org/panel-people/ui`                                                                                      | Explicit embedding entry, separate from the light provider/route entry.                                                                                                      |
+| `@org/transport-departure-times-data-access`                                                                | Source-backed bounded-list, TimeSpan and scoped list/detail/upsert state; deletion and live policy acceptance remain open.                                                   |
+| `@org/panel-departure-times`                                                                                | Configurable lazy bilingual bounded-list/detail/create/edit pages, with reactive language, localized forms/table states, explicit access and guarded local drafts.           |
+| `@org/transport-scheduling-data-access`                                                                     | Typed company/group-scoped Shift and Shift Group adapters plus a route-scoped NgRx SignalStore; backend role authorization and full-list paging remain open.                 |
+| `@org/panel-shifts`                                                                                         | Configurable lazy shift list/create/edit routes, group/type/travel-time lookups, Signal Forms, and a Shift Group creation dialog.                                            |
+| `@org/panel-driver-line`                                                                                    | Configurable lazy company-scoped Driver-Line list/detail/create/edit routes, shared driver autocomplete, and Direction/Line lookups.                                         |
+| `@org/panel-departure-times/ui`                                                                             | Separate entry for embedding departure-time page/editor components without eager UI in route configuration.                                                                  |
+| `@org/transport-drivers-data-access`                                                                        | Configured Person-backed driver search/detail/upsert adapters and scoped SignalStore; explicit authorization, document preservation/replacement, no deletion.                |
+| `@org/panel-drivers`                                                                                        | Lazy configurable company-scoped driver list, onboarding, details and editor routes with local Signal Forms and guarded drafts.                                              |
+| `@org/panel-drivers/ui`                                                                                     | Separate embedding entry for driver pages and Person form, without eager UI in route configuration.                                                                          |
+| `@org/transport-vehicles-data-access`                                                                       | Source-backed company-scoped vehicle/type CRUD adapters and SignalStore; app access remains denied pending ownership, deletion/history and image-semantics decisions.        |
+| `@org/transport-vehicles-feature`                                                                           | Configurable lazy vehicle list/detail/editor, Driver API autocomplete, server car-type lookup/creation and replacement-only shared uploads.                                  |
+| `@org/transport-routes-data-access`                                                                         | Company-scoped Direction list/detail and Route-station search APIs plus route-scoped NgRx SignalStore; app write access remains gated.                                       |
+| `@org/transport-routes-feature`                                                                             | Lazy Direction list/detail/editor/map pages, row actions, server-loaded Stations and typed reusable route configuration.                                                     |
+| `@org/shared-maps`                                                                                          | Browser-only Neshan MapLibre station-marker adapter with injected Web Map key, RTL labels, fallback and teardown.                                                            |
+| `@org/transport-support-data-access`                                                                        | Explicit-scope read-only search/detail/case-file adapters and independent cancellable stores; no messages, mutations or inferred applicant types.                            |
+| `@org/ui-data-table`                                                                                        | Typed TanStack v9/Spartan server-page composition, stable row IDs and optional typed action intent.                                                                          |
+| `@org/theme`                                                                                                | Validated theme model, NgRx ThemeStore, palette/token generation, persistence, and safe custom CSS.                                                                          |
+| `@org/theme-ui`                                                                                             | Configurable Spartan customization sheet.                                                                                                                                    |
+| `libs/spartan/*`                                                                                            | Existing owned Helm source; inspect its actual exports before adding controls.                                                                                               |
+| `libs/base-theme.css`                                                                                       | Shared semantic design tokens and base theme rules.                                                                                                                          |
+| `apps/panel/src/styles.css`                                                                                 | Font/CSS imports and explicit Tailwind source discovery.                                                                                                                     |
+| `apps/panel-e2e/`                                                                                           | Browser acceptance tests and reusable controlled API fixtures.                                                                                                               |
 
 Direction and Line UIs are implemented in `@org/transport-routes-feature` and
 `@org/transport-lines-feature`, backed by their matching data-access libraries.
@@ -156,8 +153,10 @@ detail opens the hydrated edit form at `/:id/edit`. The
 equivalent `/departure-times` route remains available. The shift-time list makes
 an authenticated request only for the active company context through the same-origin
 `/api` BFF for list/detail reads and company-matched updates; create access remains
-denied pending company/entity permission approval. The feature itself supports
-explicitly enabled alternate consumers, preserving exact TimeSpan input,
+denied pending company/entity permission approval. Feature-owned text and validation
+copy use the app's reactive global language signal and provide English/Persian
+variants across list, detail, editor and shared table states. The feature itself
+supports explicitly enabled alternate consumers, preserving exact TimeSpan input,
 field errors, dirty-navigation confirmation and safe unconfirmed-save handling.
 Its bounded collection has no fabricated paging, total count or exhaustive-lookup
 claim. Delete and schedule-calendar semantics remain gated. Protected outlet
@@ -342,17 +341,19 @@ private HTTP responses; all API and SSR HTML responses use `Cache-Control: no-st
 
 ### Cookie BFF Deployment
 
-Panel's SSR host uses `environment.apiUrl` as its upstream API base; an explicit
+All three apps import `PLATFORM_API_URL` from `@org/platform/config` as the common
+upstream API base; an explicit
 `AUTH_API_URL` overrides it. The browser still calls same-origin `/api/auth/login`;
 the BFF forwards to the transport backend's `/api/tokens/get-by-email/` endpoint.
 The backend URL is therefore not expected in the browser's Network request URL.
 
 Local development defaults to `http://localhost:4200` with a cryptographically
-random, server-only secret generated on startup. No manual server variables are
-needed for the standard development command. For another port/origin, explicitly
-set `AUTH_PUBLIC_ORIGIN` to match it. The random development secret is never built
-into browser JavaScript. Production bundles never use these development defaults,
-even if their runtime mistakenly sets `NODE_ENV=development`.
+random, server-only secret generated on startup. The shared API default currently
+matches Panel's existing `https://api.ttabline.com/api`; set `AUTH_API_URL` to a
+controlled development/staging backend when appropriate. For another port/origin,
+explicitly set `AUTH_PUBLIC_ORIGIN` to match it. The random development secret is
+never built into browser JavaScript. Production bundles never use these development
+defaults, even if their runtime mistakenly sets `NODE_ENV=development`.
 
 In production, set the public origin and stable server secret explicitly;
 missing/invalid configuration keeps the API unavailable with HTTP 503:
@@ -450,47 +451,46 @@ the build, restart the preview server, and test matching manifests/assets.
 
 ## Adding Another App
 
-Reuse the existing libraries; do not copy the panel app or login/theme source.
-The new app owns bootstrap/SSR policy, paths, branding, deployment settings, a
-unique theme storage key, and any direction adapter.
+All apps call the same platform APIs. App code supplies identity, app routes and
+server environment values only; provider assembly, auth/theme preferences, shared
+layouts, BFF/SSR pipeline, and base design-system CSS stay in `@org/platform`.
 
 ```typescript
-import { ApplicationConfig, provideZonelessChangeDetection } from '@angular/core'
-import { provideRouter } from '@angular/router'
-import { authGuard, provideAuth } from '@org/auth-data-access'
-import { createAuthRoutes, provideAuthFeature } from '@org/auth-feature'
-import { provideTheme } from '@org/theme'
+// apps/<app>/src/app/app.config.ts
+import { ApplicationConfig } from '@angular/core'
+import { providePlatformApp } from '@org/platform'
+import { appRoutes } from './app.routes'
 
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideZonelessChangeDetection(),
-    provideTheme({ storageKey: 'another-app.theme.v1' }),
-    provideAuth({
-      apiUrl: '/api',
-      mode: 'cookie',
-      tenant: 'root',
-      loginUrl: '/sign-in',
-      afterLoginUrl: '/home',
-    }),
-    provideAuthFeature({ brandName: 'Another app' }),
-    provideRouter([
-      ...createAuthRoutes({ path: 'sign-in', title: 'Sign in' }),
-      {
-        path: 'home',
-        canActivate: [authGuard],
-        loadComponent: () => import('./home.page').then(m => m.HomePage),
-      },
-    ]),
-  ],
+  providers: providePlatformApp({ id: '<app>', brandName: '<Brand>', routes: appRoutes }),
 }
 ```
 
-This is a composition example, not a complete generated app: supply `HomePage`,
-SSR/hydration and private-cache policy if enabled, cookie BFF/deployment settings,
-theme/font CSS imports, Tailwind sources, and architecture registrations. Adapt
-`AUTH_APPEARANCE` when providing runtime language/theme controls. Project slots
-into `AuthLayout`/`AppLayout` instead of building a second shell implementation.
-Load `ThemePanel` from `@org/theme-ui` in an appropriate deferred boundary.
+The server adapter is similarly thin and imports only the Node entry point:
+
+```typescript
+// apps/<app>/src/server.ts
+import { createPlatformSsrServer } from '@org/platform/node'
+import { environment } from './environments/environment'
+
+export const reqHandler = createPlatformSsrServer({
+  environment,
+  moduleUrl: import.meta.url,
+}).reqHandler
+```
+
+Use `createPortalRoutes({ brandName, featureRoutes })` for the shared login and
+authenticated workspace route pattern. App route/server-route files provide
+domain routes and explicit render-policy exceptions. `apps/panel`, `apps/driver`,
+and `apps/passenger` now use this composition; they must not import the underlying
+auth/theme/layout aliases directly. Shared implementations remain focused Nx
+modules behind the platform facade; app source imports the platform public entry
+points rather than coupling directly to those implementation aliases.
+
+The common CSS entry is `libs/shared/platform/src/styles/global.css`; apps import
+it and keep only Tailwind source globs for their own consumed app and feature
+libraries. API origin is centralized in `@org/platform/config`, with server-side
+`AUTH_API_URL` override for alternate upstreams.
 
 The current aliases target internal Nx source libraries. Publishing to a separate
 repository/package registry is a separate packaging decision, not an existing

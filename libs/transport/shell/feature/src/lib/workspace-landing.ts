@@ -56,9 +56,9 @@ const defaultText: WorkspaceText = {
         </div>
         <div hlmCardContent class="flex flex-col items-start gap-4">
           <p>{{ text().description }}</p>
-          <a hlmBtn class="min-h-11" [routerLink]="config.companiesCommands">{{
-            text().chooseCompany
-          }}</a>
+          @if (config.companiesCommands; as commands) {
+            <a hlmBtn class="min-h-11" [routerLink]="commands">{{ text().chooseCompany }}</a>
+          }
         </div>
       </section>
     </lib-app-layout>

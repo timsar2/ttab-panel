@@ -1,10 +1,10 @@
 import { computed, inject } from '@angular/core'
-import { SessionStore } from '@org/auth-data-access'
+import { SessionStore } from '@org/platform'
 import { createDriverRoutes, driverTextPair } from '@org/panel-drivers'
 import { CompanyContextStore } from '@org/transport-company-data-access'
 import { peopleCompanyId } from '@org/transport-people-data-access'
 import { of } from 'rxjs'
-import { PreferencesStore } from '../core/preferences/preferences.store'
+import { PreferencesStore } from '@org/platform'
 import { DriverPage } from './driver.page'
 
 function canManageDrivers(roles: readonly string[] | undefined): boolean {

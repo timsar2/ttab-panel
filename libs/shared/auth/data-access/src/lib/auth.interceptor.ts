@@ -58,7 +58,6 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
             .delete('Authorization')
             .delete('tenant')
             .set('X-Auth-Request', '1'),
-          withCredentials: true,
           credentials: 'same-origin',
           transferCache: false,
           redirect: 'error',

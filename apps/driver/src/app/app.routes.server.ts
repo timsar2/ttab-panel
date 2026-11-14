@@ -1,8 +1,3 @@
-import { RenderMode, ServerRoute } from '@angular/ssr'
+import { createPlatformServerRoutes } from '@org/platform/node'
 
-export const serverRoutes: ServerRoute[] = [
-  {
-    path: '**',
-    renderMode: RenderMode.Prerender,
-  },
-]
+export const serverRoutes = createPlatformServerRoutes()

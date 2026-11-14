@@ -1,10 +1,9 @@
 import { computed, inject } from '@angular/core'
-import { SessionStore, hasAnyRole, requireAnyRole } from '@org/auth-data-access'
+import { SessionStore, hasAnyRole, requireAnyRole, PreferencesStore } from '@org/platform'
 import { createRouteRoutes, ROUTE_DIRECTION_ID } from '@org/transport-routes-feature'
 import { createPanelLineRoutes } from './line.routes'
 import type { RouteAccessRequest } from '@org/transport-routes-data-access'
 import { CompanyContextStore } from '@org/transport-company-data-access'
-import { PreferencesStore } from '../core/preferences/preferences.store'
 import { panelConfig } from '../panel.config'
 import { of } from 'rxjs'
 

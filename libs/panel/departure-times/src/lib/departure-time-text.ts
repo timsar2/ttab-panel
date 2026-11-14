@@ -50,8 +50,6 @@ export const departureTimeTextKeys = [
   'timeRequired',
   'timeInvalid',
   'save',
-  'nameServerError',
-  'timeServerError',
   'requestFailed',
 ] as const
 
@@ -111,8 +109,6 @@ const copy: Record<DepartureTimeLanguage, Record<DepartureTimeTextKey, string>> 
     timeRequired: 'Enter a time value.',
     timeInvalid: 'Enter HH:mm or an exact .NET TimeSpan.',
     save: 'Save departure time',
-    nameServerError: 'Name',
-    timeServerError: 'Time value',
     requestFailed: 'The request could not be completed.',
   },
   fa: {
@@ -168,8 +164,6 @@ const copy: Record<DepartureTimeLanguage, Record<DepartureTimeTextKey, string>> 
     timeRequired: 'ساعت را وارد کنید.',
     timeInvalid: 'قالب HH:mm یا مقدار دقیق .NET TimeSpan را وارد کنید.',
     save: 'ذخیره زمان حرکت',
-    nameServerError: 'نام',
-    timeServerError: 'ساعت',
     requestFailed: 'انجام درخواست ناموفق بود.',
   },
 }

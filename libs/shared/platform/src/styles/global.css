@@ -1,0 +1,22 @@
+@import 'tailwindcss' source(none);
+@import '@fontsource-variable/vazirmatn';
+@import '@fontsource/poppins/400.css';
+@import '@fontsource/poppins/500.css';
+@import '@fontsource/poppins/600.css';
+@import '@fontsource/poppins/700.css';
+@import '@fontsource-variable/roboto';
+@import '@spartan-ng/brain/hlm-tailwind-preset.css';
+@import '@angular/cdk/overlay-prebuilt.css';
+@import './base-theme.css';
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    min-inline-size: 320px;
+  }
+}

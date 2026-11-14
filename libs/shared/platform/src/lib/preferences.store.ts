@@ -7,7 +7,6 @@ interface PreferencesState {
   direction: Direction
 }
 
-// Root DI creates one instance per application, including each SSR request.
 export const PreferencesStore = signalStore(
   { providedIn: 'root' },
   withState<PreferencesState>({ direction: 'rtl' }),

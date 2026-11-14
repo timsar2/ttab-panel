@@ -4,10 +4,9 @@ import { provideRouter } from '@angular/router'
 import { RouterTestingHarness } from '@angular/router/testing'
 import { appRoutes } from './app.routes'
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing'
-import { provideAuth } from '@org/auth-data-access'
-import { provideAuthFeature } from '@org/auth-feature'
+import { provideAuth, provideAuthFeature } from '@org/platform'
 import { panelConfig } from './panel.config'
-import { provideTheme } from '@org/theme'
+import { provideTheme } from '@org/platform'
 
 describe('App', () => {
   beforeEach(async () => {

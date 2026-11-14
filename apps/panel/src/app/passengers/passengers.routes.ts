@@ -1,7 +1,7 @@
 import { computed, inject } from '@angular/core'
 import { createPassengerRoutes } from '@org/panel-passengers'
 import { CompanyContextStore } from '@org/transport-company-data-access'
-import { PreferencesStore } from '../core/preferences/preferences.store'
+import { PreferencesStore } from '@org/platform'
 
 /** Adapt company and locale state into the reusable passenger workflow. */
 export function createPanelPassengerRoutes() {

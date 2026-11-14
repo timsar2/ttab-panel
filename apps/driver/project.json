@@ -4,7 +4,7 @@
   "projectType": "application",
   "prefix": "app",
   "sourceRoot": "apps/driver/src",
-  "tags": [],
+  "tags": ["scope:driver", "type:app"],
   "targets": {
     "build": {
       "executor": "@angular/build:application",
@@ -32,6 +32,12 @@
       },
       "configurations": {
         "production": {
+          "fileReplacements": [
+            {
+              "replace": "apps/driver/src/environments/environment.ts",
+              "with": "apps/driver/src/environments/environment.prod.ts"
+            }
+          ],
           "budgets": [
             {
               "type": "initial",

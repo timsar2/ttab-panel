@@ -1,11 +1,10 @@
 import { computed, inject } from '@angular/core'
-import { SessionStore } from '@org/auth-data-access'
+import { SessionStore, PreferencesStore } from '@org/platform'
 import { createDriverLineRoutes } from '@org/panel-driver-line'
 import { driverCompanyId } from '@org/transport-drivers-data-access'
 import { peopleCompanyId } from '@org/transport-people-data-access'
 import { CompanyContextStore } from '@org/transport-company-data-access'
 import { of } from 'rxjs'
-import { PreferencesStore } from '../../core/preferences/preferences.store'
 import { DriverLinePageHost } from './driver-line.page'
 
 const managementRoles = ['Admin', 'Manager']

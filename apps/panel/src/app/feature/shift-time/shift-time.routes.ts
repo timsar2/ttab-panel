@@ -1,5 +1,5 @@
 import { computed, inject, signal } from '@angular/core'
-import { SessionStore } from '@org/auth-data-access'
+import { SessionStore, PreferencesStore } from '@org/platform'
 import { createDepartureTimeRoutes } from '@org/panel-departure-times'
 import { departureCompanyId } from '@org/transport-departure-times-data-access'
 import { CompanyContextStore } from '@org/transport-company-data-access'
@@ -21,6 +21,7 @@ export function createPanelShiftTimeRoutes() {
       path: '',
       apiUrl: '/api',
       endpoints: { collection: 'v1/shiftTimes', save: 'v1/shiftTimes/set-shift-time' },
+      language: () => inject(PreferencesStore).language,
       company: () => {
         const context = inject(CompanyContextStore)
         return computed(() => {
@@ -44,9 +45,10 @@ export function createPanelShiftTimeRoutes() {
       canManage: () => signal(true),
       canCreate: () => signal(false),
       canUpdate: () => signal(true),
-      heading: 'Departure times',
-      deniedMessage:
-        'Departure-time access is not enabled until company and entity permissions are approved.',
+      deniedMessage: {
+        en: 'Departure-time access is not enabled until company and entity permissions are approved.',
+        fa: 'دسترسی به زمان‌های حرکت تا زمان تأیید مجوزهای شرکت و موجودیت فعال نشده است.',
+      },
     }),
   ]
 }

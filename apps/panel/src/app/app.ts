@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core'
 import { RouterOutlet } from '@angular/router'
-import { ThemePanel } from '@org/theme-ui'
-import { PreferencesStore } from './core/preferences/preferences.store'
+import { PreferencesStore, ThemePanel } from '@org/platform'
 
 @Component({
   imports: [RouterOutlet, ThemePanel],

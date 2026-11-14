@@ -4,7 +4,7 @@
   "projectType": "application",
   "prefix": "app",
   "sourceRoot": "apps/passenger/src",
-  "tags": [],
+  "tags": ["scope:passenger", "type:app"],
   "targets": {
     "build": {
       "executor": "@angular/build:application",
@@ -32,6 +32,12 @@
       },
       "configurations": {
         "production": {
+          "fileReplacements": [
+            {
+              "replace": "apps/passenger/src/environments/environment.ts",
+              "with": "apps/passenger/src/environments/environment.prod.ts"
+            }
+          ],
           "budgets": [
             {
               "type": "initial",

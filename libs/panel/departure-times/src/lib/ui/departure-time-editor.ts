@@ -44,7 +44,11 @@ import { departureTimeText, DepartureTimeTextKey } from '../departure-time-text'
     HlmFieldImports,
   ],
   providers: [DepartureTimesStore],
-  host: { class: 'block min-w-0 p-4 md:p-8', '(window:beforeunload)': 'beforeUnload($event)' },
+  host: {
+    class: 'block min-w-0 p-4 md:p-8',
+    '[attr.dir]': "language() === 'fa' ? 'rtl' : 'ltr'",
+    '(window:beforeunload)': 'beforeUnload($event)',
+  },
   template: `
     <header class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-2xl font-semibold">
@@ -82,18 +86,18 @@ import { departureTimeText, DepartureTimeTextKey } from '../departure-time-text'
     } @else if (id() !== null && store.detailStatus() === 'error') {
       <div hlmAlert variant="destructive" role="alert">
         <h2 hlmAlertTitle>{{ t('loadFailed') }}</h2>
-        <p hlmAlertDescription>{{ store.detailError()?.message ?? t('requestFailed') }}</p>
+        <p hlmAlertDescription>{{ t('requestFailed') }}</p>
         <button hlmBtn variant="outline" class="min-h-11" type="button" (click)="reload()">
           {{ t('retryLoad') }}
         </button>
       </div>
     } @else if (ready()) {
-      @if (store.saveError(); as error) {
+      @if (store.saveError()) {
         <div hlmAlert variant="destructive" role="alert" class="mb-4">
           <h2 hlmAlertTitle>{{ t('saveFailed') }}</h2>
-          <p hlmAlertDescription>{{ error.message ?? t('requestFailed') }}</p>
+          <p hlmAlertDescription>{{ t('requestFailed') }}</p>
           @for (field of serverErrors(); track field.key) {
-            <p>{{ field.messages.join(' ') }}</p>
+            <p>{{ fieldLabel(field.key) }}: {{ field.messages.join(' ') }}</p>
           }
         </div>
       }
@@ -279,6 +283,9 @@ export class DepartureTimeEditor {
   }
   protected t(key: DepartureTimeTextKey) {
     return departureTimeText(this.language(), key)
+  }
+  protected fieldLabel(key: string) {
+    return key === 'name' ? this.t('name') : key === 'shiftTime' ? this.t('time') : key
   }
   protected save(event: Event) {
     event.preventDefault()

@@ -39,7 +39,7 @@ const json = (value: unknown, status = 200) =>
     status,
     headers: { 'Content-Type': 'application/json', 'Set-Cookie': 'upstream=leak' },
   })
-function fixture(storage?: AuthSessionStorage, refreshLifetime = 86_400_000) {
+function fixture(storage?: AuthSessionStorage, refreshLifetime = 86_400_000, bffConfig = config()) {
   let token = jwt()
   const diagnostics = vi.fn()
   const fetcher = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
@@ -60,7 +60,7 @@ function fixture(storage?: AuthSessionStorage, refreshLifetime = 86_400_000) {
     },
   )
   const bff = createAuthBff({
-    config: config(),
+    config: bffConfig,
     fetch: fetcher as typeof fetch,
     storage,
     onDiagnostic: diagnostics,
@@ -228,7 +228,12 @@ describe('Node cookie authentication BFF', () => {
     const app = express().use(
       '/api',
       createAuthBff({
-        config: { ...config(), production: true, publicOrigin: 'https://panel.example' },
+        config: {
+          ...config(),
+          production: true,
+          publicOrigin: 'https://panel.example',
+          cookieNamespace: 'panel',
+        },
         fetch: f.fetcher as typeof fetch,
       }),
     )
@@ -238,8 +243,20 @@ describe('Node cookie authentication BFF', () => {
       .set('X-Auth-Request', '1')
       .send({ username: 'test@example.com', password: 'secret' })
       .expect(200)
-    expect(response.headers['set-cookie'][0]).toMatch(/^__Host-auth-session=/)
+    expect(response.headers['set-cookie'][0]).toMatch(/^__Host-auth-session-panel=/)
     expect(response.headers['set-cookie'][0]).toMatch(/; Secure;/)
+  })
+
+  it("namespaces cookies by app so applications on one host cannot use each other's sessions", async () => {
+    const driver = fixture(undefined, undefined, { ...config(), cookieNamespace: 'driver' })
+    const passenger = fixture(undefined, undefined, { ...config(), cookieNamespace: 'passenger' })
+    const signedIn = await driver.login().expect(200)
+
+    expect(signedIn.headers['set-cookie'][0]).toMatch(/^auth-session-dev-driver=/)
+    await request(passenger.app)
+      .get('/api/auth/session')
+      .set('Cookie', cookie(signedIn))
+      .expect(401)
   })
 
   it('invalidates the previous browser session when reauthenticating', async () => {

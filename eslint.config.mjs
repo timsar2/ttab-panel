@@ -25,6 +25,36 @@ export default [
                 'scope:ui',
                 'scope:shared',
                 'scope:transport',
+                'scope:platform',
+              ],
+            },
+            {
+              sourceTag: 'scope:driver',
+              onlyDependOnLibsWithTags: [
+                'scope:driver',
+                'scope:shared',
+                'scope:ui',
+                'scope:transport',
+                'scope:platform',
+              ],
+            },
+            {
+              sourceTag: 'scope:passenger',
+              onlyDependOnLibsWithTags: [
+                'scope:passenger',
+                'scope:shared',
+                'scope:ui',
+                'scope:transport',
+                'scope:platform',
+              ],
+            },
+            {
+              sourceTag: 'scope:platform',
+              onlyDependOnLibsWithTags: [
+                'scope:platform',
+                'scope:shared',
+                'scope:ui',
+                'scope:transport',
               ],
             },
             {

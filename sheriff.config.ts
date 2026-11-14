@@ -1,8 +1,31 @@
 import { sameTag, type SheriffConfig } from '@softarc/sheriff-core'
 
-export const config: SheriffConfig = {
+const applicationScopes = [
+  sameTag,
+  'scope:shared',
+  'scope:ui',
+  'scope:transport',
+  'scope:platform',
+] as const
+
+const featureDependencies = [
+  'type:feature',
+  'type:ui',
+  'type:data',
+  'type:models',
+  'type:util',
+  'type:state',
+] as const
+
+const uiDependencies = ['type:ui', 'type:models', 'type:util'] as const
+
+const dataDependencies = ['type:data', 'type:models', 'type:util'] as const
+
+export const config = {
   entryPoints: {
     'apps/panel/src': './apps/panel/src/main.ts',
+    'apps/driver/src': './apps/driver/src/main.ts',
+    'apps/passenger/src': './apps/passenger/src/main.ts',
     'apps/shop/src': './apps/shop/src/main.ts',
     'apps/api/src': './apps/api/src/main.ts',
   },
@@ -10,81 +33,75 @@ export const config: SheriffConfig = {
   enableBarrelLess: true,
 
   modules: {
-    'apps/panel/src': ['scope:panel', 'type:app'],
-    'apps/shop/src': ['scope:shop', 'type:app'],
-    'apps/api/src': ['scope:api', 'type:app'],
+    'apps/<app>/src': ['scope:<app>', 'type:app'],
+
     'apps/panel-e2e': ['scope:panel', 'type:e2e'],
     'apps/shop-e2e': ['scope:shop', 'type:e2e'],
 
     'libs/shared/auth/data-access/src': ['scope:shared', 'type:data'],
-    'libs/shared/auth/data-access/src/claims': ['scope:shared', 'type:data'],
-    'libs/shared/auth/data-access/src/server': ['scope:shared', 'type:data'],
+    'libs/shared/auth/data-access/src/<module>': ['scope:shared', 'type:data'],
     'libs/shared/auth/feature/src': ['scope:shared', 'type:feature'],
+
     'libs/shared/layout/src': ['scope:shared', 'type:ui'],
-    'libs/shared/ui/forms/src': ['scope:shared', 'type:ui'],
-    'libs/shared/ui/data-table/src': ['scope:shared', 'type:ui'],
+    'libs/shared/ui/<component>/src': ['scope:shared', 'type:ui'],
     'libs/shared/maps/src': ['scope:shared', 'type:ui'],
+
     'libs/shared/theme/data-access/src': ['scope:shared', 'type:data'],
     'libs/shared/theme/ui/src': ['scope:shared', 'type:feature'],
+
+    'libs/shared/platform/src': ['scope:platform', 'type:feature'],
+    'libs/shared/platform/src/<module>': ['scope:platform', 'type:feature'],
+    'libs/shared/platform/src/config': ['scope:platform', 'type:feature'],
+
     'libs/transport/http/src': ['scope:transport', 'type:data'],
-    'libs/transport/company/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/people/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/departure-times/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/drivers/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/vehicles/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/vehicles/feature/src': ['scope:transport', 'type:feature'],
-    'libs/transport/lines/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/lines/feature/src': ['scope:transport', 'type:feature'],
-    'libs/transport/lines/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/lines/feature/src': ['scope:transport', 'type:feature'],
-    'libs/transport/routes/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/routes/feature/src': ['scope:transport', 'type:feature'],
-    'libs/transport/scheduling/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/support/data-access/src': ['scope:transport', 'type:data'],
-    'libs/transport/company/feature/src': ['scope:transport', 'type:feature'],
-    'libs/transport/shell/feature/src': ['scope:transport', 'type:feature'],
-    'libs/panel/people/src': ['scope:panel', 'type:feature'],
-    'libs/panel/departure-times/src': ['scope:panel', 'type:feature'],
-    'libs/panel/drivers/src': ['scope:panel', 'type:feature'],
-    'libs/panel/passengers/src': ['scope:panel', 'type:feature'],
-    'libs/panel/feature/user/src': ['scope:panel', 'type:feature'],
-    'libs/panel/shift/src': ['scope:panel', 'type:feature'],
-    'libs/panel/feature/driver-line/src': ['scope:panel', 'type:feature'],
+    'libs/transport/<domain>/data-access/src': ['scope:transport', 'type:data'],
+    'libs/transport/<domain>/feature/src': ['scope:transport', 'type:feature'],
+
+    'libs/panel/<domain>/src': ['scope:panel', 'type:feature'],
+    'libs/panel/feature/<domain>/src': ['scope:panel', 'type:feature'],
 
     'packages/shop/feature-<feature>/src': ['scope:shop', 'type:feature'],
     'packages/shop/data/src': ['scope:shop', 'type:data'],
     'packages/shop/shared-ui/src': ['scope:shop', 'type:ui'],
+
     'packages/api/<feature>/src': ['scope:api', 'type:feature'],
     'packages/shared/models/src': ['scope:shared', 'type:models'],
 
-    'libs/spartan/attachment/src': ['scope:ui', 'type:ui'],
-    'libs/spartan/autocomplete/src': ['scope:ui', 'type:ui'],
-    'libs/spartan/dialog/src': ['scope:ui', 'type:ui'],
     'libs/spartan/<component>/src': ['scope:ui', 'type:ui'],
     '@spartan-ng/helm/*': ['scope:ui', 'type:ui'],
-    '@spartan-ng/helm/attachment': ['scope:ui', 'type:ui'],
-    '@spartan-ng/helm/autocomplete': ['scope:ui', 'type:ui'],
-    '@spartan-ng/helm/dialog': ['scope:ui', 'type:ui'],
   },
 
   depRules: {
     root: '*',
 
-    'scope:panel': [sameTag, 'scope:shared', 'scope:ui', 'scope:transport'],
+    'scope:panel': [...applicationScopes],
+    'scope:driver': [...applicationScopes],
+    'scope:passenger': [...applicationScopes],
+
+    'scope:platform': [sameTag, 'scope:shared', 'scope:ui', 'scope:transport'],
+
     'scope:shop': [sameTag, 'scope:shared'],
     'scope:api': [sameTag, 'scope:shared'],
+
     'scope:shared': [sameTag, 'scope:ui'],
+
     'scope:transport': [sameTag, 'scope:shared', 'scope:ui'],
+
     'scope:ui': [sameTag],
 
-    'type:app': ['type:feature', 'type:ui', 'type:data', 'type:models', 'type:util', 'type:state'],
-    'type:feature': ['type:ui', 'type:data', 'type:models', 'type:util', 'type:state'],
-    'type:ui': ['type:ui', 'type:models', 'type:util'],
-    'type:data': ['type:data', 'type:models', 'type:util'],
+    'type:app': [...featureDependencies],
+    'type:feature': [...featureDependencies],
+
+    'type:ui': [...uiDependencies],
+    'type:data': [...dataDependencies],
+
     'type:state': ['type:models', 'type:util'],
+
     'type:models': [],
     'type:util': [],
+
     'type:e2e': '*',
+
     noTag: ['*'],
   },
-}
+} satisfies SheriffConfig

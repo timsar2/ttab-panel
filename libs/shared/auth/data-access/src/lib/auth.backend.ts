@@ -126,7 +126,6 @@ export function createDefaultAuthBackend(): AuthBackend {
   if (config.mode === 'cookie') {
     const cookieOptions = () => ({
       ...options(),
-      withCredentials: true,
       credentials: 'same-origin' as const,
       headers: { 'X-Auth-Request': '1' },
     })

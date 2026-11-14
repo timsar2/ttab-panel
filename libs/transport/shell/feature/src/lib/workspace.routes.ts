@@ -7,7 +7,7 @@ import type { LayoutNavItem } from '@org/layout'
 export interface WorkspaceConfig {
   readonly path: string
   readonly brand: string
-  readonly companiesCommands: (string | number)[]
+  readonly companiesCommands?: (string | number)[]
   readonly loginUrl: string
   /** Runs in the component injection context; may read the consumer's locale/preferences. */
   readonly text?: () => Signal<WorkspaceText>

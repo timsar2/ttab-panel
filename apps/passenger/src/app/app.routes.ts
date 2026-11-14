@@ -1,3 +1,3 @@
-import { Route } from '@angular/router'
+import { createPortalRoutes } from '@org/platform'
 
-export const appRoutes: Route[] = []
+export const appRoutes = createPortalRoutes({ brandName: 'Passenger' })

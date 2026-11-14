@@ -1,1 +1,12 @@
-/* You can add global styles to this file, and also import other style files */
+@import '../../../libs/shared/platform/src/styles/global.css';
+
+@source './app';
+@source '../../../libs/shared';
+@source '../../../libs/transport/shell/feature';
+@source '../../../libs/spartan/button';
+@source '../../../libs/spartan/alert';
+@source '../../../libs/spartan/card';
+@source '../../../libs/spartan/field';
+@source '../../../libs/spartan/input';
+@source '../../../libs/spartan/label';
+@source '../../../libs/spartan/sidebar';

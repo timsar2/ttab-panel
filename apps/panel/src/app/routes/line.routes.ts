@@ -1,6 +1,6 @@
 import { computed, inject } from '@angular/core'
 import type { Signal } from '@angular/core'
-import { hasAnyRole, requireAnyRole, SessionStore } from '@org/auth-data-access'
+import { hasAnyRole, requireAnyRole, SessionStore, PreferencesStore } from '@org/platform'
 import { departureCompanyId } from '@org/transport-departure-times-data-access'
 import type {
   DepartureTimeAccessRequest,
@@ -11,7 +11,6 @@ import type { RouteId } from '@org/transport-routes-data-access'
 import type { LineAccessRequest } from '@org/transport-lines-data-access'
 import { createLineRoutes } from '@org/transport-lines-feature'
 import { CompanyContextStore } from '@org/transport-company-data-access'
-import { PreferencesStore } from '../core/preferences/preferences.store'
 import { panelConfig } from '../panel.config'
 import { of } from 'rxjs'
 

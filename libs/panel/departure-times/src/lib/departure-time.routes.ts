@@ -46,7 +46,7 @@ export function createDepartureTimeRoutes(config: DepartureTimeFeatureConfig): R
     {
       path: config.path,
       canActivate: [authGuard],
-      data: { breadcrumb: config.heading ?? 'Departure times' },
+      data: { breadcrumb: 'Departure times' },
       providers: [provideDepartureTimeFeature(config)],
       children: [
         {

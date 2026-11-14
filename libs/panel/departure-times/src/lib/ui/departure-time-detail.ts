@@ -64,7 +64,7 @@ import { departureTimeText, DepartureTimeTextKey } from '../departure-time-text'
         </p>
       }
       @case ('error') {
-        <p role="alert">{{ store.detailError()?.message ?? t('detailFailed') }}</p>
+        <p role="alert">{{ t('detailFailed') }}</p>
       }
       @default {
         <p role="alert">{{ t('invalidUrl') }}</p>

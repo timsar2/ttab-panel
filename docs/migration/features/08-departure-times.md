@@ -4,7 +4,7 @@
 
 ## Status And Scope
 
-Status: PARTIAL DATA AND PANEL UI (2026-11-10); source-backed data and configurable lazy list/create/edit pages are fixture-verified. Panel live access remains explicitly denied pending approved company/entity permissions. Deletion, live acceptance and full editable-browser acceptance remain pending.
+Status: PARTIAL DATA AND PANEL UI (2026-11-14); source-backed data and configurable lazy list/detail/create/edit pages are fixture-verified. Panel list/detail and company-matched update UI are enabled through the same-origin BFF, but live backend role/company authorization remains unverified. Deletion and live acceptance remain pending.
 LEGACY/CONTRACT: S12 exposes company, name, and `shiftTime` for named travel clock slots.
 ShiftTime is not a work Shift and is not the Route's first-station `departureTime`.
 TASK: migrate company-scoped maintenance and reusable lookups, not calendar generation or dispatch.
@@ -155,6 +155,12 @@ All commands ran from `front` using Bun, with no production requests or writes.
   endpoint. Create access remains denied pending Q03/Q04. The BFF's
   configured upstream is `https://api.ttabline.com/api`; backend authorization is
   still required, and no destructive delete operation is exposed.
+- List, detail and editor copy now use the app's reactive global `PreferencesStore.language`
+  adapter. Feature-owned page headings, descriptions, captions, column/action labels,
+  accessibility names, loading/empty/error/limit states, form labels/help/validation,
+  discard confirmation and save feedback have English and Persian variants. Direction
+  switches with the selected language. A route test switches languages after initial
+  render and asserts labels on all three views.
 - `bun nx run-many -p panel-departure-times,transport-departure-times-data-access,transport-support-data-access,shared-ui-data-table,panel,panel-e2e -t test,lint,typecheck`
   passes 16 applicable targets. Departure feature has 9 route/editor tests,
   departure data 88, shared table 5, support data 104, panel 12. Separate feature

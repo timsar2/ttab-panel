@@ -1,16 +1,15 @@
 import { Route } from '@angular/router'
 import { computed, inject, signal } from '@angular/core'
-import { createAuthRoutes } from '@org/auth-feature'
+import { createAuthRoutes, type LayoutNavItem } from '@org/platform'
 import { createCompanyRoutes } from '@org/transport-company-feature'
 import { CompanyContextStore } from '@org/transport-company-data-access'
 import { createPeopleRoutes } from '@org/panel-people'
 import { createDepartureTimeRoutes } from '@org/panel-departure-times'
 import { departureCompanyId } from '@org/transport-departure-times-data-access'
 import { peopleCompanyId } from '@org/transport-people-data-access'
-import { createCompanyShellRoutes, createWorkspaceRoutes } from '@org/transport-shell-feature'
+import { createCompanyShellRoutes, createWorkspaceRoutes } from '@org/platform'
 import { of } from 'rxjs'
-import { PreferencesStore } from './core/preferences/preferences.store'
-import type { LayoutNavItem } from '@org/layout'
+import { PreferencesStore } from '@org/platform'
 import {
   lucideLayoutDashboard,
   lucideBuilding2,
@@ -196,6 +195,7 @@ function companyShellTranslations() {
           user: 'کاربران',
           People: 'افراد',
           'Departure times': 'زمان‌های حرکت',
+          Details: 'جزئیات',
           Shifts: 'شیفت‌ها',
           'Shift details': 'جزئیات شیفت',
           'Shift list': 'فهرست شیفت‌ها',
@@ -291,6 +291,7 @@ export const appRoutes: Route[] = [
         path: 'departure-times',
         apiUrl: '/api',
         endpoints: { collection: 'v1/shiftTimes', save: 'v1/shiftTimes/set-shift-time' },
+        language: () => inject(PreferencesStore).language,
         company: () => {
           const context = inject(CompanyContextStore)
           return computed(() => {
@@ -300,8 +301,10 @@ export const appRoutes: Route[] = [
         },
         access: () => () => of(false),
         canManage: () => signal(false),
-        deniedMessage:
-          'Departure-time access is not enabled until company and entity permissions are approved.',
+        deniedMessage: {
+          en: 'Departure-time access is not enabled until company and entity permissions are approved.',
+          fa: 'دسترسی به زمان‌های حرکت تا زمان تأیید مجوزهای شرکت و موجودیت فعال نشده است.',
+        },
       }),
       {
         path: 'shift',

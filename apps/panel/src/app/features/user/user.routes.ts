@@ -1,8 +1,7 @@
 import { computed, inject } from '@angular/core'
-import { hasAnyRole, requireAnyRole, SessionStore } from '@org/auth-data-access'
+import { hasAnyRole, requireAnyRole, SessionStore, PreferencesStore } from '@org/platform'
 import { createUserRoutes } from '@org/panel-users'
 import { CompanyContextStore } from '@org/transport-company-data-access'
-import { PreferencesStore } from '../../core/preferences/preferences.store'
 
 const userManagementRoles = ['Admin', 'Manager'] as const
 

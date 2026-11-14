@@ -1,9 +1,8 @@
 import { computed, inject } from '@angular/core'
-import { SessionStore } from '@org/auth-data-access'
+import { SessionStore, PreferencesStore } from '@org/platform'
 import { createShiftRoutes } from '@org/panel-shifts'
 import { CompanyContextStore } from '@org/transport-company-data-access'
 import { of } from 'rxjs'
-import { PreferencesStore } from '../../core/preferences/preferences.store'
 import { ShiftPage } from './shift.page'
 
 const isManager = (roles: readonly string[] | undefined) =>

@@ -8,12 +8,14 @@ export interface AuthBffConfig {
   apiPublicOrigin: string
   secret: string
   production: boolean
+  cookieNamespace?: string
 }
 
 export interface AuthBffHostDefaults {
   apiUrl: string
   production: boolean
   developmentOrigin: string
+  cookieNamespace?: string
 }
 
 export interface AuthBffSession {
@@ -117,12 +119,18 @@ export function readAuthBffConfig(
       (origin.protocol === 'http:' && (mode === 'production' || !loopback(origin.hostname)))
     )
       throw new Error()
+    if (
+      defaults?.cookieNamespace !== undefined &&
+      !/^[a-z0-9][a-z0-9-]{0,31}$/.test(defaults.cookieNamespace)
+    )
+      throw new Error()
     return {
       apiUrl: api.href.replace(/\/$/, ''),
       publicOrigin: origin.origin,
       apiPublicOrigin: `${origin.origin}/api`,
       secret,
       production: mode === 'production',
+      ...(defaults?.cookieNamespace ? { cookieNamespace: defaults.cookieNamespace } : {}),
     }
   } catch {
     throw new Error('Authentication BFF configuration is missing or invalid.')
@@ -163,12 +171,20 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   resolveSession(req: Request, res: Response): Promise<AuthBffSession | null>
 } {
   // Validate programmatic configuration as strictly as environment configuration.
-  const config = readAuthBffConfig({
-    AUTH_API_URL: options.config.apiUrl,
-    AUTH_PUBLIC_ORIGIN: options.config.publicOrigin,
-    AUTH_SESSION_SECRET: options.config.secret,
-    NODE_ENV: options.config.production ? 'production' : 'development',
-  })
+  const config = readAuthBffConfig(
+    {
+      AUTH_API_URL: options.config.apiUrl,
+      AUTH_PUBLIC_ORIGIN: options.config.publicOrigin,
+      AUTH_SESSION_SECRET: options.config.secret,
+      NODE_ENV: options.config.production ? 'production' : 'development',
+    },
+    {
+      apiUrl: options.config.apiUrl,
+      production: options.config.production,
+      developmentOrigin: options.config.publicOrigin,
+      cookieNamespace: options.config.cookieNamespace,
+    },
+  )
   const fetcher = options.fetch ?? globalThis.fetch
   const storage = options.storage ?? createMemorySessionStorage()
   const maxSessionLifetime = config.production ? 12 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
@@ -186,7 +202,10 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         : { operation, reason: 'upstream-unavailable', status: 502 },
     )
   const secure = new URL(config.publicOrigin).protocol === 'https:'
-  const cookieName = secure ? '__Host-auth-session' : 'auth-session-dev'
+  const cookieSuffix = config.cookieNamespace ? `-${config.cookieNamespace}` : ''
+  const cookieName = secure
+    ? `__Host-auth-session${cookieSuffix}`
+    : `auth-session-dev${cookieSuffix}`
   const flights = new Map<string, { promise: Promise<AuthStoredSession>; expiresAt: number }>()
   const router = express.Router() as Router & {
     resolveSession(req: Request, res: Response): Promise<AuthBffSession | null>

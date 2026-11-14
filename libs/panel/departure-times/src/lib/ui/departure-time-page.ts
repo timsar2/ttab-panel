@@ -70,7 +70,7 @@ function columns(language: 'en' | 'fa'): readonly DataTableColumn<DepartureTimeD
       }
       <lib-data-table
         [rows]="store.list()?.items ?? []"
-        [columns]="columns"
+        [columns]="columns()"
         [rowId]="rowId"
         [rowLabel]="rowLabel"
         [caption]="t('listCaption')"
@@ -145,10 +145,12 @@ export class DepartureTimePage {
   }
   protected readonly error = computed(() => {
     const error = this.store.error()
-    return error &&
-      (error.code === DEPARTURE_TIME_ACCESS_DENIED || error.status === 401 || error.status === 403)
+    if (!error) return null
+    return error.code === DEPARTURE_TIME_ACCESS_DENIED ||
+      error.status === 401 ||
+      error.status === 403
       ? (this.config.deniedMessage?.[this.language()] ?? this.t('accessDenied'))
-      : (error?.message ?? this.t('requestFailed'))
+      : this.t('requestFailed')
   })
   constructor() {
     effect(() => {
