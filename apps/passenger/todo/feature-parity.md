@@ -69,6 +69,6 @@ Status: implementation started. Remaining API/authorization contracts and end-to
 - Driver location remains unavailable until the browser SignalR hub/event/auth contract is confirmed.
 - Support creation remains disabled until the required `SupportTypeId` lookup/selection is confirmed.
 - Direction choices are not filtered by shift because the inspected API exposes no confirmed shift-to-direction relation.
-- Mobile OTP BFF requires server deployment configuration `AUTH_MOBILE_TENANT`; without it, registration and login fail closed.
+- Mobile OTP BFF defaults to the seeded `root` tenant in development; production must explicitly set server-only `AUTH_MOBILE_TENANT`.
 - The backend currently exposes `GET /api/personal/logout`; the Passenger BFF uses that confirmed method and always clears the local cookie session even if upstream revocation fails.
 - The Driver app has no implemented Driver home/experience to route a Driver session into; Passenger routes reject Driver access.

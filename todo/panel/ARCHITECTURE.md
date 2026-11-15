@@ -367,6 +367,7 @@ missing/invalid configuration keeps the API unavailable with HTTP 503:
 | `AUTH_API_URL`        | Optional override of `environment.apiUrl`, including `/api`; HTTPS except explicit loopback upstreams.       |
 | `AUTH_PUBLIC_ORIGIN`  | Exact frontend origin; defaults to `http://localhost:4200` in development, required HTTPS in production.     |
 | `AUTH_SESSION_SECRET` | Strong server-only secret of at least 32 bytes; ephemeral in development, required explicitly in production. |
+| `AUTH_MOBILE_TENANT`  | Optional tenant override; defaults to `root` in development and must be explicitly configured in production. |
 | `NODE_ENV`            | Runtime mode; the Angular production environment always enforces production restrictions.                    |
 
 Keep the external Host header when reverse proxying to this SSR server; forwarded

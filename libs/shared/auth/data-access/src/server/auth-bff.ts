@@ -141,6 +141,7 @@ export function readAuthBffConfig(
       !/^[a-z0-9][a-z0-9-]{0,31}$/.test(defaults.cookieNamespace)
     )
       throw new Error()
+    const mobileTenant = env['AUTH_MOBILE_TENANT'] ?? (development ? 'root' : undefined)
     return {
       apiUrl: api.href.replace(/\/$/, ''),
       publicOrigin: origin.origin,
@@ -148,9 +149,7 @@ export function readAuthBffConfig(
       secret,
       production: mode === 'production',
       ...(defaults?.cookieNamespace ? { cookieNamespace: defaults.cookieNamespace } : {}),
-      ...(env['AUTH_MOBILE_TENANT']
-        ? { mobileTenant: validateTenant(env['AUTH_MOBILE_TENANT']) }
-        : {}),
+      ...(mobileTenant ? { mobileTenant: validateTenant(mobileTenant) } : {}),
     }
   } catch {
     throw new Error('Authentication BFF configuration is missing or invalid.')

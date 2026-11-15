@@ -106,6 +106,7 @@ describe('Node cookie authentication BFF', () => {
     expect(first.apiUrl).toBe(hostDefaults.apiUrl)
     expect(first.publicOrigin).toBe('http://localhost:4200')
     expect(first.production).toBe(false)
+    expect(first.mobileTenant).toBe('root')
     expect(Buffer.byteLength(first.secret)).toBeGreaterThanOrEqual(32)
     expect(second.secret).not.toBe(first.secret)
   })
@@ -169,6 +170,7 @@ describe('Node cookie authentication BFF', () => {
     )
     expect(resolved.production).toBe(true)
     expect(resolved.apiUrl).toBe(hostDefaults.apiUrl)
+    expect(resolved.mobileTenant).toBeUndefined()
     expect(() => readAuthBffConfig({ AUTH_API_URL: '' }, hostDefaults)).toThrow('configuration')
   })
 
@@ -250,14 +252,16 @@ describe('Node cookie authentication BFF', () => {
     expect(session.headers['cache-control']).toBe('no-store')
   })
 
-  it('proxies OTP registration without exposing the upstream OTP value', async () => {
-    const configured = readAuthBffConfig({
-      AUTH_API_URL: 'http://127.0.0.1:5000/api',
-      AUTH_PUBLIC_ORIGIN: origin,
-      AUTH_SESSION_SECRET: secret,
-      NODE_ENV: 'test',
-      AUTH_MOBILE_TENANT: 'root',
-    })
+  it('defaults local OTP registration to the root tenant without exposing the upstream OTP value', async () => {
+    const configured = readAuthBffConfig(
+      {
+        AUTH_API_URL: 'http://127.0.0.1:5000/api',
+        AUTH_PUBLIC_ORIGIN: origin,
+        AUTH_SESSION_SECRET: secret,
+        NODE_ENV: 'development',
+      },
+      hostDefaults,
+    )
     const f = fixture(undefined, 86_400_000, configured)
     const response = await request(f.app)
       .post('/api/auth/mobile-register')
@@ -334,11 +338,18 @@ describe('Node cookie authentication BFF', () => {
     await request(f.app).get('/api/auth/session').set('Cookie', cookie(response)).expect(401)
   })
 
-  it('fails mobile authentication closed when a server tenant is not configured', async () => {
-    const f = fixture()
+  it('fails mobile authentication closed in production without an explicit tenant', async () => {
+    const productionOrigin = 'https://passenger.example.test'
+    const productionConfig = readAuthBffConfig({
+      AUTH_API_URL: 'https://api.example.test/api',
+      AUTH_PUBLIC_ORIGIN: productionOrigin,
+      AUTH_SESSION_SECRET: secret,
+      NODE_ENV: 'production',
+    })
+    const f = fixture(undefined, 86_400_000, productionConfig)
     await request(f.app)
       .post('/api/auth/mobile-login')
-      .set('Origin', origin)
+      .set('Origin', productionOrigin)
       .set('X-Auth-Request', '1')
       .send({ mobile: '09123456789', otp: '123456' })
       .expect(503)
