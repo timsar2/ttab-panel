@@ -589,9 +589,13 @@ export function createAuthBff(options: AuthBffOptions): Router & {
           config.mobileTenant,
           'POST',
         )
-        const envelope = response.body as { code?: unknown } | null
+        const envelope = response.body as { code?: unknown; result?: unknown } | null
         if (response.status !== 200 || envelope?.code !== '2000')
           throw new Failure(response.status === 429 ? 429 : 502)
+        if (!config.production) {
+          res.status(200).json(envelope ?? { code: '2000' })
+          return
+        }
         res.sendStatus(204)
       } else if (req.method === 'POST' && rawPath === '/auth/mobile-login') {
         if (!config.mobileTenant) throw new Failure(503)

@@ -3,6 +3,7 @@
 @source './app';
 @source '../../../libs/shared';
 @source '../../../libs/transport/shell/feature';
+@source '../../../libs/driver/feature';
 @source '../../../libs/spartan/button';
 @source '../../../libs/spartan/alert';
 @source '../../../libs/spartan/card';
@@ -10,3 +11,12 @@
 @source '../../../libs/spartan/input';
 @source '../../../libs/spartan/label';
 @source '../../../libs/spartan/sidebar';
+@source '../../../libs/spartan/avatar';
+@source '../../../libs/spartan/drawer';
+@source '../../../libs/spartan/separator';
+@source '../../../libs/spartan/spinner';
+@source '../../../libs/spartan/tabs';
+@source '../../../libs/spartan/select';
+@source '../../../libs/spartan/textarea';
+@source '../../../libs/spartan/scroll-area';
+@source '../../../libs/spartan/progress';

@@ -1,6 +1,1 @@
-import { PLATFORM_DEV_API_URL } from '@org/platform/config'
-
-export const environment = {
-  production: false,
-  apiUrl: PLATFORM_DEV_API_URL,
-}
+export { sharedDevelopmentEnvironment as environment } from '@org/platform/config'

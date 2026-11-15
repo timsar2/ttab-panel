@@ -60,6 +60,7 @@ export const config = {
     'libs/panel/<domain>/src': ['scope:panel', 'type:feature'],
     'libs/panel/feature/<domain>/src': ['scope:panel', 'type:feature'],
     'libs/passenger/feature/src': ['scope:passenger', 'type:feature'],
+    'libs/driver/feature/src': ['scope:driver', 'type:feature'],
 
     'packages/shop/feature-<feature>/src': ['scope:shop', 'type:feature'],
     'packages/shop/data/src': ['scope:shop', 'type:data'],
@@ -70,6 +71,8 @@ export const config = {
 
     'libs/spartan/<component>/src': ['scope:ui', 'type:ui'],
     '@spartan-ng/helm/*': ['scope:ui', 'type:ui'],
+    '@org/platform': ['scope:platform', 'type:feature'],
+    '@org/platform/*': ['scope:platform', 'type:feature'],
   },
 
   depRules: {

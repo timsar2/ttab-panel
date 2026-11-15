@@ -8,6 +8,7 @@ import express, { type Express } from 'express'
 import process from 'node:process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { Agent, fetch as undiciFetch } from 'undici'
 import { createAuthBff, readAuthBffConfig } from '@org/auth-data-access/node'
 import type { AuthDiagnostic } from '@org/auth-data-access/node'
 
@@ -27,6 +28,24 @@ export interface PlatformSsrOptions {
 export interface PlatformSsrServer {
   readonly app: Express
   readonly reqHandler: ReturnType<typeof createNodeRequestHandler>
+}
+
+function createDevLoopbackFetch(
+  apiUrl: string,
+  production: boolean,
+): typeof globalThis.fetch | undefined {
+  if (production) return undefined
+  try {
+    const url = new URL(apiUrl)
+    const loopback =
+      url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]'
+    if (url.protocol !== 'https:' || !loopback) return undefined
+  } catch {
+    return undefined
+  }
+  const dispatcher = new Agent({ connect: { rejectUnauthorized: false } })
+  return ((input: any, init?: any) =>
+    undiciFetch(input, { ...init, dispatcher })) as unknown as typeof globalThis.fetch
 }
 
 export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSsrServer {
@@ -57,6 +76,7 @@ export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSs
   const authBff = authConfig
     ? createAuthBff({
         config: authConfig,
+        fetch: createDevLoopbackFetch(authConfig.apiUrl, authConfig.production),
         onDiagnostic:
           options.onDiagnostic ??
           (diagnostic => {
