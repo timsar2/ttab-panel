@@ -1,0 +1,10 @@
+{
+  "name": "passenger-pwa-feature",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/passenger/feature/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:passenger", "type:feature"],
+  "// targets": "to see all targets run: nx show project passenger-pwa-feature --web",
+  "targets": {}
+}

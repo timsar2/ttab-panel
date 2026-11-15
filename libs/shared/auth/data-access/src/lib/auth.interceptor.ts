@@ -27,7 +27,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     const cookie = (incoming?.headers.get('cookie') ?? '')
       .split(';')
       .map(value => value.trim())
-      .filter(value => /^(?:__Host-auth-session|auth-session-dev)=/.test(value))
+      .filter(value => /^(?:__Host-auth-session|auth-session-dev)(?:-[a-z0-9-]+)?=/.test(value))
       .join('; ')
     let headers = request.headers
       .delete('Authorization')

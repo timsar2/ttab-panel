@@ -2,6 +2,7 @@
 
 @source './app';
 @source '../../../libs/shared';
+@source '../../../libs/passenger/feature';
 @source '../../../libs/transport/shell/feature';
 @source '../../../libs/spartan/button';
 @source '../../../libs/spartan/alert';

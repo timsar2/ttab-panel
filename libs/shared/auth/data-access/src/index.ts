@@ -1,6 +1,7 @@
 export { AUTH_CONFIG, provideAuth, safeReturnUrl } from './lib/auth.config'
 export type { AuthConfig, NormalizedAuthConfig } from './lib/auth.config'
 export { AUTH_BYPASS, AuthBackend } from './lib/auth.backend'
+export { createDefaultAuthBackend, validateAuthSession } from './lib/auth.backend'
 export type {
   AuthCredentials,
   AuthTokens,

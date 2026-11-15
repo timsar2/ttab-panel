@@ -45,7 +45,11 @@ function fixture(storage?: AuthSessionStorage, refreshLifetime = 86_400_000, bff
   const fetcher = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
     async input => {
       const url = String(input)
-      if (url.endsWith('/tokens/get-by-email/') || url.endsWith('/tokens/refresh')) {
+      if (
+        url.endsWith('/tokens/get-by-email/') ||
+        url.endsWith('/tokens/refresh') ||
+        url.endsWith('/tokens')
+      ) {
         return json({
           code: '2000',
           result: {
@@ -55,6 +59,8 @@ function fixture(storage?: AuthSessionStorage, refreshLifetime = 86_400_000, bff
           },
         })
       }
+      if (url.includes('/users/mobile-register/'))
+        return json({ code: '2000', result: 'otp-secret' })
       if (url.endsWith('/personal/permissions')) return json(['Permissions.Read'])
       return json({ code: '2000', result: ['business-data'] })
     },
@@ -117,6 +123,27 @@ describe('Node cookie authentication BFF', () => {
     expect(resolved.apiUrl).toBe('https://staging.example.test/api')
     expect(resolved.publicOrigin).toBe('http://localhost:4400')
     expect(resolved.secret).toBe(secret)
+  })
+
+  it('accepts a validated server-only tenant for mobile authentication', () => {
+    expect(
+      readAuthBffConfig({
+        AUTH_API_URL: 'http://127.0.0.1:5000/api',
+        AUTH_PUBLIC_ORIGIN: origin,
+        AUTH_SESSION_SECRET: secret,
+        NODE_ENV: 'test',
+        AUTH_MOBILE_TENANT: 'root',
+      }).mobileTenant,
+    ).toBe('root')
+    expect(() =>
+      readAuthBffConfig({
+        AUTH_API_URL: 'http://127.0.0.1:5000/api',
+        AUTH_PUBLIC_ORIGIN: origin,
+        AUTH_SESSION_SECRET: secret,
+        NODE_ENV: 'test',
+        AUTH_MOBILE_TENANT: '../root',
+      }),
+    ).toThrow('configuration')
   })
 
   it('never supplies development origin or secret to production builds or runtimes', () => {
@@ -221,6 +248,101 @@ describe('Node cookie authentication BFF', () => {
       .expect(200)
     expect(session.body).toEqual(response.body)
     expect(session.headers['cache-control']).toBe('no-store')
+  })
+
+  it('proxies OTP registration without exposing the upstream OTP value', async () => {
+    const configured = readAuthBffConfig({
+      AUTH_API_URL: 'http://127.0.0.1:5000/api',
+      AUTH_PUBLIC_ORIGIN: origin,
+      AUTH_SESSION_SECRET: secret,
+      NODE_ENV: 'test',
+      AUTH_MOBILE_TENANT: 'root',
+    })
+    const f = fixture(undefined, 86_400_000, configured)
+    const response = await request(f.app)
+      .post('/api/auth/mobile-register')
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .send({ mobile: '09123456789' })
+      .expect(204)
+    expect(response.text).toBe('')
+    expect(JSON.stringify(response.body)).not.toContain('otp-secret')
+    expect(f.fetcher.mock.calls[0][0]).toBe(
+      'http://127.0.0.1:5000/api/users/mobile-register/09123456789',
+    )
+    expect((f.fetcher.mock.calls[0][1]?.headers as Record<string, string>)['tenant']).toBe('root')
+  })
+
+  it('stores mobile OTP credentials only in an HttpOnly BFF session and proxies scoped requests', async () => {
+    const configured = readAuthBffConfig({
+      AUTH_API_URL: 'http://127.0.0.1:5000/api',
+      AUTH_PUBLIC_ORIGIN: origin,
+      AUTH_SESSION_SECRET: secret,
+      NODE_ENV: 'test',
+      AUTH_MOBILE_TENANT: 'root',
+    })
+    const f = fixture(undefined, 86_400_000, configured)
+    const response = await request(f.app)
+      .post('/api/auth/mobile-login')
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .send({ mobile: '09123456789', otp: '123456' })
+      .expect(200)
+    expect(response.body.user).toMatchObject({
+      username: '09123456789',
+      email: '',
+      roles: ['Admin'],
+    })
+    expect(response.body).not.toHaveProperty('token')
+    expect(response.body).not.toHaveProperty('refreshToken')
+    expect(response.headers['set-cookie'][0]).toMatch(/HttpOnly/)
+    expect((f.fetcher.mock.calls[0][1]?.headers as Record<string, string>)['tenant']).toBe('root')
+    expect(f.fetcher.mock.calls[0][0]).toBe('http://127.0.0.1:5000/api/tokens')
+    await request(f.app)
+      .post('/api/auth/refresh')
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .set('Cookie', cookie(response))
+      .send({})
+      .expect(200)
+    const refreshCall = f.fetcher.mock.calls.find(([url]) =>
+      String(url).endsWith('/tokens/refresh'),
+    )
+    expect(String(refreshCall?.[0])).toBe('http://127.0.0.1:5000/api/tokens/refresh')
+    expect((refreshCall?.[1]?.headers as Record<string, string>)['tenant']).toBe('root')
+    await request(f.app)
+      .post('/api/v1/passengers/search')
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .set('Cookie', cookie(response))
+      .send({ companyId: 7, passengerId: 42, hasShift: true, hasStation: true })
+      .expect(200)
+    expect(f.fetcher.mock.calls[f.fetcher.mock.calls.length - 1]?.[0]).toBe(
+      'http://127.0.0.1:5000/api/v1/passengers/search',
+    )
+    await request(f.app)
+      .post('/api/auth/mobile-logout')
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .set('Cookie', cookie(response))
+      .send({})
+      .expect(204)
+    expect(f.fetcher.mock.calls[f.fetcher.mock.calls.length - 1]?.[0]).toBe(
+      'http://127.0.0.1:5000/api/personal/logout',
+    )
+    expect(f.fetcher.mock.calls[f.fetcher.mock.calls.length - 1]?.[1]?.method).toBe('GET')
+    await request(f.app).get('/api/auth/session').set('Cookie', cookie(response)).expect(401)
+  })
+
+  it('fails mobile authentication closed when a server tenant is not configured', async () => {
+    const f = fixture()
+    await request(f.app)
+      .post('/api/auth/mobile-login')
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .send({ mobile: '09123456789', otp: '123456' })
+      .expect(503)
+    expect(f.fetcher).not.toHaveBeenCalled()
   })
 
   it('uses __Host secure cookies for production HTTPS', async () => {

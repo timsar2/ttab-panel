@@ -9,6 +9,7 @@ export interface AuthBffConfig {
   secret: string
   production: boolean
   cookieNamespace?: string
+  mobileTenant?: string
 }
 
 export interface AuthBffHostDefaults {
@@ -84,6 +85,22 @@ function loopback(host: string): boolean {
   return host === 'localhost' || host === '127.0.0.1' || host === '[::1]'
 }
 
+function validateTenant(tenant: string): string {
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(tenant)) throw new Error()
+  return tenant
+}
+
+function sessionTenantMatches(session: AuthStoredSession, mobileTenant?: string): boolean {
+  if (session.username.includes('@')) {
+    try {
+      return session.tenant === tenantFromEmail(session.username)
+    } catch {
+      return false
+    }
+  }
+  return !!mobileTenant && session.tenant === mobileTenant
+}
+
 export function readAuthBffConfig(
   env: NodeJS.ProcessEnv = process.env,
   defaults?: AuthBffHostDefaults,
@@ -131,6 +148,9 @@ export function readAuthBffConfig(
       secret,
       production: mode === 'production',
       ...(defaults?.cookieNamespace ? { cookieNamespace: defaults.cookieNamespace } : {}),
+      ...(env['AUTH_MOBILE_TENANT']
+        ? { mobileTenant: validateTenant(env['AUTH_MOBILE_TENANT']) }
+        : {}),
     }
   } catch {
     throw new Error('Authentication BFF configuration is missing or invalid.')
@@ -176,6 +196,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
       AUTH_API_URL: options.config.apiUrl,
       AUTH_PUBLIC_ORIGIN: options.config.publicOrigin,
       AUTH_SESSION_SECRET: options.config.secret,
+      ...(options.config.mobileTenant ? { AUTH_MOBILE_TENANT: options.config.mobileTenant } : {}),
       NODE_ENV: options.config.production ? 'production' : 'development',
     },
     {
@@ -255,11 +276,8 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     const session = await storage.get(id)
     if (!session) throw new Failure(401, 'session-missing')
     if (session.refreshExpiresAt <= Date.now()) throw new Failure(401, 'session-expired')
-    try {
-      if (session.tenant !== tenantFromEmail(session.username)) throw new Error()
-    } catch {
+    if (!sessionTenantMatches(session, config.mobileTenant))
       throw new Failure(401, 'session-invalid')
-    }
     return session
   }
   async function upstream(
@@ -329,7 +347,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         user: {
           ...decoded.user,
           username: session.username,
-          email: session.username,
+          email: session.username.includes('@') ? session.username : '',
           name: [decoded.user.firstName, decoded.user.lastName].filter(Boolean).join(' '),
         },
       }
@@ -341,6 +359,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     body: unknown,
     username: string,
     id = randomBytes(32).toString('hex'),
+    tenant = tenantFromEmail(username),
   ): AuthStoredSession {
     const envelope = body as { code?: unknown; result?: Record<string, unknown> }
     const result = envelope?.result
@@ -366,7 +385,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
       refreshToken: result['refreshToken'],
       refreshExpiresAt: Math.min(expiry, Date.now() + maxSessionLifetime),
       username,
-      tenant: tenantFromEmail(username),
+      tenant,
     }
   }
   async function refresh(session: AuthStoredSession): Promise<AuthStoredSession> {
@@ -399,7 +418,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
             [400, 401, 403].includes(response.status) ? 401 : 502,
             'refresh-rejected',
           )
-        const next = tokens(response.body, session.username, session.id)
+        const next = tokens(response.body, session.username, session.id, session.tenant)
         // Refresh cannot extend the absolute login lifetime.
         next.refreshExpiresAt = Math.min(next.refreshExpiresAt, session.refreshExpiresAt)
         await validate(next)
@@ -491,13 +510,17 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     const operation: AuthDiagnostic['operation'] =
       rawPath === '/auth/login'
         ? 'login'
-        : rawPath === '/auth/session'
-          ? 'session'
-          : rawPath === '/auth/refresh'
-            ? 'refresh'
-            : rawPath === '/auth/logout'
-              ? 'logout'
-              : 'proxy'
+        : rawPath === '/auth/mobile-login' || rawPath === '/auth/mobile-register'
+          ? 'login'
+          : rawPath === '/auth/mobile-logout'
+            ? 'logout'
+            : rawPath === '/auth/session'
+              ? 'session'
+              : rawPath === '/auth/refresh'
+                ? 'refresh'
+                : rawPath === '/auth/logout'
+                  ? 'logout'
+                  : 'proxy'
     void (async () => {
       // Reject encoded paths altogether: no normalization, traversal or endpoint aliases.
       if (
@@ -551,7 +574,87 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         await storage.create(session)
         write(res, session)
         res.json(metadata)
+      } else if (req.method === 'POST' && rawPath === '/auth/mobile-register') {
+        if (!config.mobileTenant) throw new Failure(503)
+        if (!req.is('application/json')) throw new Failure(415)
+        let body: { mobile?: unknown }
+        try {
+          body = JSON.parse(req.body.toString('utf8'))
+        } catch {
+          throw new Failure(400)
+        }
+        if (typeof body?.mobile !== 'string' || !/^\+?\d{11,15}$/.test(body.mobile))
+          throw new Failure(400)
+        const response = await upstream(
+          `/users/mobile-register/${encodeURIComponent(body.mobile)}`,
+          config.mobileTenant,
+          'POST',
+        )
+        const envelope = response.body as { code?: unknown } | null
+        if (response.status !== 200 || envelope?.code !== '2000')
+          throw new Failure(response.status === 429 ? 429 : 502)
+        res.sendStatus(204)
+      } else if (req.method === 'POST' && rawPath === '/auth/mobile-login') {
+        if (!config.mobileTenant) throw new Failure(503)
+        if (!req.is('application/json')) throw new Failure(415)
+        let body: { mobile?: unknown; otp?: unknown }
+        try {
+          body = JSON.parse(req.body.toString('utf8'))
+        } catch {
+          throw new Failure(400)
+        }
+        if (
+          typeof body?.mobile !== 'string' ||
+          !/^\+?\d{11,15}$/.test(body.mobile) ||
+          typeof body.otp !== 'string' ||
+          !/^\d{4,8}$/.test(body.otp)
+        )
+          throw new Failure(400)
+        const response = await upstream(
+          '/tokens',
+          config.mobileTenant,
+          'POST',
+          undefined,
+          JSON.stringify({ mobile: body.mobile, otp: body.otp }),
+          'application/json',
+        )
+        if (response.status !== 200) throw new Failure(response.status === 401 ? 401 : 502)
+        const session = tokens(
+          response.body,
+          body.mobile,
+          randomBytes(32).toString('hex'),
+          config.mobileTenant,
+        )
+        const metadata = await validate(session)
+        try {
+          const previous = await read(req)
+          await storage.remove(previous.id)
+        } catch (error) {
+          if (!(error instanceof Failure && error.status === 401)) throw error
+        }
+        await storage.create(session)
+        write(res, session)
+        res.json(metadata)
       } else if (req.method === 'POST' && rawPath === '/auth/logout') {
+        clear(res)
+        let session: AuthStoredSession
+        try {
+          session = await read(req)
+        } catch (error) {
+          if (error instanceof Failure && error.status === 401) {
+            res.sendStatus(204)
+            return
+          }
+          throw error
+        }
+        await storage.remove(session.id)
+        try {
+          await upstream('/personal/logout', session.tenant, 'GET', session.token)
+        } catch {
+          /* Local logout wins. */
+        }
+        res.sendStatus(204)
+      } else if (req.method === 'POST' && rawPath === '/auth/mobile-logout') {
         clear(res)
         let session: AuthStoredSession
         try {

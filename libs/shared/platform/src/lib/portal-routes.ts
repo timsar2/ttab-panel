@@ -8,12 +8,17 @@ import { PreferencesStore } from './preferences.store'
 export interface PortalRoutesOptions {
   readonly brandName: string
   readonly featureRoutes?: Route[]
+  readonly loginRoutes?: Routes
 }
 
-export function createPortalRoutes({ brandName, featureRoutes = [] }: PortalRoutesOptions): Routes {
+export function createPortalRoutes({
+  brandName,
+  featureRoutes = [],
+  loginRoutes,
+}: PortalRoutesOptions): Routes {
   return [
     { path: '', pathMatch: 'full', redirectTo: 'login' },
-    ...createAuthRoutes({ path: 'login', title: `${brandName} | Sign in` }),
+    ...(loginRoutes ?? createAuthRoutes({ path: 'login', title: `${brandName} | Sign in` })),
     ...createWorkspaceRoutes({
       path: 'workspace',
       brand: brandName,

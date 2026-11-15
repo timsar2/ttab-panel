@@ -59,6 +59,7 @@ export const config = {
 
     'libs/panel/<domain>/src': ['scope:panel', 'type:feature'],
     'libs/panel/feature/<domain>/src': ['scope:panel', 'type:feature'],
+    'libs/passenger/feature/src': ['scope:passenger', 'type:feature'],
 
     'packages/shop/feature-<feature>/src': ['scope:shop', 'type:feature'],
     'packages/shop/data/src': ['scope:shop', 'type:data'],

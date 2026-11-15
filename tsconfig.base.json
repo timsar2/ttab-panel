@@ -134,7 +134,8 @@
         "./libs/transport/inspection/data-access/src/index.ts"
       ],
       "@org/panel-inspection": ["./libs/panel/inspection/src/index.ts"],
-      "@org/panel-support": ["./libs/panel/support/src/index.ts"]
+      "@org/panel-support": ["./libs/panel/support/src/index.ts"],
+      "@org/passenger-pwa-feature": ["./libs/passenger/feature/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

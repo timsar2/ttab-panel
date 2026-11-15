@@ -217,7 +217,7 @@ describe('cookie authentication', () => {
         {
           provide: REQUEST,
           useValue: new Request('https://untrusted-host.test/workspace', {
-            headers: { cookie: '__Host-auth-session=session-handle; unrelated=private' },
+            headers: { cookie: '__Host-auth-session-panel=session-handle; unrelated=private' },
           }),
         },
       ],
@@ -229,7 +229,7 @@ describe('cookie authentication', () => {
       })
       .subscribe()
     const request = controller.expectOne('https://panel.example.test/api/companies?page=1')
-    expect(request.request.headers.get('Cookie')).toBe('__Host-auth-session=session-handle')
+    expect(request.request.headers.get('Cookie')).toBe('__Host-auth-session-panel=session-handle')
     expect(request.request.headers.has('Authorization')).toBe(false)
     expect(request.request.transferCache).toBe(false)
     expect(request.request.redirect).toBe('error')

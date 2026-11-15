@@ -13,4 +13,11 @@ describe('createPortalRoutes', () => {
     expect(protectedFeatures?.canActivate).toHaveLength(1)
     expect(protectedFeatures?.children?.[0].path).toBe('trips')
   })
+
+  it('allows a portal to provide app-specific lazy login routes', () => {
+    const loginRoutes = [{ path: 'login', loadComponent: async () => class Login {} }]
+    const routes = createPortalRoutes({ brandName: 'Passenger', loginRoutes })
+    expect(routes).toContain(loginRoutes[0])
+    expect(routes.some(route => route.path === 'login' && route.loadComponent)).toBe(true)
+  })
 })
