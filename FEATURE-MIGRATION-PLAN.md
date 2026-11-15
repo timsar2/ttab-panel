@@ -216,9 +216,9 @@ calling `createAuthRoutes` preserves the lazy login boundary.
 
 The initial session is intentionally in-memory. Reloading requires login again;
 there is no token storage, SSO, or assumed backend/BFF cookie support. API calls
-use `/api`; the development proxy targets only `https://localhost:5001` from the
-backend development launch configuration. Production must route `/api` to the
-backend before this Node server, or supply an explicit API URL in `panel.config.ts`.
+use same-origin `/api`; the development auth BFF targets the backend `Host` profile
+at loopback `http://localhost:5000/api`. Production must route `/api` to the backend
+before this Node server, or supply an explicit API URL in `panel.config.ts`.
 Unproxied API requests return JSON 503 rather than Angular login HTML. There is
 no production endpoint fallback and no source-embedded credentials.
 

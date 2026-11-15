@@ -34,21 +34,29 @@ import {
   SupportId,
   SupportSearch,
   decodeSupportDetail,
+  decodeSupportMessage,
   decodeSupportPage,
+  decodeSupportViolationTypes,
   supportCompanyId,
   supportId,
   supportSearchRequest,
 } from './support.models'
 
 export interface SupportAccessRequest {
-  readonly action: 'search' | 'detail'
+  readonly action: 'search' | 'detail' | 'messages' | 'reply' | 'violation-types'
   readonly companyId: SupportCompanyId
   readonly id?: SupportId
 }
 export type SupportAuthorize = (request: SupportAccessRequest) => Observable<boolean>
 export interface SupportDataConfig {
   readonly apiUrl: string
-  readonly endpoints: { readonly collection: string; readonly search: string }
+  readonly endpoints: {
+    readonly collection: string
+    readonly search: string
+    readonly messages: string
+    readonly sendMessage: string
+    readonly violationTypes: string
+  }
   /** Factories execute in the consuming injector; null means unresolved/denied. */
   readonly company: () => Signal<SupportCompanyId | null>
   /** Approved company/entity access. Selection and authentication alone are not authorization. */
@@ -64,9 +72,13 @@ export function provideSupportData(config: SupportDataConfig) {
     typeof config.company !== 'function' ||
     typeof config.access !== 'function' ||
     !config.endpoints ||
-    ![config.endpoints.collection, config.endpoints.search].every(
-      path => typeof path === 'string' && /^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(path),
-    )
+    ![
+      config.endpoints.collection,
+      config.endpoints.search,
+      config.endpoints.messages,
+      config.endpoints.sendMessage,
+      config.endpoints.violationTypes,
+    ].every(path => typeof path === 'string' && /^[a-zA-Z0-9_-]+(?:\/[a-zA-Z0-9_-]+)*$/.test(path))
   )
     throw new Error('Configure explicit support endpoints, company scope and access policy.')
   return makeEnvironmentProviders([
@@ -87,7 +99,7 @@ function denied() {
   )
 }
 
-/** Read-only API using the consumer's existing scoped authenticated HttpClient. */
+/** Scoped Support API using the consumer's existing authenticated HttpClient. */
 @Injectable()
 export class SupportApi {
   readonly companyId = inject(COMPANY)
@@ -126,6 +138,48 @@ export class SupportApi {
         }),
       ),
     )
+  }
+
+  messages(id: SupportId) {
+    return this.run('messages', id, () =>
+      this.http.request('GET', `${this.endpoints.messages}/${id}/messages`, value =>
+        unwrapTransport(value, result => {
+          if (!Array.isArray(result))
+            throw new TransportError('contract', 0, 'The server returned invalid support messages.')
+          return result.map(decodeSupportMessage)
+        }),
+      ),
+    )
+  }
+
+  sendMessage(id: SupportId, body: string) {
+    return defer(() => {
+      const text = typeof body === 'string' ? body : ''
+      if (!text.trim())
+        throw new TransportError('validation', 0, 'Enter a message before sending.', {
+          body: ['A message is required.'],
+        })
+      return this.run('reply', id, () =>
+        this.http.request(
+          'POST',
+          this.endpoints.sendMessage,
+          value => unwrapTransport(value, () => undefined),
+          { supportId: id, body: text },
+        ),
+      )
+    })
+  }
+
+  violationTypes(personTypeId: number) {
+    return defer(() => {
+      if (personTypeId !== 1 && personTypeId !== 2)
+        throw new TransportError('validation', 0, 'Choose a passenger or driver violation type.')
+      return this.run('violation-types', undefined, () =>
+        this.http.request('GET', `${this.endpoints.violationTypes}/${personTypeId}`, value =>
+          unwrapTransport(value, decodeSupportViolationTypes),
+        ),
+      )
+    })
   }
   private run<T>(
     action: SupportAccessRequest['action'],

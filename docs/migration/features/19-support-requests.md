@@ -2,30 +2,30 @@
 
 [Main TODO and mandatory agent instructions](../TODO.md)
 
-**Status:** source-backed read-only data foundation verified with mocks; no migrated panel UI or live acceptance.
+**Status:** Support list/detail/reply panel UI and reusable read/write transport APIs are implemented with mocked verification. No live backend/database acceptance is claimed.
 These records are support tickets, not ride bookings or dispatch assignments.
 
 ## Library Ownership and Dependencies
 
-Generate reusable transport support data-access/feature libraries, with public
+Use reusable transport support data-access and panel feature libraries, with public
 route factories and explicit forms/views. Reuse [shared tables](00-foundation-and-shared-controls.md),
 [auth](01-authentication.md), [company context](03-company-context-and-shell.md),
 and [notification transport](18-realtime-tracking.md) when delivered.
 
 ## Tasks
 
-[ ] SUPPORT-01 Confirm support search/detail/delete contracts, applicant-type IDs, authorized visibility, and retention policy against Q05/Q26.
-[ ] SUPPORT-02 Generate library-owned API/state/feature/component boundaries and register public aliases, Nx tags, and Sheriff mappings.
-[ ] SUPPORT-03 Implement typed applicant/person/contact/date/subject/description adapters without confusing support with booking.
-[ ] SUPPORT-04 Implement scoped search/list/paging/detail state and accurate counts without legacy detail-load list pollution or unscoped background searches.
-[ ] SUPPORT-05 Implement reusable TanStack/Spartan list and readable details with correct request-ID navigation, loading/empty/error/access-denied states.
-[ ] SUPPORT-06 Implement approved deletion confirmation and state invalidation without guessing cascades or exposing another company's records.
-[ ] SUPPORT-07 Decide intended navigation visibility and make notification actions link to the actual authorized request route.
+[X] SUPPORT-01 Confirm current backend search/detail/message contract and staff visibility. Support deletion is prohibited; customer creation is not a Panel staff operation. Product visibility/retention decisions remain open.
+[X] SUPPORT-02 Generate library-owned API/state/feature/component boundaries and register public aliases and Nx tags.
+[X] SUPPORT-03 Implement typed support type/person/contact/date/subject/case-file/message adapters without confusing support with booking.
+[X] SUPPORT-04 Implement selected-company search/list/paging/detail state without legacy detail-load list pollution or unscoped background searches. Counts retain the backend empty-page limitation.
+[X] SUPPORT-05 Implement reusable list/detail/message views with numeric request-ID navigation and loading/empty/error/access-denied states.
+[X] SUPPORT-06 Do not expose deletion: `Pub.uspDelSupport` is deprecated and no backend delete route is exposed.
+[X] SUPPORT-07 Mount Support in the selected-company panel shell and hide it from non-staff roles. Notifications are not wired to request navigation.
 [ ] SUPPORT-08 Add deduplicated realtime request updates only when the shared notification lifecycle exists, respecting current filters and page totals.
-[ ] SUPPORT-09 Resolve whether panel creation is required before enabling the dormant create wrapper; gate any creation form behind an approved contract.
-[ ] SUPPORT-10 Do not invent approval, response, status, priority, resolution, SLA, or assignment workflows without separate product/backend scope.
-[ ] SUPPORT-11 Test alternate consumers/mount paths, correct request-ID handling, unauthorized records, deletion failures, and repeated notification delivery.
-[ ] SUPPORT-12 Verify library/store tests, RTL/mobile keyboard flows, private rendering/cache policy, and browser list/detail/delete acceptance.
+[X] SUPPORT-09 Keep initial creation unavailable to Panel staff because the backend explicitly forbids staff callers; it is reserved for verified driver/passenger consumers.
+[X] SUPPORT-10 Implement only append-only staff messages with server-derived `IsAnswer`; do not invent approval, status, priority, resolution, SLA, or assignment workflows.
+[ ] SUPPORT-11 Test alternate consumer mount paths and repeated notification delivery; no approved realtime notification navigation exists.
+[X] SUPPORT-12 Verify the staff list/detail/reply consumer, selected-company scope, route IDs, RTL/LTR/mobile layout, keyboard navigation and forbidden create/delete affordances against controlled fixtures; live acceptance remains open.
 
 ## Evidence
 
@@ -37,10 +37,10 @@ and [notification transport](18-realtime-tracking.md) when delivered.
 [X] SUPPORT-DATA-04 Implement route/workflow-scoped SignalStore search and detail state, cancellation, stale session/company suppression and synchronous sensitive-data hiding, without global cache or detail-to-list pollution.
 [X] SUPPORT-DATA-05 Verify mocked alternate-consumer API/store/adapter tests, lint, library typecheck and separate spec typecheck; record source limits and unresolved live/UI policy gates.
 
-Only search and detail reads are in this slice. Create/delete/messages/resolution,
-realtime and UI are excluded. New panel-specific support UI belongs under
-`libs/panel/support`, not this transport data library. Original SUPPORT tasks stay
-open until their full contract and consumer/browser acceptance are verified.
+This earlier data-only slice established search/detail reads. The current staff
+consumer adds message read/reply and violation-type lookup APIs plus reusable list,
+detail and reply UI under `libs/panel/support`. Initial creation, violation report
+forms, deletion, resolution, realtime and live acceptance remain excluded.
 
 Record request lifecycle decisions, source-backed scope, permissions, navigation
 tests, and fixture versus live API results. A dormant wrapper is not a completed
@@ -124,24 +124,26 @@ view, not the authoritative current wire DTO:
   that every deployment has the same implementation.
 - Request dates are preserved as opaque nonempty server DateTime strings. No
   timezone, calendar, formatting, date-only or range policy has been invented.
-- No create/delete/message/violation-lookup/realtime/resolution API is exposed.
-  Source presence of these endpoints does not authorize implementing their workflow.
-- No panel route/UI, SSR mount, navigation, browser accessibility/mobile/RTL,
-  consumer build or live request acceptance is claimed by the data-only slice.
+- No staff ticket-creation or deletion UI/API call is exposed. Customer violation
+  report forms remain a separate consumer because staff ticket creation is denied.
+- Realtime notification navigation and live request acceptance remain open;
+  existing notifications provide no approved request-link workflow. Staff browser
+  acceptance uses mocked API/session fixtures and is not live authorization evidence.
 
 ### Public API and Verification
 
 `@org/transport-support-data-access` exports:
 
-- `provideSupportData({ apiUrl, endpoints: { collection, search }, company, access })`.
+- `provideSupportData({ apiUrl, endpoints: { collection, search, messages, sendMessage, violationTypes }, company, access })`.
   Both factories run in the consumer injector. The company factory supplies a
   `Signal<SupportCompanyId | null>`; the access factory supplies an observable
   decision callback for company-scoped search or a requested support ID. All
   endpoints and policy are explicit. Source-compatible paths are `v1/support`
   and `v1/support/search` when the supplied API base already ends in `/api`.
-- `SupportApi.search(query)` and `SupportApi.detail(supportId)` only. All HTTP
-  flows through the consumer's existing scoped/authenticated client. No interceptor
-  or alternate client is registered by this library; transfer cache is disabled.
+- `SupportApi.search(query)`, `detail(id)`, `messages(id)`, `sendMessage(id, body)`,
+  and `violationTypes(personTypeId)`. All HTTP flows through the consumer's existing
+  scoped/authenticated client. No interceptor or alternate client is registered by
+  this library; transfer cache is disabled. Ticket creation/deletion are not exposed.
 - `SupportStore` (provide per route/workflow, never root) with `load`, `loadDetail`,
   `clear`, and public scoped `page`, `query`, `detail`, `detailId`, `searchStatus`,
   `detailStatus`, `searchError`, `detailError` signals. Search/detail requests are
@@ -154,6 +156,9 @@ view, not the authoritative current wire DTO:
   `supportCompanyId`, `supportSearchRequest`, `decodeSupportRow`,
   `decodeSupportDetail`, `decodeSupportPage` adapters. Search uses zero-based UI
   pageIndex and explicitly converts it to one-based backend pageNumber.
+- `libs/panel/support` mounts a selected-company staff route, bilingual typed filters,
+  detail/case-file rendering and append-only message reply. The UI explicitly tells
+  users that server messages have no timestamps or guaranteed ordering.
 
 Generation used Bun/Nx `@nx/angular:library`, with installed generator help and
 source (`library.js`, normalization, tsconfig updates and Analog configuration)
@@ -172,3 +177,21 @@ Mocked verification on 2026-11-10:
 - API/store tests cover false/nonboolean/empty/throwing policies, no session/company, query snapshots before async authorization, detail ID/company mismatches, 401/403/404/422/500 and business failures without retries, alternate endpoint/injector/scoped-client use, private transfer-cache options, superseded reads, destruction, pending-policy cancellation, and stale success/error responses before company effects/session events flush.
 - Store tests verify independent list/detail state and totals, loading/ready-empty/denied/error/not-found states, synchronous hiding on company/session changes, and logout cleanup. All HTTP uses `HttpTestingController`; no live backend requests, writes, credentials, browser storage or sensitive global cache were introduced.
 - `git diff --check -- docs/migration/features/19-support-requests.md libs/transport/support/data-access tsconfig.base.json`: passed. This nonbuildable data library has no independent production-build target; consumer build/browser/live acceptance remains deliberately unclaimed.
+
+### Staff Panel Slice (2026-11-15)
+
+- Implemented Support list/detail/reply routes in `apps/panel/src/app/support` and
+  `libs/panel/support`; the menu is limited to Admin/Manager/Operator and always
+  passes a selected company. Operators are checked against their company claim;
+  Admin/Manager use the selected company filter rather than an unfiltered global
+  query. Backend authorization remains authoritative.
+- Extended Support data-access with typed message and violation lookup endpoints.
+  `IsAnswer` is never sent by the client; no ticket create, delete or case report
+  form is exposed in the staff Panel.
+- Verified the generated `panel-support` library with route tests (8) and UI tests
+  (2), plus existing Support transport tests (106). Chromium fixture tests cover
+  Support list/detail/reply, Operator company denial, empty results, missing
+  details, mobile widths, language direction switching and keyboard detail entry.
+  Production panel build passed;
+  it still emits the existing initial bundle budget warning and auth-BFF-disabled
+  message. Deployed procedure verification and database acceptance remain open.

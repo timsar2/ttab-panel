@@ -129,7 +129,12 @@
       "@org/platform": ["./libs/shared/platform/src/index.ts"],
       "@org/platform/node": ["./libs/shared/platform/src/node/index.ts"],
       "@org/platform/testing": ["./libs/shared/platform/src/testing/index.ts"],
-      "@org/platform/config": ["./libs/shared/platform/src/config/index.ts"]
+      "@org/platform/config": ["./libs/shared/platform/src/config/index.ts"],
+      "@org/transport-inspection-data-access": [
+        "./libs/transport/inspection/data-access/src/index.ts"
+      ],
+      "@org/panel-inspection": ["./libs/panel/inspection/src/index.ts"],
+      "@org/panel-support": ["./libs/panel/support/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

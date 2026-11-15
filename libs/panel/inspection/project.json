@@ -1,0 +1,10 @@
+{
+  "name": "panel-inspection",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/panel/inspection/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:panel", "type:feature"],
+  "// targets": "to see all targets run: nx show project panel-inspection --web",
+  "targets": {}
+}

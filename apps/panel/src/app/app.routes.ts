@@ -5,6 +5,7 @@ import { createCompanyRoutes } from '@org/transport-company-feature'
 import { CompanyContextStore } from '@org/transport-company-data-access'
 import { createPeopleRoutes } from '@org/panel-people'
 import { createDepartureTimeRoutes } from '@org/panel-departure-times'
+import { SessionStore } from '@org/platform'
 import { departureCompanyId } from '@org/transport-departure-times-data-access'
 import { peopleCompanyId } from '@org/transport-people-data-access'
 import { createCompanyShellRoutes, createWorkspaceRoutes } from '@org/platform'
@@ -25,15 +26,20 @@ import {
   lucideMap,
   lucideLifeBuoy,
   lucideUserRoundCog,
+  lucideClipboardCheck,
 } from '@ng-icons/lucide'
 
-export function navigationFor(companyId: number | null, rtl: boolean): readonly LayoutNavItem[] {
+export function navigationFor(
+  companyId: number | null,
+  rtl: boolean,
+  roles: readonly string[] = [],
+): readonly LayoutNavItem[] {
   const choose = rtl ? 'ابتدا یک شرکت انتخاب کنید' : 'Choose a company first'
   const planned = rtl ? 'به‌زودی' : 'Not implemented yet'
   const administration = rtl ? 'مدیریت' : 'Administration'
   const operations = rtl ? 'عملیات حمل‌ونقل' : 'Transport operations'
   const scheduling = rtl ? 'برنامه‌ریزی' : 'Scheduling'
-  return [
+  const items: LayoutNavItem[] = [
     {
       id: 'workspace',
       label: rtl ? 'فضای کاری' : 'Workspace',
@@ -154,18 +160,35 @@ export function navigationFor(companyId: number | null, rtl: boolean): readonly 
       label: rtl ? 'درخواست‌های پشتیبانی' : 'Support requests',
       icon: lucideLifeBuoy,
       group: rtl ? 'نظارت و پشتیبانی' : 'Monitoring and support',
-      hint: planned,
+      commands: companyId ? ['/client', companyId, 'support'] : undefined,
+      hint: companyId ? undefined : choose,
+    },
+    {
+      id: 'inspections',
+      label: rtl ? 'بازرسی‌ها' : 'Inspections',
+      icon: lucideClipboardCheck,
+      group: rtl ? 'نظارت و پشتیبانی' : 'Monitoring and support',
+      commands: companyId ? ['/client', companyId, 'inspections'] : undefined,
+      hint: companyId ? undefined : choose,
     },
   ]
+  return items.filter(item => {
+    if (item.id === 'inspections') return roles.some(role => role === 'Admin' || role === 'Manager')
+    if (item.id === 'support')
+      return roles.some(role => ['Admin', 'Manager', 'Oprator'].includes(role))
+    return true
+  })
 }
 
 function panelNavigation() {
   const preferences = inject(PreferencesStore)
   const context = inject(CompanyContextStore, { optional: true })
+  const session = inject(SessionStore)
   return computed(() =>
     navigationFor(
       context?.status() === 'ready' ? (context.company()?.id ?? null) : null,
       preferences.isRtl(),
+      session.user()?.roles,
     ),
   )
 }
@@ -195,6 +218,8 @@ function companyShellTranslations() {
           user: 'کاربران',
           People: 'افراد',
           'Departure times': 'زمان‌های حرکت',
+          'Support requests': 'درخواست‌های پشتیبانی',
+          Inspections: 'بازرسی‌ها',
           Details: 'جزئیات',
           Shifts: 'شیفت‌ها',
           'Shift details': 'جزئیات شیفت',
@@ -259,7 +284,9 @@ export const appRoutes: Route[] = [
         { path: 'vehicles', label: 'Vehicles' },
         { path: 'direction', label: 'Routes' },
         { path: 'departure-times', label: 'Departure times' },
+        { path: 'support', label: 'Support requests' },
         { path: 'shift', label: 'Shifts' },
+        { path: 'inspections', label: 'Inspections' },
       ],
     },
     [
@@ -270,6 +297,20 @@ export const appRoutes: Route[] = [
         loadChildren: () =>
           import('./feature/shift-time/shift-time.routes').then(({ createPanelShiftTimeRoutes }) =>
             createPanelShiftTimeRoutes(),
+          ),
+      },
+      {
+        path: 'support',
+        loadChildren: () =>
+          import('./support/support.routes').then(({ createPanelSupportRoutes }) =>
+            createPanelSupportRoutes(),
+          ),
+      },
+      {
+        path: 'inspections',
+        loadChildren: () =>
+          import('./inspection/inspection.routes').then(({ createPanelInspectionRoutes }) =>
+            createPanelInspectionRoutes(),
           ),
       },
       ...createPeopleRoutes({

@@ -50,6 +50,25 @@ describe('panel navigation', () => {
     expect(passengers?.hint).toBe('ابتدا یک شرکت انتخاب کنید')
   })
 
+  it('mounts Support only within the selected company context', () => {
+    const support = navigationFor(5, false, ['Oprator']).find(item => item.id === 'support')
+    expect(support?.commands).toEqual(['/client', 5, 'support'])
+    expect(support?.hint).toBeUndefined()
+    const unavailable = navigationFor(null, false, ['Oprator']).find(item => item.id === 'support')
+    expect(unavailable?.commands).toBeUndefined()
+    expect(unavailable?.hint).toBe('Choose a company first')
+    expect(navigationFor(5, false, ['Driver']).some(item => item.id === 'support')).toBe(false)
+  })
+
+  it('shows the global-list Inspection feature only to backend-authorized staff', () => {
+    expect(
+      navigationFor(5, false, ['Admin']).find(item => item.id === 'inspections')?.commands,
+    ).toEqual(['/client', 5, 'inspections'])
+    expect(navigationFor(null, false, ['Oprator']).some(item => item.id === 'inspections')).toBe(
+      false,
+    )
+  })
+
   it('redirects the legacy singular Passenger list and add URLs to the new feature', () => {
     const companyRoute = appRoutes.find(route => route.path === 'client/:companyId')
     const listAlias = companyRoute?.children?.find(route => route.path === 'passenger')
@@ -64,5 +83,11 @@ describe('panel navigation', () => {
     const shiftTimeRoute = companyRoute?.children?.find(route => route.path === 'shift-time')
 
     expect(shiftTimeRoute?.loadChildren).toBeDefined()
+  })
+
+  it('lazy-loads Inspection inside the company shell without claiming list filtering', () => {
+    const company = appRoutes.find(candidate => candidate.path === 'client/:companyId')
+    const route = company?.children?.find(candidate => candidate.path === 'inspections')
+    expect(route?.loadChildren).toBeDefined()
   })
 })

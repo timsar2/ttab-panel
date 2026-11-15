@@ -74,12 +74,13 @@ panel driver passenger` passed (9 tasks), and `bun nx run-many -t build -p panel
 driver passenger` passed (24 tasks). `bun nx run-many -t typecheck-node,test-node
 -p shared-auth-data-access` passed (45 BFF tests). Panel, Driver, and Passenger
 SSR each returned HTTP 200 for `/login`. Per-app cookie namespace tests verify
-that sessions do not cross apps sharing a host. All three apps now use the same
-`PLATFORM_API_URL` as Panel; `AUTH_API_URL` is the server-only override for another
-upstream. Development public origin defaults to its local port and the session
-secret is ephemeral.
+that sessions do not cross apps sharing a host. All three apps select one shared
+upstream by environment: loopback HTTP at `http://localhost:5000/api` in development
+and the existing Panel HTTPS API in production. `AUTH_API_URL` remains the server-only
+override. The backend `Host` launch profile listens HTTP-only for the local Node BFF;
+the optional `HostHttps` profile is for direct browser/API debugging, not BFF calls.
+Development public origin defaults to its local port and the session secret is
+ephemeral.
 
 Cookie names are namespaced by app ID; production deployments still need per-app
 public origins and shared session storage if an app runs multiple server replicas.
-The common API URL intentionally matches the currently working Panel configuration;
-use `AUTH_API_URL` to point local development at a controlled staging/local backend.

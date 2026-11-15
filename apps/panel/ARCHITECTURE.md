@@ -341,19 +341,23 @@ private HTTP responses; all API and SSR HTML responses use `Cache-Control: no-st
 
 ### Cookie BFF Deployment
 
-All three apps import `PLATFORM_API_URL` from `@org/platform/config` as the common
-upstream API base; an explicit
-`AUTH_API_URL` overrides it. The browser still calls same-origin `/api/auth/login`;
+All three apps select the same environment-specific upstream from
+`@org/platform/config`: development uses `PLATFORM_DEV_API_URL`, and production
+uses `PLATFORM_API_URL`. An explicit `AUTH_API_URL` overrides either. The browser
+still calls same-origin `/api/auth/login`;
 the BFF forwards to the transport backend's `/api/tokens/get-by-email/` endpoint.
 The backend URL is therefore not expected in the browser's Network request URL.
 
 Local development defaults to `http://localhost:4200` with a cryptographically
-random, server-only secret generated on startup. The shared API default currently
-matches Panel's existing `https://api.ttabline.com/api`; set `AUTH_API_URL` to a
-controlled development/staging backend when appropriate. For another port/origin,
-explicitly set `AUTH_PUBLIC_ORIGIN` to match it. The random development secret is
-never built into browser JavaScript. Production bundles never use these development
-defaults, even if their runtime mistakenly sets `NODE_ENV=development`.
+random, server-only secret generated on startup. The shared upstream is
+`http://localhost:5000/api`, served by the backend `Host` launch profile. This is
+loopback-only: the BFF rejects insecure upstream URLs for non-loopback hosts. Use
+`HostHttps` only for direct browser/API debugging; Node's BFF does not trust the
+self-signed Kestrel leaf certificate even when it is added to the Windows root
+store, so do not disable TLS certificate validation to proxy through it. For another
+port/origin, explicitly set `AUTH_PUBLIC_ORIGIN` to match it. Production bundles use
+`PLATFORM_API_URL` and never inherit development defaults, even if runtime `NODE_ENV`
+is incorrectly set to development.
 
 In production, set the public origin and stable server secret explicitly;
 missing/invalid configuration keeps the API unavailable with HTTP 503:

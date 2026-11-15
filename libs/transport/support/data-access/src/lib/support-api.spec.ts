@@ -65,7 +65,13 @@ describe('SupportApi and scoped read store', () => {
     access = vi.fn<SupportAuthorize>(() => of(true))
     config = {
       apiUrl: '/alternate/api',
-      endpoints: { collection: 'v1/support', search: 'v1/support/search' },
+      endpoints: {
+        collection: 'v1/support',
+        search: 'v1/support/search',
+        messages: 'v1/support',
+        sendMessage: 'v1/support/messages',
+        violationTypes: 'v1/support/violation-types',
+      },
       company: () => company,
       access: () => access,
     }
@@ -384,7 +390,13 @@ describe('SupportApi and scoped read store', () => {
       [
         provideSupportData({
           apiUrl: '/other/api',
-          endpoints: { collection: 'tickets', search: 'tickets/find' },
+          endpoints: {
+            collection: 'tickets',
+            search: 'tickets/find',
+            messages: 'tickets',
+            sendMessage: 'tickets/messages',
+            violationTypes: 'tickets/violation-types',
+          },
           company: () => alternateCompany,
           access: () => alternateAccess,
         }),
@@ -425,13 +437,45 @@ describe('SupportApi and scoped read store', () => {
     childHttp.verify()
     child.destroy()
   })
+  it('loads unsequenced message fields and sends a reply without client-controlled answer state', async () => {
+    const messages = firstValueFrom(api.messages(supportId(7)))
+    const listRequest = http.expectOne(`${collection}/7/messages`)
+    expect(listRequest.request.method).toBe('GET')
+    listRequest.flush(
+      envelope([
+        { body: 'Reply', isAnswer: true },
+        { body: 'Question', isAnswer: false },
+      ]),
+    )
+    expect(await messages).toEqual([
+      { body: 'Reply', isAnswer: true },
+      { body: 'Question', isAnswer: false },
+    ])
+    const sent = firstValueFrom(api.sendMessage(supportId(7), ' Follow-up '))
+    const post = http.expectOne(`${collection}/messages`)
+    expect(post.request.method).toBe('POST')
+    expect(post.request.body).toEqual({ supportId: 7, body: ' Follow-up ' })
+    post.flush(envelope(123))
+    await expect(sent).resolves.toBeUndefined()
+    expect(access).toHaveBeenLastCalledWith({ action: 'reply', companyId: 2, id: 7 })
+  })
+  it('loads Person.Type violation choices and rejects unsupported type IDs before HTTP', async () => {
+    const result = firstValueFrom(api.violationTypes(2))
+    const request = http.expectOne(`${collection}/violation-types/2`)
+    expect(request.request.method).toBe('GET')
+    request.flush(envelope([{ id: 9, code: 'D', title: 'Unsafe driving' }]))
+    expect(await result).toEqual([{ id: 9, code: 'D', title: 'Unsafe driving' }])
+    await expect(firstValueFrom(api.violationTypes(3))).rejects.toBeDefined()
+    expect(access).toHaveBeenLastCalledWith({ action: 'violation-types', companyId: 2 })
+    http.expectNone(() => true)
+  })
   it.each(['../support', '/support', 'v1/support?token=x', 'https://example.test', 'v1\\support'])(
     'rejects unsafe configured endpoint %s',
     path => {
       expect(() =>
         provideSupportData({
           ...config,
-          endpoints: { collection: path, search: 'v1/support/search' },
+          endpoints: { ...config.endpoints, collection: path },
         }),
       ).toThrow()
     },

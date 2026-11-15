@@ -15,6 +15,7 @@ import {
   SupportCompanyId,
   SupportDetail,
   SupportId,
+  SupportMessage,
   SupportRow,
   SupportSearch,
 } from './support.models'
@@ -34,6 +35,10 @@ export const SupportStore = signalStore(
     _detailStatus: 'idle' as SupportReadStatus,
     _searchError: null as TransportError | null,
     _detailError: null as TransportError | null,
+    _messages: null as readonly SupportMessage[] | null,
+    _messagesId: null as SupportId | null,
+    _messagesStatus: 'idle' as SupportReadStatus,
+    _messagesError: null as TransportError | null,
   }),
   withProps(() => ({ _api: inject(SupportApi), _session: inject(SessionStore) })),
   withComputed(store => {
@@ -57,19 +62,29 @@ export const SupportStore = signalStore(
       ),
       searchError: computed(() => (scoped() ? store._searchError() : null)),
       detailError: computed(() => (scoped() ? store._detailError() : null)),
+      messages: computed(() => (scoped() ? store._messages() : null)),
+      messagesId: computed(() => (scoped() ? store._messagesId() : null)),
+      messagesStatus: computed(() =>
+        scoped() ? store._messagesStatus() : ('idle' as SupportReadStatus),
+      ),
+      messagesError: computed(() => (scoped() ? store._messagesError() : null)),
     }
   }),
   withMethods(store => {
     let search: Subscription | undefined
     let detail: Subscription | undefined
+    let messages: Subscription | undefined
     let searchEpoch = 0
     let detailEpoch = 0
+    let messagesEpoch = 0
     let lastCompany = store._api.companyId()
     const clear = () => {
       searchEpoch++
       detailEpoch++
+      messagesEpoch++
       search?.unsubscribe()
       detail?.unsubscribe()
+      messages?.unsubscribe()
       lastCompany = store._api.companyId()
       patchState(store, {
         _company: null,
@@ -82,6 +97,10 @@ export const SupportStore = signalStore(
         _detailStatus: 'idle',
         _searchError: null,
         _detailError: null,
+        _messages: null,
+        _messagesId: null,
+        _messagesStatus: 'idle',
+        _messagesError: null,
       })
     }
     const scope = () => {
@@ -178,6 +197,38 @@ export const SupportStore = signalStore(
               patchState(store, { _detailStatus: 'idle' })
           },
         })
+      },
+      loadMessages(id: SupportId) {
+        const matches = scope()
+        const epoch = ++messagesEpoch
+        messages?.unsubscribe()
+        patchState(store, {
+          _messagesId: id,
+          _messages: null,
+          _messagesStatus: 'loading',
+          _messagesError: null,
+        })
+        messages = store._api.messages(id).subscribe({
+          next: result => {
+            if (epoch === messagesEpoch && matches())
+              patchState(store, { _messages: result, _messagesStatus: 'ready' })
+          },
+          error: error => {
+            if (epoch !== messagesEpoch) return
+            if (!matches()) {
+              clear()
+              return
+            }
+            const normalized = normalizeTransportError(error)
+            patchState(store, {
+              _messagesError: normalized,
+              _messagesStatus: status(normalized),
+            })
+          },
+        })
+      },
+      sendMessage(id: SupportId, body: string) {
+        return store._api.sendMessage(id, body)
       },
     }
   }),

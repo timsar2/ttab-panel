@@ -53,12 +53,13 @@ export interface DataTablePage {
     }
     <div
       hlmTableContainer
+      dir="ltr"
       role="region"
       [attr.aria-label]="caption()"
       tabindex="0"
       [attr.aria-busy]="loading()"
     >
-      <table hlmTable>
+      <table hlmTable dir="auto">
         <caption hlmCaption>
           {{
             caption()

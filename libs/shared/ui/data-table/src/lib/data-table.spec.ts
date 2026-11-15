@@ -6,7 +6,7 @@ describe('DataTable public composition', () => {
     await TestBed.configureTestingModule({ imports: [DataTable] }).compileComponents()
     const fixture = TestBed.createComponent(DataTable)
     fixture.componentRef.setInput('rows', [{ id: 'company-2', name: 'Company Two' }])
-    fixture.componentRef.setInput('columns', [{ accessorKey: 'name', header: 'Company' }])
+    fixture.componentRef.setInput('columns', [{ accessorKey: 'name', header: 'شرکت' }])
     fixture.componentRef.setInput('rowId', (row: { id: string }) => row.id)
     fixture.componentRef.setInput('rowLabel', (row: { name: string }) => row.name)
     fixture.componentRef.setInput('page', {
@@ -64,6 +64,20 @@ describe('DataTable public composition', () => {
     await fixture.whenStable()
     expect(fixture.nativeElement.querySelector('nav')).toBeNull()
     expect(fixture.nativeElement.textContent).toContain('Company Two')
+  })
+  it('keeps the scroll region physically LTR while preserving the application RTL table direction', async () => {
+    const root = document.documentElement
+    const original = root.dir
+    root.dir = 'rtl'
+    const fixture = await setup()
+    fixture.componentRef.setInput('caption', 'شرکت‌ها')
+    await fixture.whenStable()
+    expect(fixture.nativeElement.querySelector('[role="region"]')?.getAttribute('dir')).toBe('ltr')
+    const table = fixture.nativeElement.querySelector('table') as HTMLTableElement
+    expect(table.getAttribute('dir')).toBe('auto')
+    expect(root.dir).toBe('rtl')
+    fixture.destroy()
+    root.dir = original
   })
   it('renders mutually exclusive loading, empty, error and retry states', async () => {
     const fixture = await setup()

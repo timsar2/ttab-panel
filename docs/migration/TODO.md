@@ -99,6 +99,7 @@ Use the feature files as the task-status source of truth; the older
 [ ] M20 Complete the [operational dashboard](features/20-dashboard.md) using approved real capabilities, not hardcoded analytics.
 [ ] M21 Resolve and deliver [service and passenger eligibility](features/21-service-eligibility.md) only against approved rules/contracts.
 [ ] M22 Complete [cross-feature parity and release acceptance](features/22-release-and-parity.md).
+[ ] M23 Complete the [Inspection module](features/23-inspections.md) without inventing company filtering or an approval workflow.
 [X] M23 Consolidate cross-app browser composition, auth/HTTP policy, layouts,
 theme/design system, routing helpers, and SSR/BFF infrastructure in the shared
 [application platform](features/23-shared-platform.md) consumed by Panel, Driver,

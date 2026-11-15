@@ -6,6 +6,8 @@ export {
   decodeSupportDetail,
   decodeSupportPage,
   decodeSupportRow,
+  decodeSupportMessage,
+  decodeSupportViolationTypes,
   supportCompanyId,
   supportId,
   supportSearchRequest,
@@ -21,4 +23,6 @@ export type {
   SupportSearch,
   SupportSearchRequest,
   SupportSort,
+  SupportMessage,
+  SupportViolationType,
 } from './lib/support.models'

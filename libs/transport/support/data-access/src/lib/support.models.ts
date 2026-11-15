@@ -68,6 +68,17 @@ export interface SupportDetail extends SupportRecord {
   readonly caseFile: readonly SupportCaseFile[]
 }
 
+export interface SupportMessage {
+  readonly body: string
+  readonly isAnswer: boolean
+}
+
+export interface SupportViolationType {
+  readonly id: number
+  readonly code: string | null
+  readonly title: string | null
+}
+
 function invalid(): never {
   throw new TransportError('contract', 0, 'The server returned an invalid support response.')
 }
@@ -127,6 +138,25 @@ export function decodeSupportDetail(value: unknown): SupportDetail {
       }
     }),
   }
+}
+
+export function decodeSupportMessage(value: unknown): SupportMessage {
+  const row = transportRecord(value)
+  return { body: text(row['body']), isAnswer: boolean(row['isAnswer']) }
+}
+
+export function decodeSupportViolationTypes(value: unknown): readonly SupportViolationType[] {
+  if (!Array.isArray(value)) invalid()
+  const types = value.map(item => {
+    const row = transportRecord(item)
+    return {
+      id: transportInteger(row['id'], 1, 2147483647),
+      code: nullableText(row['code']),
+      title: nullableText(row['title']),
+    }
+  })
+  if (new Set(types.map(type => type.id)).size !== types.length) invalid()
+  return types
 }
 
 export function supportSearchRequest(
