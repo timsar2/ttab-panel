@@ -38,6 +38,7 @@ function normalizeLocation(payload: unknown): DriverLocationUpdate | null {
     driverLineId: num(r['driverLineId'] ?? r['DriverLineId']),
     lineId: num(r['lineId'] ?? r['LineId']),
     nextStationId: num(r['nextStationId'] ?? r['NextStationId']),
+    heading: num(r['heading'] ?? r['Heading'] ?? r['bearing'] ?? r['Bearing']),
     lat,
     lng,
     receivedAt: new Date().toISOString(),

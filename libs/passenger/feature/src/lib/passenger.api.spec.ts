@@ -95,6 +95,7 @@ describe('PassengerApi', () => {
         driverId: 176,
         directionId: 99,
         nextStationId: 62,
+        heading: null,
         lat: 35.8,
         lng: 51.1,
         receivedAt: '2026-11-16T05:00:00Z',
@@ -105,6 +106,7 @@ describe('PassengerApi', () => {
       driverId: 176,
       directionId: 99,
       nextStationId: 62,
+      heading: null,
       lat: 35.8,
       lng: 51.1,
       receivedAt: '2026-11-16T05:00:00Z',
@@ -127,8 +129,13 @@ describe('PassengerApi', () => {
     const result = api.stations(44)
     const request = http.expectOne('/api/v1/stations/search')
     expect(request.request.body).toEqual({ companyId: 70, directionId: 44 })
-    request.flush({ code: '2000', result: [{ id: 61, name: 'North', address: 'Main St' }] })
-    await expect(result).resolves.toEqual([{ id: 61, name: 'North', address: 'Main St' }])
+    request.flush({
+      code: '2000',
+      result: [{ id: 61, name: 'North', address: 'Main St', lat: 35.8, lng: 51.1 }],
+    })
+    await expect(result).resolves.toEqual([
+      { id: 61, name: 'North', address: 'Main St', lat: 35.8, lng: 51.1 },
+    ])
   })
 
   it('updates only the authenticated profile request contract', async () => {

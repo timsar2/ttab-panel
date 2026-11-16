@@ -5,6 +5,7 @@ export interface DriverLocationUpdate {
   driverLineId?: number | null
   lineId?: number | null
   nextStationId?: number | null
+  heading?: number | null
   lat: number
   lng: number
   receivedAt: string

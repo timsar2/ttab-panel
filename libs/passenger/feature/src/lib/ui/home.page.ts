@@ -140,16 +140,14 @@ import { PASSENGER_FEATURE_CONFIG } from '../passenger.routes'
               }
             </div>
 
-            @if (mapPoints().length || liveDriverLocation()) {
-              <lib-neshan-map
-                [apiKey]="neshanMapApiKey"
-                [serviceApiKey]="neshanServiceApiKey"
-                [points]="mapPoints()"
-                [liveLocation]="liveDriverLocation()"
-                [followLive]="true"
-                [language]="config.language()"
-              />
-            }
+            <lib-neshan-map
+              [apiKey]="neshanMapApiKey"
+              [serviceApiKey]="neshanServiceApiKey"
+              [points]="mapPoints()"
+              [liveLocation]="liveDriverLocation()"
+              [followLive]="true"
+              [language]="config.language()"
+            />
 
             @if (currentTrip.stations.length) {
               <div>

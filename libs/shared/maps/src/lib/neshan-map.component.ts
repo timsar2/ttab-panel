@@ -275,7 +275,11 @@ export class NeshanMapComponent {
       features: locations.map(live => ({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [live.lng, live.lat] },
-        properties: { label: live.label ?? '', id: live.id ?? '' },
+        properties: {
+          label: live.label ?? '',
+          id: live.id ?? '',
+          heading: live.heading ?? 0,
+        },
       })),
     }
     const existing = map.getSource('live-driver') as MutableGeoJsonSource | undefined
@@ -284,6 +288,20 @@ export class NeshanMapComponent {
       return
     }
     map.addSource('live-driver', { type: 'geojson', data: data as never })
+    if (!map.getLayer('live-driver-direction')) {
+      map.addLayer({
+        id: 'live-driver-direction',
+        type: 'symbol',
+        source: 'live-driver',
+        layout: {
+          'text-field': '▲',
+          'text-size': 20,
+          'text-rotate': ['get', 'heading'],
+          'text-allow-overlap': true,
+        },
+        paint: { 'text-color': '#1d4ed8', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+      })
+    }
     if (!map.getLayer('live-driver-pulse')) {
       map.addLayer({
         id: 'live-driver-pulse',
@@ -314,6 +332,7 @@ export class NeshanMapComponent {
   private clearLive(map: NeshanMap) {
     if (map.getLayer('live-driver-point')) map.removeLayer('live-driver-point')
     if (map.getLayer('live-driver-pulse')) map.removeLayer('live-driver-pulse')
+    if (map.getLayer('live-driver-direction')) map.removeLayer('live-driver-direction')
     if (map.getSource('live-driver')) map.removeSource('live-driver')
   }
 

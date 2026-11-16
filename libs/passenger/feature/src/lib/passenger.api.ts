@@ -175,11 +175,20 @@ export class PassengerApi {
       .map(value => {
         const item = record(value)
         return {
-          id: Number(item['id']),
-          name: String(item['name'] ?? ''),
-          address: typeof item['address'] === 'string' ? item['address'] : undefined,
-          lat: typeof item['lat'] === 'number' ? item['lat'] : undefined,
-          lng: typeof item['lng'] === 'number' ? item['lng'] : undefined,
+          id: Number(item['id'] ?? item['Id']),
+          name: String(item['name'] ?? item['Name'] ?? ''),
+          address:
+            typeof (item['address'] ?? item['Address']) === 'string'
+              ? String(item['address'] ?? item['Address'])
+              : undefined,
+          lat:
+            typeof (item['lat'] ?? item['Lat']) === 'number'
+              ? Number(item['lat'] ?? item['Lat'])
+              : undefined,
+          lng:
+            typeof (item['lng'] ?? item['Lng']) === 'number'
+              ? Number(item['lng'] ?? item['Lng'])
+              : undefined,
         }
       })
       .filter(item => Number.isSafeInteger(item.id) && item.name)
