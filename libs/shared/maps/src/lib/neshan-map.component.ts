@@ -1,6 +1,5 @@
-// Keep this package-owned ambient CSS declaration visible to every source consumer.
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference
-/// <reference path="../styles.d.ts" />
+// Extend shared Neshan map to support live driver marker for tracking views.
+// Backward compatible: existing inputs still work.
 import {
   ChangeDetectionStrategy,
   Component,
@@ -24,6 +23,13 @@ export interface NeshanMapPoint {
   readonly lng: number | null
 }
 
+export interface NeshanLiveLocation {
+  readonly lat: number
+  readonly lng: number
+  readonly heading?: number | null
+  readonly label?: string
+}
+
 interface GeoJsonFeatureCollection {
   readonly type: 'FeatureCollection'
   readonly features: readonly {
@@ -32,7 +38,7 @@ interface GeoJsonFeatureCollection {
       readonly type: 'Point' | 'LineString'
       readonly coordinates: readonly number[] | readonly (readonly number[])[]
     }
-    readonly properties: Readonly<Record<string, string | number>>
+    readonly properties: Readonly<Record<string, string | number | boolean>>
   }[]
 }
 
@@ -63,10 +69,9 @@ interface MutableGeoJsonSource {
         #mapHost
         class="bg-muted min-h-80 w-full overflow-hidden rounded-lg border sm:min-h-[28rem] lg:min-h-[36rem]"
         [attr.aria-label]="
-          language() === 'fa' ? 'نقشه نشان و ایستگاه‌های مسیر' : 'Neshan map and Route stations'
+          language() === 'fa' ? 'نقشه نشان و ایستگاه‌های مسیر' : 'Neshan map and route stations'
         "
         role="region"
-        aria-busy="true"
       ></div>
       @if (routeError()) {
         <p class="text-muted-foreground mt-2 text-sm" role="status">
@@ -82,7 +87,12 @@ export class NeshanMapComponent {
   readonly apiKey = input<string | null>(null)
   readonly serviceApiKey = input<string | null>(null)
   readonly points = input<readonly NeshanMapPoint[]>([])
+  /** Live driver/vehicle marker updated in real time. */
+  readonly liveLocation = input<NeshanLiveLocation | null>(null)
+  /** When true, keep camera following live location. */
+  readonly followLive = input(false)
   readonly language = input<'en' | 'fa'>('en')
+
   private readonly mapHost = viewChild<ElementRef<HTMLDivElement>>('mapHost')
   private readonly destroyRef = inject(DestroyRef)
   private readonly map = signal<NeshanMap | null>(null)
@@ -115,10 +125,10 @@ export class NeshanMapComponent {
         type: 'FeatureCollection',
         features: pointFeatures,
       }
-
       this.setStations(map, pointData)
-      this.fit(map, points)
+      if (!this.liveLocation()) this.fit(map, points)
     })
+
     effect(() => {
       const map = this.map()
       const ready = this.ready()
@@ -140,6 +150,25 @@ export class NeshanMapComponent {
       this.routeError.set(false)
       void this.loadRoute(map, url, serviceApiKey, requestVersion)
     })
+
+    effect(() => {
+      const map = this.map()
+      if (!map || !this.ready()) return
+      const live = this.liveLocation()
+      if (!this.validCoord(live?.lat, live?.lng)) {
+        this.clearLive(map)
+        return
+      }
+      this.setLive(map, live as NeshanLiveLocation)
+      if (this.followLive()) {
+        map.easeTo({
+          center: [live!.lng, live!.lat],
+          duration: 500,
+          zoom: Math.max(map.getZoom(), 14),
+        })
+      }
+    })
+
     afterNextRender(() => void this.createMap())
     this.destroyRef.onDestroy(() => {
       this.disposed = true
@@ -154,15 +183,20 @@ export class NeshanMapComponent {
     const host = this.mapHost()?.nativeElement
     if (!apiKey || !host || this.disposed) return
     try {
+      // @ts-expect-error CSS side-effect import has no type declarations
       await import('@neshan-maps-platform/maplibre-sdk/style.css')
       const sdk = await import('@neshan-maps-platform/maplibre-sdk')
       if (this.disposed) return
-      const first = this.points().find(point => this.validPoint(point))
+      const first = this.liveLocation() ?? this.points().find(point => this.validPoint(point))
+      const center: [number, number] =
+        first && this.validCoord(first.lat, first.lng)
+          ? [first.lng as number, first.lat as number]
+          : [51.383743, 35.70115]
       const map = new sdk.default.Map({
         container: host,
         style: 'https://static.neshan.org/sdk/maplibre/styles/light.json',
-        center: first ? [first.lng as number, first.lat as number] : [51.383743, 35.70115],
-        zoom: first ? 12 : 6,
+        center,
+        zoom: first ? 13 : 6,
         apiKey,
         trackResize: true,
       })
@@ -187,33 +221,87 @@ export class NeshanMapComponent {
       return
     }
     map.addSource('route-stations', { type: 'geojson', data: data as never })
-    map.addLayer({
-      id: 'route-station-points',
-      type: 'circle',
-      source: 'route-stations',
-      paint: {
-        'circle-radius': 8,
-        'circle-color': '#0f766e',
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 2,
-      },
-    })
-    map.addLayer({
-      id: 'route-station-labels',
-      type: 'symbol',
-      source: 'route-stations',
-      layout: {
-        'text-field': ['get', 'label'],
-        'text-size': 12,
-        'text-offset': [0, 1.6],
-        'text-anchor': 'top',
-      },
-      paint: {
-        'text-color': '#172554',
-        'text-halo-color': '#ffffff',
-        'text-halo-width': 1.5,
-      },
-    })
+    if (!map.getLayer('route-station-points')) {
+      map.addLayer({
+        id: 'route-station-points',
+        type: 'circle',
+        source: 'route-stations',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': '#0f766e',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 2,
+        },
+      })
+    }
+    if (!map.getLayer('route-station-labels')) {
+      map.addLayer({
+        id: 'route-station-labels',
+        type: 'symbol',
+        source: 'route-stations',
+        layout: {
+          'text-field': ['get', 'label'],
+          'text-size': 12,
+          'text-offset': [0, 1.6],
+          'text-anchor': 'top',
+        },
+        paint: {
+          'text-color': '#172554',
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1.5,
+        },
+      })
+    }
+  }
+
+  private setLive(map: NeshanMap, live: NeshanLiveLocation) {
+    const data: GeoJsonFeatureCollection = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [live.lng, live.lat] },
+          properties: { label: live.label ?? '' },
+        },
+      ],
+    }
+    const existing = map.getSource('live-driver') as MutableGeoJsonSource | undefined
+    if (existing?.setData) {
+      existing.setData(data)
+      return
+    }
+    map.addSource('live-driver', { type: 'geojson', data: data as never })
+    if (!map.getLayer('live-driver-pulse')) {
+      map.addLayer({
+        id: 'live-driver-pulse',
+        type: 'circle',
+        source: 'live-driver',
+        paint: {
+          'circle-radius': 14,
+          'circle-color': '#2563eb',
+          'circle-opacity': 0.2,
+        },
+      })
+    }
+    if (!map.getLayer('live-driver-point')) {
+      map.addLayer({
+        id: 'live-driver-point',
+        type: 'circle',
+        source: 'live-driver',
+        paint: {
+          'circle-radius': 8,
+          'circle-color': '#2563eb',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 3,
+        },
+      })
+    }
+  }
+
+  private clearLive(map: NeshanMap) {
+    if (map.getLayer('live-driver-point')) map.removeLayer('live-driver-point')
+    if (map.getLayer('live-driver-pulse')) map.removeLayer('live-driver-pulse')
+    if (map.getSource('live-driver')) map.removeSource('live-driver')
   }
 
   private async loadRoute(
@@ -228,7 +316,7 @@ export class NeshanMapComponent {
       const coordinates = neshanRouteCoordinates(await response.json())
       if (this.disposed || requestVersion !== this.routeRequestVersion) return
       this.setRoute(map, coordinates)
-      this.fitCoordinates(map, coordinates)
+      if (!this.liveLocation()) this.fitCoordinates(map, coordinates)
       this.routeError.set(false)
     } catch {
       if (this.disposed || requestVersion !== this.routeRequestVersion) return
@@ -254,13 +342,15 @@ export class NeshanMapComponent {
       return
     }
     map.addSource('route-road', { type: 'geojson', data: data as never })
-    map.addLayer({
-      id: 'route-road-line',
-      type: 'line',
-      source: 'route-road',
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#2563eb', 'line-width': 5, 'line-opacity': 0.85 },
-    })
+    if (!map.getLayer('route-road-line')) {
+      map.addLayer({
+        id: 'route-road-line',
+        type: 'line',
+        source: 'route-road',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#2563eb', 'line-width': 5, 'line-opacity': 0.85 },
+      })
+    }
   }
 
   private clearRoute(map: NeshanMap) {
@@ -292,16 +382,20 @@ export class NeshanMapComponent {
     )
   }
 
-  private validPoint(point: NeshanMapPoint) {
+  private validCoord(lat: unknown, lng: unknown): boolean {
     return (
-      point.lat !== null &&
-      point.lng !== null &&
-      Number.isFinite(point.lat) &&
-      Number.isFinite(point.lng) &&
-      point.lat >= -90 &&
-      point.lat <= 90 &&
-      point.lng >= -180 &&
-      point.lng <= 180
+      typeof lat === 'number' &&
+      typeof lng === 'number' &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      lat >= -90 &&
+      lat <= 90 &&
+      lng >= -180 &&
+      lng <= 180
     )
+  }
+
+  private validPoint(point: NeshanMapPoint) {
+    return this.validCoord(point.lat, point.lng)
   }
 }

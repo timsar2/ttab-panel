@@ -53,6 +53,7 @@ export interface ActiveTrip {
   vehicle: VehicleInfo
   nextStationId?: number | null
   passengerStationId?: number | null
+  lineId?: number | null
 }
 
 export interface Station {
@@ -108,6 +109,17 @@ export interface DocumentUploadRequest {
   documentType: 'nationalId' | 'drivingLicense' | 'smartCard'
   file: File
   licenceLevel?: string
+}
+
+export interface DriverLocationPublishRequest {
+  tripId?: number | null
+  driverId?: number | null
+  directionId?: number | null
+  driverLineId?: number | null
+  lineId?: number | null
+  nextStationId?: number | null
+  lat: number
+  lng: number
 }
 
 function record(value: unknown): Record<string, unknown> {
@@ -282,10 +294,14 @@ export class DriverApi {
       shiftTimeId: Number(value['ShiftTimeId']),
       tripTypeId: Number(value['TripTypeId']),
       directionId: Number(value['DirectionId']),
+      lineId: typeof value['LineId'] === 'number' ? value['LineId'] : null,
       lineName: String(value['LineName'] ?? ''),
       tripTypeName: String(value['TripTypeName'] ?? ''),
       shiftTime: String(value['ShiftTime'] ?? ''),
       departureTime: String(value['DepartureTime'] ?? ''),
+      nextStationId: typeof value['NextStationId'] === 'number' ? value['NextStationId'] : null,
+      passengerStationId:
+        typeof value['PassengerStationId'] === 'number' ? value['PassengerStationId'] : null,
       stations,
       vehicle: {
         type: String(vehicle['Type'] ?? ''),
@@ -355,6 +371,21 @@ export class DriverApi {
     )
     if (response['code'] !== '2000' || response['result'] !== true)
       throw new Error('The trip could not be ended.')
+  }
+
+  /** Publish live driver location to backend; backend broadcasts to trip group via SignalR. */
+  async sendDriverLocation(request: DriverLocationPublishRequest): Promise<void> {
+    await firstValueFrom(
+      this.http.post('/api/v1/routings/location', {
+        tripId: request.tripId ?? null,
+        driverId: request.driverId ?? null,
+        directionId: request.directionId ?? null,
+        driverLineId: request.driverLineId ?? null,
+        lineId: request.lineId ?? null,
+        nextStationId: request.nextStationId ?? null,
+        coordinate: { lat: request.lat, lng: request.lng },
+      }),
+    )
   }
 
   async uploadDocument(request: DocumentUploadRequest): Promise<string> {

@@ -28,3 +28,6 @@ export const sharedProductionEnvironment = {
   // Public browser key; restrict it to approved production origins in Neshan.
   neshanMapApiKey: 'web.9d0587a11be14a61851377bd3e739fee',
 } as const
+
+// Convenience alias for environments that don't need file-replacement selection in libs.
+export const environment = sharedDevelopmentEnvironment

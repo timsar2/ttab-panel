@@ -219,6 +219,7 @@ function companyShellTranslations() {
           People: 'افراد',
           'Departure times': 'زمان‌های حرکت',
           'Support requests': 'درخواست‌های پشتیبانی',
+          'Live tracking': 'ردیابی زنده',
           Inspections: 'بازرسی‌ها',
           Details: 'جزئیات',
           Shifts: 'شیفت‌ها',

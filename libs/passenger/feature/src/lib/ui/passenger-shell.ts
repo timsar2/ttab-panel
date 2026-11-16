@@ -5,13 +5,12 @@ import { ThemeStore } from '@org/platform'
 import { AppLayout, LayoutNavItem } from '@org/layout'
 import { PASSENGER_FEATURE_CONFIG } from '../passenger.routes'
 import { HlmButtonImports } from '@spartan-ng/helm/button'
-import { NgIcon } from '@ng-icons/core'
 import { lucideHome, lucideMap, lucideUser, lucideLifeBuoy } from '@ng-icons/lucide'
 
 @Component({
   selector: 'lib-passenger-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AppLayout, RouterOutlet, NgIcon, HlmButtonImports],
+  imports: [AppLayout, RouterOutlet, HlmButtonImports],
   template: `
     <lib-app-layout [items]="navigationItems()" [navigationLabel]="navigationLabel()">
       <span layoutBrand class="truncate font-semibold">
