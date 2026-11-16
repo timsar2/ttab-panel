@@ -74,8 +74,8 @@ type TabType = 'your-route' | 'new-route'
           </div>
         } @else if (error()) {
           <hlm-alert class="error-alert" variant="destructive" hlmTabsContent="your-route">
-            <hlm-alert-title>{{ fa() ? 'خطا در بارگذاری' : 'Failed to load' }}</hlm-alert-title>
-            <hlm-alert-description>{{ error() }}</hlm-alert-description>
+            <h2 hlmAlertTitle>{{ fa() ? 'خطا در بارگذاری' : 'Failed to load' }}</h2>
+            <p hlmAlertDescription>{{ error() }}</p>
             <button hlmBtn variant="outline" class="retry-btn" (click)="loadRoutes()">
               {{ fa() ? 'تلاش مجدد' : 'Retry' }}
             </button>
@@ -86,11 +86,11 @@ type TabType = 'your-route' | 'new-route'
               <div class="routes-grid">
                 @for (route of yourRoutes(); track route.id) {
                   <hlm-card class="route-card" (click)="startRoute(route)">
-                    <hlm-card-header>
-                      <hlm-card-title>{{ route.lineName }}</hlm-card-title>
-                      <hlm-card-description>{{ route.tripTypeName }}</hlm-card-description>
-                    </hlm-card-header>
-                    <hlm-card-content>
+                    <div hlmCardHeader>
+                      <h3 hlmCardTitle>{{ route.lineName }}</h3>
+                      <p hlmCardDescription>{{ route.tripTypeName }}</p>
+                    </div>
+                    <div hlmCardContent>
                       <div class="route-detail">
                         <span class="detail-item">
                           <svg
@@ -131,8 +131,8 @@ type TabType = 'your-route' | 'new-route'
                           {{ route.departureTime }}
                         </span>
                       </div>
-                    </hlm-card-content>
-                    <hlm-card-footer>
+                    </div>
+                    <div hlmCardFooter>
                       <button
                         hlmBtn
                         class="start-route-btn"
@@ -140,20 +140,20 @@ type TabType = 'your-route' | 'new-route'
                       >
                         {{ fa() ? 'شروع سفر' : 'Start Trip' }}
                       </button>
-                    </hlm-card-footer>
+                    </div>
                   </hlm-card>
                 }
               </div>
             } @else {
               <hlm-alert variant="default" class="empty-alert">
-                <hlm-alert-title>{{
-                  fa() ? 'مسیر فعال یافت نشد' : 'No active route'
-                }}</hlm-alert-title>
-                <hlm-alert-description>{{
-                  fa()
-                    ? 'هیچ مسیری به شما تخصیص نیافته است.'
-                    : 'No route is currently assigned to you.'
-                }}</hlm-alert-description>
+                <h2 hlmAlertTitle>{{ fa() ? 'مسیر فعال یافت نشد' : 'No active route' }}</h2>
+                <p hlmAlertDescription>
+                  {{
+                    fa()
+                      ? 'هیچ مسیری به شما تخصیص نیافته است.'
+                      : 'No route is currently assigned to you.'
+                  }}
+                </p>
               </hlm-alert>
             }
           </div>
@@ -198,11 +198,11 @@ type TabType = 'your-route' | 'new-route'
               <div class="routes-grid">
                 @for (route of filteredRoutes(); track route.id) {
                   <hlm-card class="route-card" (click)="startRoute(route)">
-                    <hlm-card-header>
-                      <hlm-card-title>{{ route.lineName }}</hlm-card-title>
-                      <hlm-card-description>{{ route.tripTypeName }}</hlm-card-description>
-                    </hlm-card-header>
-                    <hlm-card-content>
+                    <div hlmCardHeader>
+                      <h3 hlmCardTitle>{{ route.lineName }}</h3>
+                      <p hlmCardDescription>{{ route.tripTypeName }}</p>
+                    </div>
+                    <div hlmCardContent>
                       <div class="route-detail">
                         <span class="detail-item">
                           <svg
@@ -243,8 +243,8 @@ type TabType = 'your-route' | 'new-route'
                           {{ route.departureTime }}
                         </span>
                       </div>
-                    </hlm-card-content>
-                    <hlm-card-footer>
+                    </div>
+                    <div hlmCardFooter>
                       <button
                         hlmBtn
                         class="start-route-btn"
@@ -252,18 +252,20 @@ type TabType = 'your-route' | 'new-route'
                       >
                         {{ fa() ? 'شروع سفر' : 'Start Trip' }}
                       </button>
-                    </hlm-card-footer>
+                    </div>
                   </hlm-card>
                 }
               </div>
             } @else {
               <hlm-alert variant="default" class="empty-alert">
-                <hlm-alert-title>{{ fa() ? 'مسیری یافت نشد' : 'No routes found' }}</hlm-alert-title>
-                <hlm-alert-description>{{
-                  fa()
-                    ? 'هیچ مسیری با فیلترهای انتخاب شده مطابقت ندارد.'
-                    : 'No routes match the selected filters.'
-                }}</hlm-alert-description>
+                <h2 hlmAlertTitle>{{ fa() ? 'مسیری یافت نشد' : 'No routes found' }}</h2>
+                <p hlmAlertDescription>
+                  {{
+                    fa()
+                      ? 'هیچ مسیری با فیلترهای انتخاب شده مطابقت ندارد.'
+                      : 'No routes match the selected filters.'
+                  }}
+                </p>
               </hlm-alert>
             }
           </div>

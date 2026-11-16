@@ -45,22 +45,22 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
         </div>
       } @else if (error()) {
         <hlm-alert class="error-alert" variant="destructive">
-          <hlm-alert-title>{{ fa() ? 'خطا در بارگذاری' : 'Failed to load' }}</hlm-alert-title>
-          <hlm-alert-description>{{ error() }}</hlm-alert-description>
+          <h2 hlmAlertTitle>{{ fa() ? 'خطا در بارگذاری' : 'Failed to load' }}</h2>
+          <p hlmAlertDescription>{{ error() }}</p>
           <button hlmBtn variant="outline" class="retry-btn" (click)="loadData()">
             {{ fa() ? 'تلاش مجدد' : 'Retry' }}
           </button>
         </hlm-alert>
       } @else if (activeTrip()) {
         <hlm-alert class="active-trip-alert" variant="default">
-          <hlm-alert-title>{{ fa() ? 'سفر فعال وجود دارد' : 'Active trip found' }}</hlm-alert-title>
-          <hlm-alert-description>
+          <h2 hlmAlertTitle>{{ fa() ? 'سفر فعال وجود دارد' : 'Active trip found' }}</h2>
+          <p hlmAlertDescription>
             {{
               fa()
                 ? 'شما یک سفر در حال انجام دارید. می‌توانید به نقشه سفر بروید یا یک مسیر جدید آغاز کنید.'
                 : 'You have an active trip. Continue to the trip map or start a new route.'
             }}
-          </hlm-alert-description>
+          </p>
           <div class="active-trip-actions">
             <button hlmBtn (click)="goToLiveMap()">
               {{ fa() ? 'نمایش نقشه سفر' : 'View Trip Map' }}
@@ -78,11 +78,11 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
           <div class="routes-grid">
             @for (route of routes(); track route.id) {
               <hlm-card class="route-card" (click)="startRoute(route)">
-                <hlm-card-header>
-                  <hlm-card-title>{{ route.lineName }}</hlm-card-title>
-                  <hlm-card-description>{{ route.tripTypeName }}</hlm-card-description>
-                </hlm-card-header>
-                <hlm-card-content>
+                <div hlmCardHeader>
+                  <h3 hlmCardTitle>{{ route.lineName }}</h3>
+                  <p hlmCardDescription>{{ route.tripTypeName }}</p>
+                </div>
+                <div hlmCardContent>
                   <div class="route-detail">
                     <span class="detail-item">
                       <svg
@@ -123,8 +123,8 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
                       {{ route.departureTime }}
                     </span>
                   </div>
-                </hlm-card-content>
-                <hlm-card-footer>
+                </div>
+                <div hlmCardFooter>
                   <button
                     hlmBtn
                     class="start-route-btn"
@@ -132,19 +132,21 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
                   >
                     {{ fa() ? 'شروع سفر' : 'Start Trip' }}
                   </button>
-                </hlm-card-footer>
+                </div>
               </hlm-card>
             }
           </div>
         </section>
       } @else if (showRoutes() && routes().length === 0) {
         <hlm-alert class="empty-alert" variant="default">
-          <hlm-alert-title>{{ fa() ? 'مسیری یافت نشد' : 'No routes available' }}</hlm-alert-title>
-          <hlm-alert-description>{{
-            fa()
-              ? 'هیچ مسیری برای شما در دسترس نیست.'
-              : 'No routes are available for you at this time.'
-          }}</hlm-alert-description>
+          <h2 hlmAlertTitle>{{ fa() ? 'مسیری یافت نشد' : 'No routes available' }}</h2>
+          <p hlmAlertDescription>
+            {{
+              fa()
+                ? 'هیچ مسیری برای شما در دسترس نیست.'
+                : 'No routes are available for you at this time.'
+            }}
+          </p>
         </hlm-alert>
       }
 
@@ -279,7 +281,7 @@ export class RouteSelectionPage {
       this.routes.set(routes)
       this.activeTrip.set(activeTrip)
       this.showRoutes.set(!activeTrip)
-    } catch (e) {
+    } catch {
       this.error.set(
         this.fa()
           ? 'بارگذاری مسیرها ناموفق بود. لطفاً دوباره تلاش کنید.'

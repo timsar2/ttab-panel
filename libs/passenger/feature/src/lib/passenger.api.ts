@@ -28,6 +28,8 @@ export interface Choice {
   name: string
   detail?: string
   address?: string
+  lat?: number
+  lng?: number
 }
 
 export interface ActiveTrip {
@@ -49,6 +51,7 @@ export interface PassengerDriverLocation {
   driverId: number
   directionId: number | null
   nextStationId: number | null
+  heading?: number | null
   lat: number
   lng: number
   receivedAt: string
@@ -175,6 +178,8 @@ export class PassengerApi {
           id: Number(item['id']),
           name: String(item['name'] ?? ''),
           address: typeof item['address'] === 'string' ? item['address'] : undefined,
+          lat: typeof item['lat'] === 'number' ? item['lat'] : undefined,
+          lng: typeof item['lng'] === 'number' ? item['lng'] : undefined,
         }
       })
       .filter(item => Number.isSafeInteger(item.id) && item.name)
@@ -277,6 +282,9 @@ export class PassengerApi {
         : null,
       nextStationId: Number.isSafeInteger(value['nextStationId'] ?? value['NextStationId'])
         ? Number(value['nextStationId'] ?? value['NextStationId'])
+        : null,
+      heading: Number.isFinite(value['heading'] ?? value['Heading'])
+        ? Number(value['heading'] ?? value['Heading'])
         : null,
       lat,
       lng,

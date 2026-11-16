@@ -28,7 +28,7 @@ export interface DriverRecord {
 }
 
 export interface RouteCard {
-  id: number
+  id: string
   lineName: string
   tripTypeName: string
   shiftTime: string
@@ -128,15 +128,15 @@ function record(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>
 }
 
-function property(value: Record<string, unknown>, name: string): unknown {
-  return value[name] ?? value[`${name[0].toUpperCase()}${name.slice(1)}`]
-}
-
 function listResult(value: unknown): unknown[] {
   const envelope = record(value)
   if (envelope['code'] !== '2000' || !Array.isArray(envelope['result']))
     throw new Error('Invalid service response.')
   return envelope['result']
+}
+
+function property(value: Record<string, unknown>, name: string): unknown {
+  return value[name] ?? value[`${name[0].toUpperCase()}${name.slice(1)}`]
 }
 
 function dataResult(value: unknown): Record<string, unknown> {
@@ -220,29 +220,37 @@ export class DriverApi {
   }
 
   async availableRoutes(): Promise<RouteCard[]> {
-    const { driverId, companyId } = this.scope()
+    const { driverId } = this.scope()
     const response = await firstValueFrom(
-      this.http.post<unknown>('/api/v1/drivers/available-routes', {
-        companyId,
-        driverId,
-      }),
+      this.http.get<unknown>(`/api/v1/trips/driver/${driverId}`),
     )
-    return listResult(response)
+    if (!Array.isArray(response)) throw new Error('Invalid assigned-route response.')
+    return response
       .map(value => {
         const item = record(value)
+        const driverLineId = Number(property(item, 'driverLineId'))
+        const shiftTimeId = Number(property(item, 'shiftTimeId'))
+        const tripTypeId = Number(property(item, 'tripTypeId'))
+        const directionId = Number(property(item, 'directionId'))
         return {
-          id: Number(item['id']),
-          lineName: String(item['lineName'] ?? ''),
-          tripTypeName: String(item['tripTypeName'] ?? ''),
-          shiftTime: String(item['shiftTime'] ?? ''),
-          departureTime: String(item['departureTime'] ?? ''),
-          directionId: Number(item['directionId']),
-          driverLineId: Number(item['driverLineId']),
-          shiftTimeId: Number(item['shiftTimeId']),
-          tripTypeId: Number(item['tripTypeId']),
+          id: `${driverLineId}:${shiftTimeId}:${tripTypeId}:${directionId}`,
+          lineName: String(property(item, 'lineName') ?? ''),
+          tripTypeName: String(property(item, 'tripTypeName') ?? ''),
+          shiftTime: String(property(item, 'shiftTimeName') ?? ''),
+          departureTime: String(property(item, 'departureTime') ?? ''),
+          directionId,
+          driverLineId,
+          shiftTimeId,
+          tripTypeId,
         }
       })
-      .filter(item => Number.isSafeInteger(item.id))
+      .filter(
+        item =>
+          Number.isSafeInteger(item.directionId) &&
+          Number.isSafeInteger(item.driverLineId) &&
+          Number.isSafeInteger(item.shiftTimeId) &&
+          Number.isSafeInteger(item.tripTypeId),
+      )
   }
 
   async activeTrip(): Promise<ActiveTrip | null> {
@@ -362,12 +370,13 @@ export class DriverApi {
   }
 
   async startTrip(request: TripStartRequest): Promise<void> {
-    const { companyId } = this.scope()
+    this.scope()
     const response = record(
       await firstValueFrom(
         this.http.post('/api/v1/trips', {
-          companyId,
-          ...request,
+          driverLineId: request.driverLineId,
+          shiftTimeId: request.shiftTimeId,
+          tripTypeId: request.tripTypeId,
         }),
       ),
     )
@@ -380,12 +389,13 @@ export class DriverApi {
   }
 
   async submitStationArrival(request: StationArrivalRequest): Promise<void> {
-    const { companyId } = this.scope()
+    this.scope()
     const response = record(
       await firstValueFrom(
-        this.http.post('/api/v1/trips/station-arrival', {
-          companyId,
-          ...request,
+        this.http.post('/api/v1/passengers/absence', {
+          tripId: request.tripId,
+          nextStationId: request.stationId,
+          passengerIds: request.absentPassengerIds,
         }),
       ),
     )
@@ -394,11 +404,10 @@ export class DriverApi {
   }
 
   async endTrip(request: EndTripRequest): Promise<void> {
-    const { companyId } = this.scope()
+    this.scope()
     const response = record(
       await firstValueFrom(
         this.http.post('/api/v1/trips/end-trip', {
-          companyId,
           id: request.tripId,
           directionId: request.directionId,
         }),

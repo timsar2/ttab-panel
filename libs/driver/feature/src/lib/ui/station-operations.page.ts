@@ -38,8 +38,8 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
         </div>
       } @else if (error()) {
         <hlm-alert variant="destructive" class="error-alert">
-          <hlm-alert-title>{{ fa() ? 'خطا' : 'Error' }}</hlm-alert-title>
-          <hlm-alert-description>{{ error() }}</hlm-alert-description>
+          <h2 hlmAlertTitle>{{ fa() ? 'خطا' : 'Error' }}</h2>
+          <p hlmAlertDescription>{{ error() }}</p>
           <button hlmBtn variant="outline" (click)="loadStation()">
             {{ fa() ? 'تلاش مجدد' : 'Retry' }}
           </button>
@@ -65,14 +65,14 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
         </header>
 
         <hlm-card class="passengers-card">
-          <hlm-card-header>
-            <hlm-card-title>{{ fa() ? 'لیست مسافران' : 'Passengers' }}</hlm-card-title>
-            <hlm-card-description
-              >{{ station()!.passengers.length }} {{ fa() ? 'مسافر' : 'passenger'
-              }}{{ station()!.passengers.length !== 1 ? 's' : '' }}</hlm-card-description
-            >
-          </hlm-card-header>
-          <hlm-card-content>
+          <div hlmCardHeader>
+            <h3 hlmCardTitle>{{ fa() ? 'لیست مسافران' : 'Passengers' }}</h3>
+            <p hlmCardDescription>
+              {{ station()!.passengers.length }} {{ fa() ? 'مسافر' : 'passenger'
+              }}{{ station()!.passengers.length !== 1 ? 's' : '' }}
+            </p>
+          </div>
+          <div hlmCardContent>
             @if (station()!.passengers.length > 0) {
               <div class="passengers-list">
                 @for (passenger of station()!.passengers; track passenger.id) {
@@ -136,7 +136,7 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
                 }}
               </p>
             }
-          </hlm-card-content>
+          </div>
         </hlm-card>
 
         <hlm-separator class="section-separator" />
@@ -184,27 +184,29 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
 
           @if (submissionError()) {
             <hlm-alert variant="destructive" class="submission-error">
-              <hlm-alert-title>{{ fa() ? 'خطا در ثبت' : 'Submission failed' }}</hlm-alert-title>
-              <hlm-alert-description>{{ submissionError() }}</hlm-alert-description>
+              <h3 hlmAlertTitle>{{ fa() ? 'خطا در ثبت' : 'Submission failed' }}</h3>
+              <p hlmAlertDescription>{{ submissionError() }}</p>
             </hlm-alert>
           }
           @if (submissionSuccess()) {
             <hlm-alert variant="default" class="submission-success">
-              <hlm-alert-title>{{ fa() ? 'موفقیت' : 'Success' }}</hlm-alert-title>
-              <hlm-alert-description>{{
-                fa()
-                  ? 'رسیدن به ایستگاه با موفقیت ثبت شد.'
-                  : 'Station arrival confirmed successfully.'
-              }}</hlm-alert-description>
+              <h3 hlmAlertTitle>{{ fa() ? 'موفقیت' : 'Success' }}</h3>
+              <p hlmAlertDescription>
+                {{
+                  fa()
+                    ? 'رسیدن به ایستگاه با موفقیت ثبت شد.'
+                    : 'Station arrival confirmed successfully.'
+                }}
+              </p>
             </hlm-alert>
           }
         </div>
       } @else {
         <hlm-alert variant="default">
-          <hlm-alert-title>{{ fa() ? 'ایستگاه یافت نشد' : 'Station not found' }}</hlm-alert-title>
-          <hlm-alert-description>{{
-            fa() ? 'اطلاعات ایستگاه در دسترس نیست.' : 'Station information is not available.'
-          }}</hlm-alert-description>
+          <h2 hlmAlertTitle>{{ fa() ? 'ایستگاه یافت نشد' : 'Station not found' }}</h2>
+          <p hlmAlertDescription>
+            {{ fa() ? 'اطلاعات ایستگاه در دسترس نیست.' : 'Station information is not available.' }}
+          </p>
           <button hlmBtn (click)="goBack()">{{ fa() ? 'بازگشت' : 'Back' }}</button>
         </hlm-alert>
       }
@@ -424,7 +426,8 @@ export class StationOperationsPage {
 
   protected async submitArrival(): Promise<void> {
     const trip = await this.api.activeTrip()
-    if (!trip || !this.station()) return
+    const station = this.station()
+    if (!trip || !station) return
 
     this.submitting.set(true)
     this.submissionError.set(null)
@@ -433,7 +436,7 @@ export class StationOperationsPage {
     try {
       await this.api.submitStationArrival({
         tripId: trip.id,
-        stationId: this.station()!.id,
+        stationId: station.id,
         absentPassengerIds: this.selectedAbsentIds(),
       })
       this.submissionSuccess.set(true)

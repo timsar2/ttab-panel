@@ -87,8 +87,9 @@ class Failure extends Error {
   constructor(
     readonly status: number,
     readonly reason: AuthDiagnostic['reason'] = 'request-failed',
+    readonly messages?: string[],
   ) {
-    super('Authentication request failed.')
+    super(messages?.[0] ?? 'Authentication request failed.')
   }
 }
 
@@ -641,9 +642,18 @@ export function createAuthBff(options: AuthBffOptions): Router & {
           config.mobileTenant,
           'POST',
         )
-        const envelope = response.body as { code?: unknown; result?: unknown } | null
-        if (response.status !== 200 || envelope?.code !== '2000')
-          throw new Failure(response.status === 429 ? 429 : 502)
+        const envelope = response.body as {
+          code?: unknown
+          messages?: unknown
+          result?: unknown
+        } | null
+        if (response.status !== 200 || envelope?.code !== '2000') {
+          const messages =
+            Array.isArray(envelope?.messages) && envelope.messages.every(m => typeof m === 'string')
+              ? (envelope.messages as string[])
+              : undefined
+          throw new Failure(response.status === 429 ? 429 : 502, 'request-failed', messages)
+        }
         if (!config.production) {
           res.status(200).json(envelope ?? { code: '2000' })
           return
@@ -831,9 +841,11 @@ export function createAuthBff(options: AuthBffOptions): Router & {
       diagnose(operation, error)
       const status = error instanceof Failure ? error.status : 502
       if (status === 401) clear(res)
-      res
-        .status(status)
-        .json({ messages: [status === 401 ? 'Authentication required.' : 'Request failed.'] })
+      const messages =
+        error instanceof Failure && status >= 400 && status < 500 && error.messages?.length
+          ? error.messages
+          : [status === 401 ? 'Authentication required.' : 'Request failed.']
+      res.status(status).json({ messages })
     })
   })
   router.use((error: unknown, _req: Request, res: Response, next: express.NextFunction) => {

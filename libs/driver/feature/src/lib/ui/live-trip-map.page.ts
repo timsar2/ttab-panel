@@ -12,8 +12,6 @@ import { DriverLocationPublisherService } from '@org/shared-tracking'
 import { environment } from '@org/platform/config'
 import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
-import { HlmDrawer, HlmDrawerContent } from '@spartan-ng/helm/drawer'
-import { HlmScrollArea } from '@spartan-ng/helm/scroll-area'
 import { HlmSeparator } from '@spartan-ng/helm/separator'
 import { HlmSpinner } from '@spartan-ng/helm/spinner'
 import { ActiveTrip, DriverApi, Station } from '../driver-pwa-feature/driver.api'
@@ -24,14 +22,11 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
   imports: [
     NeshanMapComponent,
     HlmButton,
-    HlmDrawer,
-    HlmDrawerContent,
     HlmSpinner,
     HlmAlert,
     HlmAlertDescription,
     HlmAlertTitle,
     HlmSeparator,
-    HlmScrollArea,
   ],
   template: `
     <div class="map-page" [attr.dir]="fa() ? 'rtl' : 'ltr'">
@@ -43,8 +38,8 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
       } @else if (error()) {
         <div class="error-overlay">
           <hlm-alert variant="destructive">
-            <hlm-alert-title>{{ fa() ? 'خطا در بارگذاری' : 'Failed to load' }}</hlm-alert-title>
-            <hlm-alert-description>{{ error() }}</hlm-alert-description>
+            <h2 hlmAlertTitle>{{ fa() ? 'خطا در بارگذاری' : 'Failed to load' }}</h2>
+            <p hlmAlertDescription>{{ error() }}</p>
             <button hlmBtn variant="outline" (click)="loadTripData()">
               {{ fa() ? 'تلاش مجدد' : 'Retry' }}
             </button>
@@ -67,8 +62,12 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
           </button>
         </div>
 
-        <hlm-drawer [open]="stationPanelOpen()" (openChange)="stationPanelOpen.set($event)">
-          <hlm-drawer-content class="station-panel">
+        @if (stationPanelOpen()) {
+          <section
+            class="station-panel"
+            role="dialog"
+            [attr.aria-label]="fa() ? 'ایستگاه‌ها' : 'Stations'"
+          >
             <div class="panel-header">
               <div>
                 <h2>{{ fa() ? 'ایستگاه‌ها و جهت مسیر' : 'Direction stations' }}</h2>
@@ -79,7 +78,7 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
               </button>
             </div>
             <hlm-separator />
-            <hlm-scroll-area class="stations-list">
+            <div class="stations-list">
               @for (station of activeTrip.stations; track station.id; let i = $index) {
                 <button
                   class="station-item"
@@ -106,7 +105,7 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
                   </span>
                 </button>
               }
-            </hlm-scroll-area>
+            </div>
             <hlm-separator />
             <div class="panel-footer">
               <p class="publish-state" [class.ok]="publisher.running()">
@@ -136,15 +135,15 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
                 {{ fa() ? 'توقف مسیر سرویس' : 'Stop service direction' }}
               </button>
             </div>
-          </hlm-drawer-content>
-        </hlm-drawer>
+          </section>
+        }
       } @else {
         <div class="no-trip">
           <hlm-alert variant="default">
-            <hlm-alert-title>{{ fa() ? 'سفر فعالی یافت نشد' : 'No active trip' }}</hlm-alert-title>
-            <hlm-alert-description>{{
-              fa() ? 'برای شروع، یک مسیر را انتخاب کنید.' : 'Select a route to start a trip.'
-            }}</hlm-alert-description>
+            <h2 hlmAlertTitle>{{ fa() ? 'سفر فعالی یافت نشد' : 'No active trip' }}</h2>
+            <p hlmAlertDescription>
+              {{ fa() ? 'برای شروع، یک مسیر را انتخاب کنید.' : 'Select a route to start a trip.' }}
+            </p>
             <button hlmBtn (click)="goToRouteSelection()">
               {{ fa() ? 'انتخاب مسیر' : 'Select route' }}
             </button>
@@ -193,13 +192,18 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
         background: var(--card);
       }
       .station-panel {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        z-index: 30;
         min-width: 320px;
         max-width: 420px;
-        height: 100vh;
+        width: min(420px, calc(100vw - 1rem));
         display: flex;
         flex-direction: column;
         background: var(--card);
         border-inline-start: 1px solid var(--border);
+        box-shadow: var(--shadow-lg);
       }
       .panel-header {
         display: flex;
@@ -221,6 +225,7 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
       .stations-list {
         flex: 1;
         padding: 0.5rem;
+        overflow-y: auto;
       }
       .station-item {
         width: 100%;

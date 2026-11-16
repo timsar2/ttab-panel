@@ -25,7 +25,7 @@ describe('PassengerPage route entry', () => {
     vi.unstubAllGlobals()
   })
 
-  it('loads passengers, directions, and shifts and populates both selectors', () => {
+  it('loads legacy lookups on entry, dependent lookups by direction, and submits the legacy payload', () => {
     TestBed.configureTestingModule({
       imports: [PassengerPage],
       providers: [
@@ -59,15 +59,15 @@ describe('PassengerPage route entry', () => {
     const passengers = http.expectOne('/api/v1/passengers/search')
     const directions = http.expectOne('/api/v1/directions/search')
     const shifts = http.expectOne('/api/v1/shifts/get-shift')
-    expect(passengers.request.method).toBe('GET')
+    expect(passengers.request.method).toBe('POST')
     expect(passengers.request.body).toMatchObject({
       companyId: 1,
       hasShift: true,
       hasStation: true,
     })
-    expect(directions.request.method).toBe('GET')
+    expect(directions.request.method).toBe('POST')
     expect(directions.request.body).toEqual({ companyId: 1 })
-    expect(shifts.request.method).toBe('GET')
+    expect(shifts.request.method).toBe('POST')
     expect(shifts.request.body).toEqual({ companyId: 1 })
 
     const envelope = (result: unknown) => ({ code: '2000', massage: 'OK', result })
@@ -89,12 +89,52 @@ describe('PassengerPage route entry', () => {
     )
     fixture.detectChanges()
 
-    const selects = fixture.nativeElement.querySelectorAll(
-      'select',
-    ) as NodeListOf<HTMLSelectElement>
+    let selects = fixture.nativeElement.querySelectorAll('select') as NodeListOf<HTMLSelectElement>
     expect(selects[0].options[1].textContent).toContain('North Route')
     expect(selects[1].options[1].textContent).toContain('Morning')
     expect(fixture.nativeElement.textContent).toContain('Ava Reed')
+
+    selects[0].selectedIndex = 1
+    selects[0].dispatchEvent(new Event('change', { bubbles: true }))
+    fixture.detectChanges()
+    const stations = http.expectOne('/api/v1/stations/search')
+    const lines = http.expectOne('/api/v1/lines/search')
+    expect(stations.request.method).toBe('POST')
+    expect(stations.request.body).toEqual({ companyId: 1, directionId: 12, name: '' })
+    expect(lines.request.method).toBe('POST')
+    expect(lines.request.body).toEqual({ directionId: 12 })
+    stations.flush(envelope([{ id: 31, name: 'Central Stop' }]))
+    lines.flush(envelope([{ id: 41, name: 'Blue Line' }]))
+    fixture.detectChanges()
+
+    selects = fixture.nativeElement.querySelectorAll('select') as NodeListOf<HTMLSelectElement>
+    for (const select of [selects[1], selects[2], selects[3]]) {
+      select.selectedIndex = 1
+      select.dispatchEvent(new Event('change', { bubbles: true }))
+    }
+    const passengerCheckbox = fixture.nativeElement.querySelector(
+      'tbody input[type="checkbox"]',
+    ) as HTMLInputElement
+    passengerCheckbox.checked = true
+    passengerCheckbox.dispatchEvent(new Event('change', { bubbles: true }))
+    fixture.detectChanges()
+    const submit = fixture.nativeElement.querySelector('button[hlmBtn]') as HTMLButtonElement
+    submit.click()
+    const assignment = http.expectOne('/api/v1/companys/batch')
+    expect(assignment.request.method).toBe('POST')
+    expect(assignment.request.body).toMatchObject({
+      passengerIds: [45],
+      shiftId: 7,
+      stationId: 31,
+      lineId: 41,
+    })
+    expect(assignment.request.body.fromDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    assignment.flush(envelope(true))
+    http
+      .expectOne('/api/v1/passengers/search')
+      .flush(
+        envelope({ list: [{ id: 45, fullName: 'Ava Reed', nationalId: '101', profileImage: '' }] }),
+      )
     http.verify()
   })
 })

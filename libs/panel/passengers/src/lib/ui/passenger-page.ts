@@ -292,7 +292,7 @@ export class PassengerPage {
       if (companyId !== null) {
         subscriptions.add(
           this.http
-            .request('GET', this.config.endpoints.directions, value => list(value, decodeOption), {
+            .request('POST', this.config.endpoints.directions, value => list(value, decodeOption), {
               companyId,
             })
             .subscribe({
@@ -306,7 +306,7 @@ export class PassengerPage {
         )
         subscriptions.add(
           this.http
-            .request('GET', this.config.endpoints.shifts, value => list(value, decodeOption), {
+            .request('POST', this.config.endpoints.shifts, value => list(value, decodeOption), {
               companyId,
             })
             .subscribe({
@@ -354,7 +354,7 @@ export class PassengerPage {
     this.error.set('')
     this.http
       .request(
-        'GET',
+        'POST',
         this.config.endpoints.search,
         value => list(value, decodePassenger),
         passengerSearchPayload(companyId, this.assignedOnly, fullName),

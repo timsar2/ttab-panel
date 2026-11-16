@@ -197,6 +197,57 @@ import { PASSENGER_FEATURE_CONFIG } from '../passenger.routes'
           </section>
         }
 
+        @if (!trip()) {
+          <section class="panel stack">
+            <h2>{{ fa() ? 'مسیر رفت‌وآمد' : 'Commute route' }}</h2>
+            <label for="passenger-direction">
+              {{ fa() ? 'جهت مسیر' : 'Route direction' }}
+            </label>
+            <select
+              id="passenger-direction"
+              [value]="selectedDirectionId()"
+              [disabled]="!directions().length || directionLoading()"
+              (change)="selectDirection($event)"
+            >
+              <option value="">{{ fa() ? 'انتخاب جهت' : 'Select a direction' }}</option>
+              @for (direction of directions(); track direction.id) {
+                <option [value]="direction.id">{{ direction.name }}</option>
+              }
+            </select>
+            @if (directionLoading()) {
+              <p role="status">
+                {{ fa() ? 'در حال دریافت ایستگاه‌ها...' : 'Loading stations...' }}
+              </p>
+            }
+            <lib-neshan-map
+              [apiKey]="neshanMapApiKey"
+              [serviceApiKey]="neshanServiceApiKey"
+              [points]="mapPoints()"
+              [language]="config.language()"
+            />
+            @if (selectedStations().length) {
+              <ol>
+                @for (station of selectedStations(); track station.id; let index = $index) {
+                  <li>
+                    {{ index + 1 }}. {{ station.name }}
+                    @if (station.address) {
+                      · {{ station.address }}
+                    }
+                  </li>
+                }
+              </ol>
+            } @else if (selectedDirectionId() && !directionLoading()) {
+              <p class="notice">
+                {{
+                  fa()
+                    ? 'موقعیت ایستگاه‌های این جهت در دسترس نیست.'
+                    : 'No mapped stations are available for this direction.'
+                }}
+              </p>
+            }
+          </section>
+        }
+
         <div class="actions">
           <a class="secondary" routerLink="/passenger/support">{{
             fa() ? 'پشتیبانی' : 'Get support'
@@ -250,6 +301,9 @@ export class PassengerHomePage {
   protected readonly trip = signal<ActiveTrip | null>(null)
   protected readonly tripLoaded = signal(false)
   protected readonly driverLocation = signal<PassengerDriverLocation | null>(null)
+  protected readonly selectedDirectionId = signal('')
+  protected readonly selectedStations = signal<Choice[]>([])
+  protected readonly directionLoading = signal(false)
 
   protected readonly neshanMapApiKey = environment.neshanMapApiKey ?? null
   protected readonly neshanServiceApiKey = environment.neshanServiceApiKey ?? null
@@ -266,7 +320,7 @@ export class PassengerHomePage {
   )
 
   protected readonly mapPoints = computed<NeshanMapPoint[]>(() =>
-    (this.trip()?.stations ?? [])
+    (this.trip()?.stations ?? this.selectedStations())
       .filter(s => typeof s.lat === 'number' && typeof s.lng === 'number')
       .map((s, i) => ({
         id: s.id,
@@ -292,6 +346,7 @@ export class PassengerHomePage {
       id: loc.driverId,
       lat: loc.lat,
       lng: loc.lng,
+      heading: loc.heading,
       label: this.fa() ? 'راننده' : 'Driver',
       receivedAt: loc.receivedAt,
     }
@@ -336,6 +391,16 @@ export class PassengerHomePage {
       ])
       this.passenger.set(person)
       this.trip.set(trip)
+      this.selectedDirectionId.set(person.directionId ? String(person.directionId) : '')
+      this.selectedStations.set(
+        trip
+          ? []
+          : stations.map(station => ({
+              ...station,
+              lat: station.lat,
+              lng: station.lng,
+            })),
+      )
       this.driverLocation.set(null)
       if (trip) {
         void this.api.driverLocation(trip.driverId).then(
@@ -357,6 +422,23 @@ export class PassengerHomePage {
       )
     } finally {
       this.loading.set(false)
+    }
+  }
+
+  protected async selectDirection(event: Event): Promise<void> {
+    const target = event.target
+    if (!(target instanceof HTMLSelectElement)) return
+    this.selectedDirectionId.set(target.value)
+    this.selectedStations.set([])
+    const directionId = Number(target.value)
+    if (!Number.isSafeInteger(directionId) || directionId <= 0) return
+    this.directionLoading.set(true)
+    try {
+      this.selectedStations.set(await this.api.stations(directionId))
+    } catch {
+      this.selectedStations.set([])
+    } finally {
+      this.directionLoading.set(false)
     }
   }
 }
