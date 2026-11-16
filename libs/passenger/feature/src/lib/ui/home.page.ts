@@ -13,7 +13,13 @@ import { HlmButtonImports } from '@spartan-ng/helm/button'
 import { NeshanLiveLocation, NeshanMapComponent, NeshanMapPoint } from '@org/shared-maps'
 import { TrackingConnectionService } from '@org/shared-tracking'
 import { environment } from '@org/platform/config'
-import { ActiveTrip, Choice, PassengerApi, PassengerRecord } from '../passenger.api'
+import {
+  ActiveTrip,
+  Choice,
+  PassengerApi,
+  PassengerDriverLocation,
+  PassengerRecord,
+} from '../passenger.api'
 import { PASSENGER_FEATURE_CONFIG } from '../passenger.routes'
 
 @Component({
@@ -114,17 +120,23 @@ import { PASSENGER_FEATURE_CONFIG } from '../passenger.routes'
             </p>
 
             <div class="tracking-status">
-              <span [class.ok]="tracking.connected()">{{
-                tracking.connected()
+              <span [class.ok]="liveDriverLocation()">{{
+                liveDriverLocation()
                   ? fa()
-                    ? 'اتصال زنده فعال'
-                    : 'Live connection active'
+                    ? 'موقعیت زنده دریافت شد'
+                    : 'Live driver location received'
                   : fa()
-                    ? 'در انتظار اتصال زنده...'
-                    : 'Waiting for live connection...'
+                    ? 'در انتظار موقعیت راننده...'
+                    : "Waiting for the driver's first location..."
               }}</span>
               @if (liveDriverLocation()) {
-                <span>{{ fa() ? 'موقعیت راننده دریافت شد' : 'Driver location received' }}</span>
+                <span>
+                  {{ fa() ? 'آخرین همگام‌سازی' : 'Last synced' }}:
+                  {{ liveDriverLocation()!.receivedAt || (fa() ? 'اکنون' : 'just now') }}
+                </span>
+              }
+              @if (tracking.error(); as streamError) {
+                <span role="status">{{ streamError }}</span>
               }
             </div>
 
@@ -226,6 +238,7 @@ export class PassengerHomePage {
   protected readonly config = inject(PASSENGER_FEATURE_CONFIG)
   protected readonly tracking = inject(TrackingConnectionService)
   private readonly destroyRef = inject(DestroyRef)
+  private lastHandledPassengerNotification = this.tracking.lastPassengerNotification()
 
   protected readonly fa = computed(() => this.config.language() === 'fa')
   protected readonly loading = signal(true)
@@ -236,6 +249,7 @@ export class PassengerHomePage {
   protected readonly assignedStations = signal<Choice[]>([])
   protected readonly trip = signal<ActiveTrip | null>(null)
   protected readonly tripLoaded = signal(false)
+  protected readonly driverLocation = signal<PassengerDriverLocation | null>(null)
 
   protected readonly neshanMapApiKey = environment.neshanMapApiKey ?? null
   protected readonly neshanServiceApiKey = environment.neshanServiceApiKey ?? null
@@ -265,18 +279,40 @@ export class PassengerHomePage {
 
   protected readonly liveDriverLocation = computed<NeshanLiveLocation | null>(() => {
     const trip = this.trip()
-    const loc = this.tracking.lastLocation()
+    const notification = this.tracking.lastPassengerNotification()
+    if (notification?.tripId === trip?.id && notification?.isTripActive === false) return null
+    const streamed = this.tracking.lastLocation()
+    const loc =
+      trip && streamed?.tripId === trip.id && streamed.driverId === trip.driverId
+        ? streamed
+        : this.driverLocation()
     if (!trip || !loc) return null
-    if (loc.tripId != null && loc.tripId !== trip.id) return null
-    if (loc.driverId != null && loc.driverId !== trip.driverId) return null
-    return { lat: loc.lat, lng: loc.lng, label: this.fa() ? 'راننده' : 'Driver' }
+    if (loc.tripId !== trip.id || loc.driverId !== trip.driverId) return null
+    return {
+      id: loc.driverId,
+      lat: loc.lat,
+      lng: loc.lng,
+      label: this.fa() ? 'راننده' : 'Driver',
+      receivedAt: loc.receivedAt,
+    }
   })
 
   constructor() {
-    afterNextRender(() => void this.load())
+    afterNextRender(() => {
+      void this.tracking.connectCookieStream()
+      void this.load()
+    })
     effect(() => {
-      const trip = this.trip()
-      if (trip) void this.ensureTrackingConnected()
+      const notification = this.tracking.lastPassengerNotification()
+      if (!notification || notification === this.lastHandledPassengerNotification) return
+      this.lastHandledPassengerNotification = notification
+      if (notification.isTripActive === false && this.trip()?.id === notification.tripId) {
+        this.trip.set(null)
+        this.driverLocation.set(null)
+        this.tripLoaded.set(true)
+      } else if (notification.isTripActive === true && this.trip()?.id !== notification.tripId) {
+        void this.load()
+      }
     })
     this.destroyRef.onDestroy(() => {
       void this.tracking.disconnect()
@@ -300,6 +336,15 @@ export class PassengerHomePage {
       ])
       this.passenger.set(person)
       this.trip.set(trip)
+      this.driverLocation.set(null)
+      if (trip) {
+        void this.api.driverLocation(trip.driverId).then(
+          location => {
+            if (this.trip()?.id === trip.id) this.driverLocation.set(location)
+          },
+          () => undefined,
+        )
+      }
       this.shifts.set(choices[0])
       this.directions.set(choices[1])
       this.assignedStations.set(stations)
@@ -312,16 +357,6 @@ export class PassengerHomePage {
       )
     } finally {
       this.loading.set(false)
-    }
-  }
-
-  private async ensureTrackingConnected(): Promise<void> {
-    try {
-      const hubUrl = `${environment.baseUrl.replace(/\/$/, '')}/notifications`
-      await this.tracking.configure({ hubUrl, withCredentials: false })
-      await this.tracking.connect()
-    } catch {
-      /* live updates are best-effort */
     }
   }
 }

@@ -2,14 +2,33 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router'
 import { DriverApi, RouteCard, ActiveTrip } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
-import { HlmButtonImports } from '@spartan-ng/helm/button'
-import { HlmCardImports } from '@spartan-ng/helm/card'
-import { HlmSpinnerImports } from '@spartan-ng/helm/spinner'
-import { HlmAlertImports } from '@spartan-ng/helm/alert'
+import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
+import { HlmButton } from '@spartan-ng/helm/button'
+import {
+  HlmCard,
+  HlmCardContent,
+  HlmCardDescription,
+  HlmCardFooter,
+  HlmCardHeader,
+  HlmCardTitle,
+} from '@spartan-ng/helm/card'
+import { HlmSpinner } from '@spartan-ng/helm/spinner'
 
 @Component({
   selector: 'lib-route-selection-page',
-  imports: [HlmButtonImports, HlmCardImports, HlmSpinnerImports, HlmAlertImports],
+  imports: [
+    HlmButton,
+    HlmCard,
+    HlmCardContent,
+    HlmCardDescription,
+    HlmCardFooter,
+    HlmCardHeader,
+    HlmCardTitle,
+    HlmSpinner,
+    HlmAlert,
+    HlmAlertDescription,
+    HlmAlertTitle,
+  ],
   template: `
     <div class="page-container" [attr.dir]="fa() ? 'rtl' : 'ltr'">
       <header class="page-header">

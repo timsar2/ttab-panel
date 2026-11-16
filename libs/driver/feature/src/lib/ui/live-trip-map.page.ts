@@ -1,21 +1,21 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  DestroyRef,
+  afterNextRender,
   computed,
   inject,
   signal,
 } from '@angular/core'
 import { Router } from '@angular/router'
 import { NeshanLiveLocation, NeshanMapComponent, NeshanMapPoint } from '@org/shared-maps'
-import { DriverLocationPublisherService, TrackingConnectionService } from '@org/shared-tracking'
+import { DriverLocationPublisherService } from '@org/shared-tracking'
 import { environment } from '@org/platform/config'
-import { HlmButtonImports } from '@spartan-ng/helm/button'
-import { HlmDrawerImports } from '@spartan-ng/helm/drawer'
-import { HlmSpinnerImports } from '@spartan-ng/helm/spinner'
-import { HlmAlertImports } from '@spartan-ng/helm/alert'
-import { HlmSeparatorImports } from '@spartan-ng/helm/separator'
-import { HlmScrollAreaImports } from '@spartan-ng/helm/scroll-area'
+import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
+import { HlmButton } from '@spartan-ng/helm/button'
+import { HlmDrawer, HlmDrawerContent } from '@spartan-ng/helm/drawer'
+import { HlmScrollArea } from '@spartan-ng/helm/scroll-area'
+import { HlmSeparator } from '@spartan-ng/helm/separator'
+import { HlmSpinner } from '@spartan-ng/helm/spinner'
 import { ActiveTrip, DriverApi, Station } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
 
@@ -23,14 +23,16 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
   selector: 'lib-live-trip-map-page',
   imports: [
     NeshanMapComponent,
-    HlmButtonImports,
-    HlmDrawerImports,
-    HlmSpinnerImports,
-    HlmAlertImports,
-    HlmSeparatorImports,
-    HlmScrollAreaImports,
+    HlmButton,
+    HlmDrawer,
+    HlmDrawerContent,
+    HlmSpinner,
+    HlmAlert,
+    HlmAlertDescription,
+    HlmAlertTitle,
+    HlmSeparator,
+    HlmScrollArea,
   ],
-  providers: [DriverLocationPublisherService],
   template: `
     <div class="map-page" [attr.dir]="fa() ? 'rtl' : 'ltr'">
       @if (loading()) {
@@ -66,8 +68,7 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
         </div>
 
         <hlm-drawer [open]="stationPanelOpen()" (openChange)="stationPanelOpen.set($event)">
-          <div hlmDrawerContent></div>
-          <div hlmDrawerSidebar class="station-panel">
+          <hlm-drawer-content class="station-panel">
             <div class="panel-header">
               <div>
                 <h2>{{ fa() ? 'ایستگاه‌ها و جهت مسیر' : 'Direction stations' }}</h2>
@@ -119,11 +120,23 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
                       : 'Location sharing inactive'
                 }}
               </p>
+              @if (publisher.permissionDenied()) {
+                <p class="publish-error" role="alert">
+                  {{
+                    fa()
+                      ? 'برای اشتراک موقعیت، دسترسی مکان را فعال کنید.'
+                      : 'Allow location access to share your live position.'
+                  }}
+                </p>
+              }
+              @if (publishError()) {
+                <p class="publish-error" role="status">{{ publishError() }}</p>
+              }
               <button hlmBtn variant="outline" (click)="endTrip()">
-                {{ fa() ? 'پایان سفر' : 'End trip' }}
+                {{ fa() ? 'توقف مسیر سرویس' : 'Stop service direction' }}
               </button>
             </div>
-          </div>
+          </hlm-drawer-content>
         </hlm-drawer>
       } @else {
         <div class="no-trip">
@@ -273,6 +286,11 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
       .publish-state.ok {
         color: var(--primary);
       }
+      .publish-error {
+        margin: 0;
+        color: var(--destructive);
+        font-size: 0.8rem;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -281,13 +299,12 @@ export class LiveTripMapPage {
   private readonly api = inject(DriverApi)
   private readonly router = inject(Router)
   protected readonly config = inject(DRIVER_FEATURE_CONFIG)
-  private readonly tracking = inject(TrackingConnectionService)
   protected readonly publisher = inject(DriverLocationPublisherService)
-  private readonly destroyRef = inject(DestroyRef)
 
   protected readonly fa = computed(() => this.config.language() === 'fa')
   protected readonly loading = signal(true)
   protected readonly error = signal<string | null>(null)
+  protected readonly publishError = signal<string | null>(null)
   protected readonly trip = signal<ActiveTrip | null>(null)
   protected readonly stationPanelOpen = signal(false)
   protected readonly neshanMapApiKey = environment.neshanMapApiKey ?? null
@@ -312,11 +329,7 @@ export class LiveTripMapPage {
   })
 
   constructor() {
-    this.loadTripData()
-    this.destroyRef.onDestroy(() => {
-      this.publisher.stop()
-      void this.tracking.disconnect()
-    })
+    afterNextRender(() => void this.loadTripData())
   }
 
   protected async loadTripData(): Promise<void> {
@@ -325,7 +338,7 @@ export class LiveTripMapPage {
     try {
       const trip = await this.api.activeTrip()
       this.trip.set(trip)
-      if (trip) await this.startRealtime(trip)
+      if (trip) await this.startRealtime()
       else this.publisher.stop()
     } catch {
       this.error.set(this.fa() ? 'بارگذاری اطلاعات سفر ناموفق بود.' : 'Failed to load trip data.')
@@ -334,14 +347,8 @@ export class LiveTripMapPage {
     }
   }
 
-  private async startRealtime(trip: ActiveTrip): Promise<void> {
-    try {
-      const hubUrl = `${environment.baseUrl.replace(/\/$/, '')}/notifications`
-      await this.tracking.configure({ hubUrl, withCredentials: false })
-      await this.tracking.connect()
-    } catch {
-      /* hub best-effort; HTTP publishing continues */
-    }
+  private async startRealtime(): Promise<void> {
+    this.publishError.set(null)
 
     let driverId: number | null = null
     try {
@@ -350,7 +357,7 @@ export class LiveTripMapPage {
       /* ignore */
     }
 
-    await this.publisher.start({
+    const started = await this.publisher.start({
       distanceFilterMeters: 10,
       minIntervalMs: 5000,
       getContext: () => {
@@ -368,10 +375,23 @@ export class LiveTripMapPage {
       send: async payload => {
         await this.api.sendDriverLocation(payload)
       },
-      onError: () => {
-        /* transient GPS/network errors expected */
+      onError: error => {
+        this.publishError.set(
+          error instanceof Error
+            ? error.message
+            : this.fa()
+              ? 'ارسال موقعیت راننده با خطا مواجه شد.'
+              : 'Driver location could not be sent.',
+        )
       },
     })
+    if (!started && this.publisher.permissionDenied()) {
+      this.publishError.set(
+        this.fa()
+          ? 'دسترسی مکان رد شده است. تنظیمات مرورگر را بررسی کنید.'
+          : 'Location permission was denied. Check your browser settings.',
+      )
+    }
   }
 
   protected toggleStationPanel(): void {
@@ -401,9 +421,8 @@ export class LiveTripMapPage {
       return
     this.loading.set(true)
     try {
-      this.publisher.stop()
-      await this.tracking.disconnect()
       await this.api.endTrip({ tripId: trip.id, directionId: trip.directionId })
+      this.publisher.stop()
       await this.router.navigateByUrl('/driver/route-selection')
     } catch {
       this.error.set(this.fa() ? 'پایان سفر ناموفق بود.' : 'Failed to end trip. Please try again.')

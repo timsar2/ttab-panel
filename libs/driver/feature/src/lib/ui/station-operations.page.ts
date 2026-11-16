@@ -2,20 +2,32 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, Router } from '@angular/router'
 import { DriverApi, Station, Passenger } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
-import { HlmButtonImports } from '@spartan-ng/helm/button'
-import { HlmCardImports } from '@spartan-ng/helm/card'
-import { HlmSpinnerImports } from '@spartan-ng/helm/spinner'
-import { HlmAlertImports } from '@spartan-ng/helm/alert'
-import { HlmSeparatorImports } from '@spartan-ng/helm/separator'
+import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
+import { HlmButton } from '@spartan-ng/helm/button'
+import {
+  HlmCard,
+  HlmCardContent,
+  HlmCardDescription,
+  HlmCardHeader,
+  HlmCardTitle,
+} from '@spartan-ng/helm/card'
+import { HlmSeparator } from '@spartan-ng/helm/separator'
+import { HlmSpinner } from '@spartan-ng/helm/spinner'
 
 @Component({
   selector: 'lib-station-operations-page',
   imports: [
-    HlmButtonImports,
-    HlmCardImports,
-    HlmSpinnerImports,
-    HlmAlertImports,
-    HlmSeparatorImports,
+    HlmButton,
+    HlmCard,
+    HlmCardContent,
+    HlmCardDescription,
+    HlmCardHeader,
+    HlmCardTitle,
+    HlmSpinner,
+    HlmAlert,
+    HlmAlertDescription,
+    HlmAlertTitle,
+    HlmSeparator,
   ],
   template: `
     <div class="page-container" [attr.dir]="fa() ? 'rtl' : 'ltr'">
@@ -144,7 +156,7 @@ import { HlmSeparatorImports } from '@spartan-ng/helm/separator'
               <p>{{ fa() ? 'مسافران غایب انتخاب شده:' : 'Selected absent passengers:' }}</p>
               <ul>
                 @for (id of selectedAbsentIds(); track id) {
-                  const passenger = station()!.passengers.find(p => p.id === id)
+                  @let passenger = station()!.passengers.find(p => p.id === id);
                   @if (passenger) {
                     <li>{{ passenger.fullName }}</li>
                   }

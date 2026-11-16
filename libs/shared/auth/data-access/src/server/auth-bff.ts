@@ -41,10 +41,21 @@ export interface AuthBffOptions {
   fetch?: typeof globalThis.fetch
   storage?: AuthSessionStorage
   onDiagnostic?: (diagnostic: AuthDiagnostic) => void
+  createTrackingConnection?: (
+    hubUrl: string,
+    accessTokenFactory: () => Promise<string>,
+  ) => AuthBffTrackingConnection
+}
+
+export interface AuthBffTrackingConnection {
+  on(eventName: string, handler: (...args: unknown[]) => void): void
+  onclose(handler: () => void): void
+  start(): Promise<void>
+  stop(): Promise<void>
 }
 
 export interface AuthDiagnostic {
-  operation: 'login' | 'session' | 'refresh' | 'logout' | 'proxy' | 'ssr'
+  operation: 'login' | 'session' | 'refresh' | 'logout' | 'proxy' | 'ssr' | 'tracking'
   reason:
     | 'request-failed'
     | 'cookie-missing'
@@ -208,6 +219,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   const fetcher = options.fetch ?? globalThis.fetch
   const storage = options.storage ?? createMemorySessionStorage()
   const maxSessionLifetime = config.production ? 12 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
+  const trackingConnections = new Map<string, Set<AuthBffTrackingConnection>>()
   const report = (diagnostic: AuthDiagnostic) => {
     try {
       options.onDiagnostic?.(diagnostic)
@@ -232,6 +244,40 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   }
   const allowedConnection = (req: Request) =>
     secure || ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '')
+
+  const trackingHubUrl = () => {
+    const api = new URL(config.apiUrl)
+    api.pathname = `${api.pathname.replace(/\/api\/?$/i, '').replace(/\/$/, '')}/notifications`
+    api.search = ''
+    api.hash = ''
+    return api.href
+  }
+
+  const createTrackingConnection = async (session: AuthStoredSession) => {
+    const accessTokenFactory = async () => {
+      const latest = await storage.get(session.id)
+      if (!latest) throw new Failure(401, 'session-missing')
+      const expiresAt = decodeUser(latest.token).expiresAt
+      const current = expiresAt <= Date.now() + 30_000 ? await refresh(latest) : latest
+      return current.token
+    }
+    if (options.createTrackingConnection)
+      return options.createTrackingConnection(trackingHubUrl(), accessTokenFactory)
+
+    const signalR = await import('@microsoft/signalr')
+    return new signalR.HubConnectionBuilder()
+      .withUrl(trackingHubUrl(), { accessTokenFactory, withCredentials: false })
+      .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+      .configureLogging(signalR.LogLevel.Warning)
+      .build()
+  }
+
+  const stopTrackingConnections = async (sessionId: string) => {
+    const connections = trackingConnections.get(sessionId)
+    if (!connections) return
+    trackingConnections.delete(sessionId)
+    await Promise.all([...connections].map(connection => connection.stop().catch(() => undefined)))
+  }
 
   const clear = (res: Response) =>
     res.clearCookie(cookieName, {
@@ -427,7 +473,10 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         return next
       })().catch(async error => {
         diagnose('refresh', error)
-        if (error instanceof Failure && error.status === 401) await storage.remove(session.id)
+        if (error instanceof Failure && error.status === 401) {
+          await storage.remove(session.id)
+          await stopTrackingConnections(session.id)
+        }
         throw error
       })
       entry = { promise, expiresAt: Infinity }
@@ -511,15 +560,17 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         ? 'login'
         : rawPath === '/auth/mobile-login' || rawPath === '/auth/mobile-register'
           ? 'login'
-          : rawPath === '/auth/mobile-logout'
-            ? 'logout'
-            : rawPath === '/auth/session'
-              ? 'session'
-              : rawPath === '/auth/refresh'
-                ? 'refresh'
-                : rawPath === '/auth/logout'
-                  ? 'logout'
-                  : 'proxy'
+          : rawPath === '/auth/tracking-stream'
+            ? 'tracking'
+            : rawPath === '/auth/mobile-logout'
+              ? 'logout'
+              : rawPath === '/auth/session'
+                ? 'session'
+                : rawPath === '/auth/refresh'
+                  ? 'refresh'
+                  : rawPath === '/auth/logout'
+                    ? 'logout'
+                    : 'proxy'
     void (async () => {
       // Reject encoded paths altogether: no normalization, traversal or endpoint aliases.
       if (
@@ -567,6 +618,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         try {
           const previous = await read(req)
           await storage.remove(previous.id)
+          await stopTrackingConnections(previous.id)
         } catch (error) {
           if (!(error instanceof Failure && error.status === 401)) throw error
         }
@@ -632,6 +684,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         try {
           const previous = await read(req)
           await storage.remove(previous.id)
+          await stopTrackingConnections(previous.id)
         } catch (error) {
           if (!(error instanceof Failure && error.status === 401)) throw error
         }
@@ -651,6 +704,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
           throw error
         }
         await storage.remove(session.id)
+        await stopTrackingConnections(session.id)
         try {
           await upstream('/personal/logout', session.tenant, 'GET', session.token)
         } catch {
@@ -670,12 +724,62 @@ export function createAuthBff(options: AuthBffOptions): Router & {
           throw error
         }
         await storage.remove(session.id)
+        await stopTrackingConnections(session.id)
         try {
           await upstream('/personal/logout', session.tenant, 'GET', session.token)
         } catch {
           /* Local logout wins. */
         }
         res.sendStatus(204)
+      } else if (req.method === 'GET' && rawPath === '/auth/tracking-stream') {
+        const fetchSite = req.get('sec-fetch-site')
+        if (
+          (req.get('origin') && req.get('origin') !== config.publicOrigin) ||
+          fetchSite === 'cross-site'
+        )
+          throw new Failure(403, 'access-forbidden')
+
+        const { session } = await current(req, res)
+        const connection = await createTrackingConnection(session)
+        const sessionConnections =
+          trackingConnections.get(session.id) ?? new Set<AuthBffTrackingConnection>()
+        sessionConnections.add(connection)
+        trackingConnections.set(session.id, sessionConnections)
+        let connected = false
+        let closed = false
+        const pending: string[] = []
+        const heartbeat = setInterval(() => {
+          if (connected && !closed) res.write(': keep-alive\n\n')
+        }, 15_000)
+        heartbeat.unref?.()
+        const send = (typeName: unknown, payload: unknown) => {
+          const chunk = `data: ${JSON.stringify({ typeName, payload })}\n\n`
+          if (closed) return
+          if (connected) res.write(chunk)
+          else pending.push(chunk)
+        }
+        connection.on('notificationFromServer', (...args: unknown[]) => send(args[0], args[1]))
+        connection.onclose(() => {
+          if (!res.writableEnded && !res.destroyed) res.end()
+        })
+        res.on('close', () => {
+          closed = true
+          clearInterval(heartbeat)
+          sessionConnections.delete(connection)
+          if (!sessionConnections.size) trackingConnections.delete(session.id)
+          void connection.stop().catch(() => undefined)
+        })
+        await connection.start()
+        if (closed) return
+
+        res.status(200)
+        res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
+        res.setHeader('Connection', 'keep-alive')
+        res.setHeader('X-Accel-Buffering', 'no')
+        res.flushHeaders()
+        res.write('retry: 3000\n\n')
+        connected = true
+        for (const chunk of pending) res.write(chunk)
       } else if (req.method === 'GET' && rawPath === '/auth/session') {
         res.json((await current(req, res)).metadata)
       } else if (req.method === 'POST' && rawPath === '/auth/refresh') {
@@ -712,6 +816,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         }
         if (response.status === 401) {
           await storage.remove(session.id)
+          await stopTrackingConnections(session.id)
           throw new Failure(401, 'access-rejected')
         }
         const code = (response.body as { code?: unknown } | null)?.code

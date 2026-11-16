@@ -44,6 +44,16 @@ export interface ActiveTrip {
   stations: Array<{ id: number; name: string; address?: string; lat?: number; lng?: number }>
 }
 
+export interface PassengerDriverLocation {
+  tripId: number
+  driverId: number
+  directionId: number | null
+  nextStationId: number | null
+  lat: number
+  lng: number
+  receivedAt: string
+}
+
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('Invalid service response.')
@@ -230,6 +240,47 @@ export class PassengerApi {
         typeof value['PassengerStationId'] === 'number' ? value['PassengerStationId'] : null,
       nextStationId: typeof value['NextStationId'] === 'number' ? value['NextStationId'] : null,
       stations,
+    }
+  }
+
+  async driverLocation(driverId: number): Promise<PassengerDriverLocation | null> {
+    const envelope = record(
+      await firstValueFrom(
+        this.http.get<unknown>('/api/v1/routings/location', { params: { driverId } }),
+      ),
+    )
+    if (envelope['code'] !== '2000') throw new Error('The driver location request failed.')
+    if (envelope['result'] == null) return null
+
+    const value = record(envelope['result'])
+    const tripId = Number(value['tripId'] ?? value['TripId'])
+    const responseDriverId = Number(value['driverId'] ?? value['DriverId'])
+    const lat = Number(value['lat'] ?? value['Lat'])
+    const lng = Number(value['lng'] ?? value['Lng'])
+    if (
+      !Number.isSafeInteger(tripId) ||
+      responseDriverId !== driverId ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < -90 ||
+      lat > 90 ||
+      lng < -180 ||
+      lng > 180
+    )
+      throw new Error('The driver location response is invalid.')
+
+    return {
+      tripId,
+      driverId: responseDriverId,
+      directionId: Number.isSafeInteger(value['directionId'] ?? value['DirectionId'])
+        ? Number(value['directionId'] ?? value['DirectionId'])
+        : null,
+      nextStationId: Number.isSafeInteger(value['nextStationId'] ?? value['NextStationId'])
+        ? Number(value['nextStationId'] ?? value['NextStationId'])
+        : null,
+      lat,
+      lng,
+      receivedAt: String(value['receivedAt'] ?? value['ReceivedAt'] ?? ''),
     }
   }
 

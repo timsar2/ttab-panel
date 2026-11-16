@@ -24,6 +24,8 @@ export interface NeshanMapPoint {
 }
 
 export interface NeshanLiveLocation {
+  readonly id?: number | string
+  readonly receivedAt?: string
   readonly lat: number
   readonly lng: number
   readonly heading?: number | null
@@ -89,6 +91,8 @@ export class NeshanMapComponent {
   readonly points = input<readonly NeshanMapPoint[]>([])
   /** Live driver/vehicle marker updated in real time. */
   readonly liveLocation = input<NeshanLiveLocation | null>(null)
+  /** Multiple live markers, for administration tracking views. */
+  readonly liveLocations = input<readonly NeshanLiveLocation[]>([])
   /** When true, keep camera following live location. */
   readonly followLive = input(false)
   readonly language = input<'en' | 'fa'>('en')
@@ -126,7 +130,7 @@ export class NeshanMapComponent {
         features: pointFeatures,
       }
       this.setStations(map, pointData)
-      if (!this.liveLocation()) this.fit(map, points)
+      if (!this.liveLocation() && this.liveLocations().length === 0) this.fit(map, points)
     })
 
     effect(() => {
@@ -154,15 +158,23 @@ export class NeshanMapComponent {
     effect(() => {
       const map = this.map()
       if (!map || !this.ready()) return
-      const live = this.liveLocation()
-      if (!this.validCoord(live?.lat, live?.lng)) {
+      const locations = this.liveLocations().length
+        ? this.liveLocations()
+        : this.liveLocation()
+          ? [this.liveLocation()!]
+          : []
+      const validLocations = locations.filter(location =>
+        this.validCoord(location.lat, location.lng),
+      )
+      if (validLocations.length === 0) {
         this.clearLive(map)
         return
       }
-      this.setLive(map, live as NeshanLiveLocation)
-      if (this.followLive()) {
+      this.setLive(map, validLocations)
+      if (this.followLive() && validLocations.length === 1) {
+        const live = validLocations[0]
         map.easeTo({
-          center: [live!.lng, live!.lat],
+          center: [live.lng, live.lat],
           duration: 500,
           zoom: Math.max(map.getZoom(), 14),
         })
@@ -183,11 +195,14 @@ export class NeshanMapComponent {
     const host = this.mapHost()?.nativeElement
     if (!apiKey || !host || this.disposed) return
     try {
-      // @ts-expect-error CSS side-effect import has no type declarations
+      // @ts-expect-error SDK stylesheet is resolved by the Angular bundler as a side-effect import.
       await import('@neshan-maps-platform/maplibre-sdk/style.css')
       const sdk = await import('@neshan-maps-platform/maplibre-sdk')
       if (this.disposed) return
-      const first = this.liveLocation() ?? this.points().find(point => this.validPoint(point))
+      const first =
+        this.liveLocations()[0] ??
+        this.liveLocation() ??
+        this.points().find(point => this.validPoint(point))
       const center: [number, number] =
         first && this.validCoord(first.lat, first.lng)
           ? [first.lng as number, first.lat as number]
@@ -254,16 +269,14 @@ export class NeshanMapComponent {
     }
   }
 
-  private setLive(map: NeshanMap, live: NeshanLiveLocation) {
+  private setLive(map: NeshanMap, locations: readonly NeshanLiveLocation[]) {
     const data: GeoJsonFeatureCollection = {
       type: 'FeatureCollection',
-      features: [
-        {
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: [live.lng, live.lat] },
-          properties: { label: live.label ?? '' },
-        },
-      ],
+      features: locations.map(live => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [live.lng, live.lat] },
+        properties: { label: live.label ?? '', id: live.id ?? '' },
+      })),
     }
     const existing = map.getSource('live-driver') as MutableGeoJsonSource | undefined
     if (existing?.setData) {

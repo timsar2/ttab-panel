@@ -35,7 +35,7 @@ function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng:
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)))
 }
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class DriverLocationPublisherService {
   private readonly destroyRef = inject(DestroyRef)
   private watchId: number | null = null

@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject } from '@angular/core'
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  inject,
+} from '@angular/core'
 import { NeshanLiveLocation, NeshanMapComponent } from '@org/shared-maps'
 import { TrackingConnectionService } from '@org/shared-tracking'
 import { environment } from '@org/platform/config'
@@ -15,53 +22,48 @@ import { PreferencesStore } from '@org/platform'
           {{
             tracking.connected()
               ? fa()
-                ? 'اتصال SignalR برقرار است'
-                : 'SignalR connected'
+                ? 'اتصال زنده برقرار است'
+                : 'Live tracking connected'
               : fa()
-                ? 'در حال اتصال به هاب...'
-                : 'Connecting to hub...'
+                ? 'در حال اتصال به جریان زنده...'
+                : 'Connecting to live tracking...'
           }}
         </p>
       </header>
 
-      @if (live(); as loc) {
-        <div class="meta">
-          <span
-            >{{ fa() ? 'آخرین موقعیت' : 'Last location' }}: {{ loc.lat.toFixed(5) }},
-            {{ loc.lng.toFixed(5) }}</span
-          >
-          @if (tracking.lastLocation()?.tripId != null) {
-            <span>{{ fa() ? 'سفر' : 'Trip' }}: {{ tracking.lastLocation()?.tripId }}</span>
-          }
-          @if (tracking.lastLocation()?.driverId != null) {
-            <span>{{ fa() ? 'راننده' : 'Driver' }}: {{ tracking.lastLocation()?.driverId }}</span>
-          }
-          @if (tracking.lastLocation()?.nextStationId != null) {
-            <span
-              >{{ fa() ? 'ایستگاه بعدی' : 'Next station' }}:
-              {{ tracking.lastLocation()?.nextStationId }}</span
-            >
-          }
-        </div>
-        <lib-neshan-map
-          [apiKey]="neshanMapApiKey"
-          [serviceApiKey]="neshanServiceApiKey"
-          [points]="[]"
-          [liveLocation]="liveMarker()"
-          [followLive]="true"
-          [language]="prefs.language()"
-        />
-      } @else {
+      @if (tracking.error(); as message) {
+        <p class="err" role="status">{{ message }}</p>
+      }
+      @if (!locations().length) {
         <div class="empty">
           <p>
             {{
               fa()
                 ? 'هنوز موقعیت زنده‌ای دریافت نشده است. با شروع سفر توسط راننده، موقعیت روی نقشه نمایش داده می‌شود.'
-                : 'No live location received yet. When a driver starts sharing during an active trip, their position will appear here.'
+                : 'No live locations yet. A driver location will appear after a service direction starts.'
             }}
           </p>
-          @if (tracking.error(); as err) {
-            <p class="err">{{ err }}</p>
+        </div>
+      }
+      <lib-neshan-map
+        [apiKey]="neshanMapApiKey"
+        [serviceApiKey]="neshanServiceApiKey"
+        [points]="[]"
+        [liveLocations]="liveMarkers()"
+        [followLive]="false"
+        [language]="prefs.language()"
+      />
+      @if (locations().length) {
+        <div class="meta">
+          @for (location of locations(); track location.driverId) {
+            <span>
+              {{ fa() ? 'راننده' : 'Driver' }} #{{ location.driverId }} ·
+              {{ fa() ? 'سفر' : 'Trip' }} #{{ location.tripId }} · {{ location.lat.toFixed(5) }},
+              {{ location.lng.toFixed(5) }}
+              @if (location.nextStationId !== null) {
+                · {{ fa() ? 'ایستگاه بعدی' : 'Next station' }} #{{ location.nextStationId }}
+              }
+            </span>
           }
         </div>
       }
@@ -102,6 +104,9 @@ import { PreferencesStore } from '@org/platform'
       .err {
         color: var(--destructive);
       }
+      lib-neshan-map {
+        display: block;
+      }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -114,28 +119,20 @@ export class LiveTrackingPage {
   protected readonly fa = computed(() => this.prefs.isRtl())
   protected readonly neshanMapApiKey = environment.neshanMapApiKey ?? null
   protected readonly neshanServiceApiKey = environment.neshanServiceApiKey ?? null
-
-  protected readonly live = computed(() => this.tracking.lastLocation())
-  protected readonly liveMarker = computed<NeshanLiveLocation | null>(() => {
-    const loc = this.live()
-    if (!loc) return null
-    return { lat: loc.lat, lng: loc.lng, label: this.fa() ? 'راننده' : 'Driver' }
-  })
+  protected readonly locations = computed(() => [...this.tracking.driverLocations().values()])
+  protected readonly liveMarkers = computed<NeshanLiveLocation[]>(() =>
+    this.locations().map(location => ({
+      id: location.driverId ?? undefined,
+      lat: location.lat,
+      lng: location.lng,
+      label: `${this.fa() ? 'راننده' : 'Driver'} #${location.driverId}`,
+    })),
+  )
 
   constructor() {
-    void this.connect()
+    afterNextRender(() => void this.tracking.connectCookieStream())
     this.destroyRef.onDestroy(() => {
       void this.tracking.disconnect()
     })
-  }
-
-  private async connect(): Promise<void> {
-    try {
-      const hubUrl = `${environment.baseUrl.replace(/\/$/, '')}/notifications`
-      await this.tracking.configure({ hubUrl, withCredentials: false })
-      await this.tracking.connect()
-    } catch {
-      /* retry handled by reconnect policy */
-    }
   }
 }

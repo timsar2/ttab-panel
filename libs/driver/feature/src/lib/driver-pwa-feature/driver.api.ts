@@ -128,6 +128,10 @@ function record(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>
 }
 
+function property(value: Record<string, unknown>, name: string): unknown {
+  return value[name] ?? value[`${name[0].toUpperCase()}${name.slice(1)}`]
+}
+
 function listResult(value: unknown): unknown[] {
   const envelope = record(value)
   if (envelope['code'] !== '2000' || !Array.isArray(envelope['result']))
@@ -244,12 +248,12 @@ export class DriverApi {
   async activeTrip(): Promise<ActiveTrip | null> {
     const { driverId } = this.scope()
     const response = await firstValueFrom(
-      this.http.get<unknown>(`/api/v1/trips/driver-active-trip/${driverId}`, {
+      this.http.get<unknown>(`/api/v1/trips/active-trip/${driverId}`, {
         observe: 'response',
       }),
     )
-    if (response.status === 204) return null
-    let body = response.body
+    if (response.status === 204 || response.body == null) return null
+    let body: unknown = response.body
     if (typeof body === 'string') {
       try {
         body = JSON.parse(body) as unknown
@@ -257,59 +261,85 @@ export class DriverApi {
         throw new Error('Invalid active-trip response.')
       }
     }
-    const value = record(body)
-    const stations = Array.isArray(value['Stations'])
-      ? value['Stations'].map((raw: unknown, index: number) => {
+    const envelope = record(body)
+    if ('result' in envelope && envelope['result'] == null) return null
+    const value =
+      envelope['result'] && typeof envelope['result'] === 'object'
+        ? record(envelope['result'])
+        : envelope
+    const stations = Array.isArray(property(value, 'stations'))
+      ? (property(value, 'stations') as unknown[]).map((raw: unknown, index: number) => {
           const item = record(raw)
-          const passengers = Array.isArray(item['Passengers'])
-            ? item['Passengers'].map((p: unknown) => {
+          const rawPassengers = property(item, 'passengers')
+          const passengers = Array.isArray(rawPassengers)
+            ? rawPassengers.map((p: unknown) => {
                 const passenger = record(p)
                 return {
-                  id: Number(passenger['Id']),
-                  fullName: String(passenger['FullName'] ?? ''),
-                  mobileNumber: String(passenger['MobileNumber'] ?? ''),
+                  id: Number(property(passenger, 'id')),
+                  fullName: String(property(passenger, 'fullName') ?? ''),
+                  mobileNumber: String(property(passenger, 'mobileNumber') ?? ''),
                   profileImage:
-                    typeof passenger['ProfileImage'] === 'string'
-                      ? passenger['ProfileImage']
+                    typeof property(passenger, 'profileImage') === 'string'
+                      ? (property(passenger, 'profileImage') as string)
                       : null,
-                  isAbsent: Boolean(passenger['IsAbsent']),
+                  isAbsent: Boolean(property(passenger, 'isAbsent')),
                 }
               })
             : []
           return {
-            id: Number(item['Id']),
-            name: String(item['Name'] ?? ''),
-            address: typeof item['Address'] === 'string' ? item['Address'] : undefined,
-            lat: typeof item['Lat'] === 'number' ? item['Lat'] : undefined,
-            lng: typeof item['Lng'] === 'number' ? item['Lng'] : undefined,
+            id: Number(property(item, 'id')),
+            name: String(property(item, 'name') ?? ''),
+            address:
+              typeof property(item, 'address') === 'string'
+                ? (property(item, 'address') as string)
+                : undefined,
+            lat:
+              typeof property(item, 'lat') === 'number'
+                ? (property(item, 'lat') as number)
+                : undefined,
+            lng:
+              typeof property(item, 'lng') === 'number'
+                ? (property(item, 'lng') as number)
+                : undefined,
             order: index + 1,
             passengers,
           }
         })
       : []
-    const vehicle = record(value['Vehicle'] ?? {})
+    const vehicle = record(property(value, 'vehicle') ?? {})
     return {
-      id: Number(value['Id']),
-      driverLineId: Number(value['DriverLineId']),
-      shiftTimeId: Number(value['ShiftTimeId']),
-      tripTypeId: Number(value['TripTypeId']),
-      directionId: Number(value['DirectionId']),
-      lineId: typeof value['LineId'] === 'number' ? value['LineId'] : null,
-      lineName: String(value['LineName'] ?? ''),
-      tripTypeName: String(value['TripTypeName'] ?? ''),
-      shiftTime: String(value['ShiftTime'] ?? ''),
-      departureTime: String(value['DepartureTime'] ?? ''),
-      nextStationId: typeof value['NextStationId'] === 'number' ? value['NextStationId'] : null,
+      id: Number(property(value, 'id')),
+      driverLineId: Number(property(value, 'driverLineId')),
+      shiftTimeId: Number(property(value, 'shiftTimeId')),
+      tripTypeId: Number(property(value, 'tripTypeId')),
+      directionId: Number(property(value, 'directionId')),
+      lineId:
+        typeof property(value, 'lineId') === 'number'
+          ? (property(value, 'lineId') as number)
+          : null,
+      lineName: String(property(value, 'lineName') ?? ''),
+      tripTypeName: String(property(value, 'tripTypeName') ?? ''),
+      shiftTime: String(property(value, 'shiftTime') ?? ''),
+      departureTime: String(property(value, 'departureTime') ?? ''),
+      nextStationId:
+        typeof property(value, 'nextStationId') === 'number'
+          ? (property(value, 'nextStationId') as number)
+          : null,
       passengerStationId:
-        typeof value['PassengerStationId'] === 'number' ? value['PassengerStationId'] : null,
+        typeof property(value, 'passengerStationId') === 'number'
+          ? (property(value, 'passengerStationId') as number)
+          : null,
       stations,
       vehicle: {
-        type: String(vehicle['Type'] ?? ''),
-        plate: String(vehicle['Plate'] ?? ''),
-        color: String(vehicle['Color'] ?? ''),
-        year: Number(vehicle['Year'] ?? 0),
-        capacity: Number(vehicle['Capacity'] ?? 0),
-        image: typeof vehicle['Image'] === 'string' ? vehicle['Image'] : null,
+        type: String(property(vehicle, 'type') ?? ''),
+        plate: String(property(vehicle, 'plate') ?? ''),
+        color: String(property(vehicle, 'color') ?? ''),
+        year: Number(property(vehicle, 'year') ?? 0),
+        capacity: Number(property(vehicle, 'capacity') ?? 0),
+        image:
+          typeof property(vehicle, 'image') === 'string'
+            ? (property(vehicle, 'image') as string)
+            : null,
       },
     }
   }
@@ -335,13 +365,17 @@ export class DriverApi {
     const { companyId } = this.scope()
     const response = record(
       await firstValueFrom(
-        this.http.post('/api/v1/trips/start', {
+        this.http.post('/api/v1/trips', {
           companyId,
           ...request,
         }),
       ),
     )
-    if (response['code'] !== '2000' || response['result'] !== true)
+    if (
+      response['code'] !== '2000' ||
+      !response['result'] ||
+      typeof response['result'] !== 'object'
+    )
       throw new Error('The trip could not be started.')
   }
 
@@ -363,9 +397,10 @@ export class DriverApi {
     const { companyId } = this.scope()
     const response = record(
       await firstValueFrom(
-        this.http.post('/api/v1/trips/end', {
+        this.http.post('/api/v1/trips/end-trip', {
           companyId,
-          ...request,
+          id: request.tripId,
+          directionId: request.directionId,
         }),
       ),
     )
@@ -382,7 +417,7 @@ export class DriverApi {
         directionId: request.directionId ?? null,
         driverLineId: request.driverLineId ?? null,
         lineId: request.lineId ?? null,
-        nextStationId: request.nextStationId ?? null,
+        ...(request.nextStationId != null ? { nextStationId: request.nextStationId } : {}),
         coordinate: { lat: request.lat, lng: request.lng },
       }),
     )

@@ -2,28 +2,55 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router'
 import { DriverApi, RouteCard } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
-import { HlmButtonImports } from '@spartan-ng/helm/button'
-import { HlmCardImports } from '@spartan-ng/helm/card'
-import { HlmTabsImports } from '@spartan-ng/helm/tabs'
-import { HlmSpinnerImports } from '@spartan-ng/helm/spinner'
-import { HlmAlertImports } from '@spartan-ng/helm/alert'
-import { HlmSelectImports } from '@spartan-ng/helm/select'
-import { HlmInputImports } from '@spartan-ng/helm/input'
-import { HlmLabelImports } from '@spartan-ng/helm/label'
+import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
+import { HlmButton } from '@spartan-ng/helm/button'
+import {
+  HlmCard,
+  HlmCardContent,
+  HlmCardDescription,
+  HlmCardFooter,
+  HlmCardHeader,
+  HlmCardTitle,
+} from '@spartan-ng/helm/card'
+import { HlmInput } from '@spartan-ng/helm/input'
+import { HlmLabel } from '@spartan-ng/helm/label'
+import {
+  HlmSelect,
+  HlmSelectContent,
+  HlmSelectItem,
+  HlmSelectTrigger,
+  HlmSelectValue,
+} from '@spartan-ng/helm/select'
+import { HlmSpinner } from '@spartan-ng/helm/spinner'
+import { HlmTabs, HlmTabsContent, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs'
 
 type TabType = 'your-route' | 'new-route'
 
 @Component({
   selector: 'lib-route-management-page',
   imports: [
-    HlmButtonImports,
-    HlmCardImports,
-    HlmTabsImports,
-    HlmSpinnerImports,
-    HlmAlertImports,
-    HlmSelectImports,
-    HlmInputImports,
-    HlmLabelImports,
+    HlmButton,
+    HlmCard,
+    HlmCardContent,
+    HlmCardDescription,
+    HlmCardFooter,
+    HlmCardHeader,
+    HlmCardTitle,
+    HlmTabs,
+    HlmTabsContent,
+    HlmTabsList,
+    HlmTabsTrigger,
+    HlmSpinner,
+    HlmAlert,
+    HlmAlertDescription,
+    HlmAlertTitle,
+    HlmSelect,
+    HlmSelectContent,
+    HlmSelectItem,
+    HlmSelectTrigger,
+    HlmSelectValue,
+    HlmInput,
+    HlmLabel,
   ],
   template: `
     <div class="page-container" [attr.dir]="fa() ? 'rtl' : 'ltr'">
@@ -34,23 +61,19 @@ type TabType = 'your-route' | 'new-route'
         </p>
       </header>
 
-      <hlm-tabs defaultValue="your-route" class="route-tabs" (valueChange)="setTab($event)">
+      <hlm-tabs [tab]="activeTab()" (tabActivated)="setTab($event)" class="route-tabs">
         <hlm-tabs-list>
-          <hlm-tabs-trigger value="your-route">{{
-            fa() ? 'مسیر شما' : 'Your Route'
-          }}</hlm-tabs-trigger>
-          <hlm-tabs-trigger value="new-route">{{
-            fa() ? 'مسیر جدید' : 'New Route'
-          }}</hlm-tabs-trigger>
+          <button hlmTabsTrigger="your-route">{{ fa() ? 'مسیر شما' : 'Your Route' }}</button>
+          <button hlmTabsTrigger="new-route">{{ fa() ? 'مسیر جدید' : 'New Route' }}</button>
         </hlm-tabs-list>
 
         @if (loading()) {
-          <div class="loading-state" hlm-tabs-content>
+          <div class="loading-state" hlmTabsContent="your-route">
             <hlm-spinner />
             <p>{{ fa() ? 'در حال بارگذاری...' : 'Loading...' }}</p>
           </div>
         } @else if (error()) {
-          <hlm-alert class="error-alert" variant="destructive" hlm-tabs-content>
+          <hlm-alert class="error-alert" variant="destructive" hlmTabsContent="your-route">
             <hlm-alert-title>{{ fa() ? 'خطا در بارگذاری' : 'Failed to load' }}</hlm-alert-title>
             <hlm-alert-description>{{ error() }}</hlm-alert-description>
             <button hlmBtn variant="outline" class="retry-btn" (click)="loadRoutes()">
@@ -58,7 +81,7 @@ type TabType = 'your-route' | 'new-route'
             </button>
           </hlm-alert>
         } @else {
-          <div hlm-tabs-content *hlmTabsContent="['your-route']">
+          <div hlmTabsContent="your-route">
             @if (yourRoutes().length > 0) {
               <div class="routes-grid">
                 @for (route of yourRoutes(); track route.id) {
@@ -135,16 +158,12 @@ type TabType = 'your-route' | 'new-route'
             }
           </div>
 
-          <div hlm-tabs-content *hlmTabsContent="['new-route']">
+          <div hlmTabsContent="new-route">
             <div class="filter-section">
               <div class="filter-row">
-                <hlm-select
-                  [(value)]="filterLine"
-                  (valueChange)="applyFilters()"
-                  placeholder="{{ fa() ? 'خط را انتخاب کنید' : 'Select line' }}"
-                >
+                <hlm-select [(value)]="filterLine" (valueChange)="applyFilters()">
                   <hlm-select-trigger>
-                    <hlm-select-value />
+                    <hlm-select-value [placeholder]="fa() ? 'خط را انتخاب کنید' : 'Select line'" />
                   </hlm-select-trigger>
                   <hlm-select-content>
                     @for (line of availableLines(); track line.id) {
@@ -152,13 +171,9 @@ type TabType = 'your-route' | 'new-route'
                     }
                   </hlm-select-content>
                 </hlm-select>
-                <hlm-select
-                  [(value)]="filterTripType"
-                  (valueChange)="applyFilters()"
-                  placeholder="{{ fa() ? 'نوع سفر' : 'Trip type' }}"
-                >
+                <hlm-select [(value)]="filterTripType" (valueChange)="applyFilters()">
                   <hlm-select-trigger>
-                    <hlm-select-value />
+                    <hlm-select-value [placeholder]="fa() ? 'نوع سفر' : 'Trip type'" />
                   </hlm-select-trigger>
                   <hlm-select-content>
                     @for (type of availableTripTypes(); track type.id) {
@@ -166,13 +181,9 @@ type TabType = 'your-route' | 'new-route'
                     }
                   </hlm-select-content>
                 </hlm-select>
-                <hlm-select
-                  [(value)]="filterShift"
-                  (valueChange)="applyFilters()"
-                  placeholder="{{ fa() ? 'شیفت' : 'Shift' }}"
-                >
+                <hlm-select [(value)]="filterShift" (valueChange)="applyFilters()">
                   <hlm-select-trigger>
-                    <hlm-select-value />
+                    <hlm-select-value [placeholder]="fa() ? 'شیفت' : 'Shift'" />
                   </hlm-select-trigger>
                   <hlm-select-content>
                     @for (shift of availableShifts(); track shift.id) {
@@ -422,8 +433,8 @@ export class RouteManagementPage {
     }
   }
 
-  protected setTab(tab: TabType): void {
-    this.activeTab.set(tab)
+  protected setTab(tab: string): void {
+    if (tab === 'your-route' || tab === 'new-route') this.activeTab.set(tab)
   }
 
   protected applyFilters(): void {

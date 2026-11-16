@@ -84,6 +84,37 @@ describe('PassengerApi', () => {
     })
   })
 
+  it('loads the authorized driver location and handles a cleared location', async () => {
+    const result = api.driverLocation(176)
+    const request = http.expectOne('/api/v1/routings/location?driverId=176')
+    expect(request.request.method).toBe('GET')
+    request.flush({
+      code: '2000',
+      result: {
+        tripId: 72,
+        driverId: 176,
+        directionId: 99,
+        nextStationId: 62,
+        lat: 35.8,
+        lng: 51.1,
+        receivedAt: '2026-11-16T05:00:00Z',
+      },
+    })
+    await expect(result).resolves.toEqual({
+      tripId: 72,
+      driverId: 176,
+      directionId: 99,
+      nextStationId: 62,
+      lat: 35.8,
+      lng: 51.1,
+      receivedAt: '2026-11-16T05:00:00Z',
+    })
+
+    const cleared = api.driverLocation(176)
+    http.expectOne('/api/v1/routings/location?driverId=176').flush({ code: '2000', result: null })
+    await expect(cleared).resolves.toBeNull()
+  })
+
   it('uses the authenticated user id for profile rather than the Passenger business id', async () => {
     const result = api.profile()
     const request = http.expectOne('/api/users/901')

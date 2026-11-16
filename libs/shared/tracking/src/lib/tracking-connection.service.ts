@@ -62,12 +62,15 @@ function notificationKind(typeName: unknown): string {
 @Injectable({ providedIn: 'root' })
 export class TrackingConnectionService implements OnDestroy {
   private connection: HubConnection | null = null
+  private eventSource: EventSource | null = null
+  private eventSourceUrl: string | null = null
   private config: TrackingHubConfig | null = null
   private startPromise: Promise<void> | null = null
 
   readonly state = signal<TrackingConnectionState>('disconnected')
   readonly connected = computed(() => this.state() === 'connected')
   readonly lastLocation = signal<DriverLocationUpdate | null>(null)
+  readonly driverLocations = signal<ReadonlyMap<number, DriverLocationUpdate>>(new Map())
   readonly lastPassengerNotification = signal<PassengerTripNotification | null>(null)
   readonly error = signal<string | null>(null)
 
@@ -129,9 +132,44 @@ export class TrackingConnectionService implements OnDestroy {
     return this.startPromise
   }
 
+  /** Same-origin server bridge keeps upstream JWT credentials outside browser JavaScript. */
+  async connectCookieStream(streamUrl = '/api/auth/tracking-stream'): Promise<void> {
+    if (this.eventSource && this.eventSourceUrl === streamUrl) return
+    await this.disposeConnection()
+    this.config = null
+
+    const source = new EventSource(streamUrl, { withCredentials: true })
+    this.eventSource = source
+    this.eventSourceUrl = streamUrl
+    this.state.set('connecting')
+    source.onopen = () => {
+      this.error.set(null)
+      this.state.set('connected')
+    }
+    source.onmessage = event => {
+      try {
+        const notification = asRecord(JSON.parse(event.data) as unknown)
+        if (notification) this.handleNotification(notification['typeName'], notification['payload'])
+      } catch {
+        this.error.set('The tracking stream returned an invalid event.')
+      }
+    }
+    source.onerror = () => {
+      this.state.set('reconnecting')
+      this.error.set('The tracking stream is reconnecting.')
+    }
+  }
+
   async disconnect(): Promise<void> {
+    const hadEventSource = this.eventSource !== null
+    this.eventSource?.close()
+    this.eventSource = null
+    this.eventSourceUrl = null
     const connection = this.connection
-    if (!connection) return
+    if (!connection) {
+      if (hadEventSource) this.state.set('disconnected')
+      return
+    }
     try {
       if (connection.state !== HubConnectionState.Disconnected) await connection.stop()
     } finally {
@@ -143,16 +181,39 @@ export class TrackingConnectionService implements OnDestroy {
     const kind = notificationKind(typeName)
     if (kind === LOCATION_NOTIFICATION) {
       const location = normalizeLocation(payload)
-      if (location) this.lastLocation.set(location)
+      if (location) {
+        this.lastLocation.set(location)
+        if (location.driverId !== null && location.driverId !== undefined) {
+          this.driverLocations.update(current => {
+            const next = new Map(current)
+            next.set(location.driverId!, location)
+            return next
+          })
+        }
+      }
       return
     }
     if (kind === PASSENGER_NOTIFICATION) {
       const note = normalizePassenger(payload)
-      if (note) this.lastPassengerNotification.set(note)
+      if (note) {
+        this.lastPassengerNotification.set(note)
+        if (note.isTripActive === false) {
+          this.driverLocations.update(current => {
+            const next = new Map(current)
+            for (const [driverId, location] of next)
+              if (location.tripId === note.tripId) next.delete(driverId)
+            return next
+          })
+          if (this.lastLocation()?.tripId === note.tripId) this.lastLocation.set(null)
+        }
+      }
     }
   }
 
   private async disposeConnection(): Promise<void> {
+    this.eventSource?.close()
+    this.eventSource = null
+    this.eventSourceUrl = null
     const connection = this.connection
     this.connection = null
     this.startPromise = null

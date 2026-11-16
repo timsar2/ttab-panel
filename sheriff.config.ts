@@ -45,6 +45,7 @@ export const config = {
     'libs/shared/layout/src': ['scope:shared', 'type:ui'],
     'libs/shared/ui/<component>/src': ['scope:shared', 'type:ui'],
     'libs/shared/maps/src': ['scope:shared', 'type:ui'],
+    'libs/shared/tracking/src': ['scope:shared', 'type:util'],
 
     'libs/shared/theme/data-access/src': ['scope:shared', 'type:data'],
     'libs/shared/theme/ui/src': ['scope:shared', 'type:feature'],

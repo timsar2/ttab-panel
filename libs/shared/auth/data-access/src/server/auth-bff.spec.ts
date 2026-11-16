@@ -1,10 +1,13 @@
 import express from 'express'
+import { get } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import request from 'supertest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createAuthBff,
   createMemorySessionStorage,
   readAuthBffConfig,
+  type AuthBffOptions,
   type AuthSessionStorage,
 } from './index'
 
@@ -39,7 +42,12 @@ const json = (value: unknown, status = 200) =>
     status,
     headers: { 'Content-Type': 'application/json', 'Set-Cookie': 'upstream=leak' },
   })
-function fixture(storage?: AuthSessionStorage, refreshLifetime = 86_400_000, bffConfig = config()) {
+function fixture(
+  storage?: AuthSessionStorage,
+  refreshLifetime = 86_400_000,
+  bffConfig = config(),
+  createTrackingConnection?: AuthBffOptions['createTrackingConnection'],
+) {
   let token = jwt()
   const diagnostics = vi.fn()
   const fetcher = vi.fn<(input: string | URL | Request, init?: RequestInit) => Promise<Response>>(
@@ -70,6 +78,7 @@ function fixture(storage?: AuthSessionStorage, refreshLifetime = 86_400_000, bff
     fetch: fetcher as typeof fetch,
     storage,
     onDiagnostic: diagnostics,
+    ...(createTrackingConnection ? { createTrackingConnection } : {}),
   })
   const app = express().use('/api', bff)
   const login = () =>
@@ -87,6 +96,7 @@ function fixture(storage?: AuthSessionStorage, refreshLifetime = 86_400_000, bff
     setToken: (next: string) => {
       token = next
     },
+    getToken: () => token,
   }
 }
 const cookie = (response: { headers: Record<string, unknown> }): string =>
@@ -252,27 +262,110 @@ describe('Node cookie authentication BFF', () => {
     expect(session.headers['cache-control']).toBe('no-store')
   })
 
-  it('defaults local OTP registration to the root tenant without exposing the upstream OTP value', async () => {
-    const configured = readAuthBffConfig(
-      {
-        AUTH_API_URL: 'http://127.0.0.1:5000/api',
-        AUTH_PUBLIC_ORIGIN: origin,
-        AUTH_SESSION_SECRET: secret,
-        NODE_ENV: 'development',
+  it('requires an authenticated same-origin session before opening the tracking stream', async () => {
+    const createTrackingConnection = vi.fn() as unknown as NonNullable<
+      AuthBffOptions['createTrackingConnection']
+    >
+    const { app, fetcher } = fixture(undefined, 86_400_000, config(), createTrackingConnection)
+    await request(app)
+      .get('/api/auth/tracking-stream')
+      .set('Origin', origin)
+      .set('Sec-Fetch-Site', 'same-origin')
+      .expect(401)
+    expect(fetcher).not.toHaveBeenCalled()
+    expect(createTrackingConnection).not.toHaveBeenCalled()
+  })
+
+  it('bridges authenticated hub events to SSE without returning the bearer token', async () => {
+    let expectedToken = ''
+    let onNotification!: (...args: unknown[]) => void
+    let markStopped!: () => void
+    const stopped = new Promise<void>(resolve => (markStopped = resolve))
+    const createTrackingConnection: NonNullable<AuthBffOptions['createTrackingConnection']> = (
+      hubUrl,
+      accessTokenFactory,
+    ) => ({
+      on: (eventName, handler) => {
+        expect(eventName).toBe('notificationFromServer')
+        onNotification = handler
       },
-      hostDefaults,
-    )
+      onclose: () => undefined,
+      start: async () => {
+        expect(hubUrl).toBe('http://127.0.0.1:5000/notifications')
+        expect(await accessTokenFactory()).toBe(expectedToken)
+        onNotification('LocationNotification', {
+          tripId: 84,
+          driverId: 42,
+          lat: 35.7,
+          lng: 51.4,
+        })
+      },
+      stop: async () => markStopped(),
+    })
+    const f = fixture(undefined, 86_400_000, config(), createTrackingConnection)
+    const loginResponse = await f.login().expect(200)
+    expectedToken = f.getToken()
+    const server = f.app.listen(0, '127.0.0.1')
+    try {
+      await new Promise<void>(resolve => server.once('listening', resolve))
+      const address = server.address() as AddressInfo
+      let body = ''
+      const eventStream = new Promise<string>((resolve, reject) => {
+        const streamRequest = get({
+          hostname: '127.0.0.1',
+          port: address.port,
+          path: '/api/auth/tracking-stream',
+          headers: {
+            Cookie: cookie(loginResponse),
+            Origin: origin,
+            'Sec-Fetch-Site': 'same-origin',
+          },
+        })
+        streamRequest.on('response', response => {
+          expect(response.statusCode).toBe(200)
+          response.on('data', chunk => {
+            body += chunk.toString()
+            if (body.includes('LocationNotification')) {
+              resolve(body)
+              streamRequest.destroy()
+            }
+          })
+        })
+        streamRequest.on('error', error => {
+          if (!body.includes('LocationNotification')) reject(error)
+        })
+      })
+
+      const message = await eventStream
+      expect(message).toContain('"tripId":84')
+      expect(message).not.toContain(expectedToken)
+      expect(message).not.toContain('upstream-refresh-secret')
+      await stopped
+    } finally {
+      server.closeAllConnections()
+      await new Promise<void>(resolve => server.close(() => resolve()))
+    }
+  })
+
+  it('uses the configured tenant and does not expose the upstream OTP value', async () => {
+    const configured = readAuthBffConfig({
+      AUTH_API_URL: 'https://api.example.test/api',
+      AUTH_PUBLIC_ORIGIN: 'https://passenger.example.test',
+      AUTH_SESSION_SECRET: secret,
+      AUTH_MOBILE_TENANT: 'root',
+      NODE_ENV: 'production',
+    })
     const f = fixture(undefined, 86_400_000, configured)
     const response = await request(f.app)
       .post('/api/auth/mobile-register')
-      .set('Origin', origin)
+      .set('Origin', 'https://passenger.example.test')
       .set('X-Auth-Request', '1')
       .send({ mobile: '09123456789' })
       .expect(204)
     expect(response.text).toBe('')
     expect(JSON.stringify(response.body)).not.toContain('otp-secret')
     expect(f.fetcher.mock.calls[0][0]).toBe(
-      'http://127.0.0.1:5000/api/users/mobile-register/09123456789',
+      'https://api.example.test/api/users/mobile-register/09123456789',
     )
     expect((f.fetcher.mock.calls[0][1]?.headers as Record<string, string>)['tenant']).toBe('root')
   })
