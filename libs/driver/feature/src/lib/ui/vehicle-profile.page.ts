@@ -154,7 +154,7 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
               <div class="images-grid">
                 <div class="image-upload" [class.has-image]="vehicleImage()">
                   <label class="image-label">
-                    <span class="image-title">{{ fa() ? 'عکس وسیله' : 'Vehicle Photo' }}</span>
+                    <span class="image-title">{{ fa() ? 'تصویر وسیله' : 'Vehicle Photo' }}</span>
                     @if (vehicleImage()) {
                       <img
                         [src]="vehicleImage()"
@@ -214,7 +214,9 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
 
                 <div class="image-upload" [class.has-image]="cardImage()">
                   <label class="image-label">
-                    <span class="image-title">{{ fa() ? 'عکس کارت کاربری' : 'Card Image' }}</span>
+                    <span class="image-title">{{
+                      fa() ? 'تصویر کارت وسیله' : 'Vehicle Card Image'
+                    }}</span>
                     @if (cardImage()) {
                       <img
                         [src]="cardImage()"
@@ -275,7 +277,7 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
                 <div class="image-upload" [class.has-image]="insuranceImage()">
                   <label class="image-label">
                     <span class="image-title">{{
-                      fa() ? 'عکس بیمه‌نامه' : 'Insurance Image'
+                      fa() ? 'تصویر بیمه‌نامه' : 'Insurance Image'
                     }}</span>
                     @if (insuranceImage()) {
                       <img
@@ -440,16 +442,12 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
       }
       .images-grid {
         display: grid;
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
         gap: 1rem;
-      }
-      @media (min-width: 768px) {
-        .images-grid {
-          grid-template-columns: repeat(3, 1fr);
-        }
       }
       .image-upload {
         position: relative;
+        min-width: 0;
       }
       .image-label {
         display: block;
@@ -461,6 +459,8 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
         font-weight: 500;
         margin-bottom: 0.5rem;
         color: var(--muted-foreground);
+        min-height: 2.5rem;
+        line-height: 1.25rem;
       }
       .preview-image {
         width: 100%;
@@ -492,6 +492,11 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
         border-radius: 0.5rem;
         color: var(--muted-foreground);
         gap: 0.5rem;
+        min-height: 10rem;
+        aspect-ratio: 4/3;
+        text-align: center;
+        padding: 0.75rem;
+        box-sizing: border-box;
         transition: all 0.2s;
       }
       .placeholder:hover {

@@ -5,8 +5,6 @@ import { AppLayout, LayoutNavItem } from '@org/layout'
 import { DriverApi, DriverRecord } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
 import { HlmButtonImports } from '@spartan-ng/helm/button'
-import { HlmAvatarImports } from '@spartan-ng/helm/avatar'
-import { NgIcon } from '@ng-icons/core'
 import {
   lucideRoute,
   lucideMap,
@@ -19,7 +17,7 @@ import {
 @Component({
   selector: 'lib-driver-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AppLayout, RouterOutlet, NgIcon, HlmButtonImports],
+  imports: [AppLayout, RouterOutlet, HlmButtonImports],
   template: `
     <lib-app-layout [items]="navigationItems()" [navigationLabel]="navigationLabel()">
       <span layoutBrand class="truncate font-semibold">Driver</span>

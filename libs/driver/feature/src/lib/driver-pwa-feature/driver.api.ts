@@ -37,6 +37,25 @@ export interface RouteCard {
   driverLineId: number
   shiftTimeId: number
   tripTypeId: number
+  status?: string
+  driverName?: string | null
+  vehicleInfo?: string | null
+  passengerCount?: number | null
+  estimatedMinutes?: number | null
+}
+
+export interface DriverRoutesPagination {
+  pageNumber: number
+  pageSize: number
+  totalCount: number
+  totalPages: number
+  hasPreviousPage: boolean
+  hasNextPage: boolean
+}
+
+export interface DriverRoutesPage {
+  list: RouteCard[]
+  pagination: DriverRoutesPagination
 }
 
 export interface ActiveTrip {
@@ -219,38 +238,71 @@ export class DriverApi {
     }
   }
 
-  async availableRoutes(): Promise<RouteCard[]> {
-    const { driverId } = this.scope()
+  async availableRoutes(pageNumber = 1, pageSize = 10): Promise<RouteCard[]> {
+    return (await this.availableRoutesPage(pageNumber, pageSize)).list
+  }
+
+  async availableRoutesPage(pageNumber = 1, pageSize = 10): Promise<DriverRoutesPage> {
+    const { driverId, companyId } = this.scope()
     const response = await firstValueFrom(
-      this.http.get<unknown>(`/api/v1/trips/driver/${driverId}`),
+      this.http.post<unknown>('/api/v1/lines/search-driver', {
+        companyId,
+        driverId,
+        pageNumber,
+        pageSize,
+      }),
     )
-    if (!Array.isArray(response)) throw new Error('Invalid assigned-route response.')
-    return response
+    const payload = dataResult(response)
+    if (!Array.isArray(payload['list'])) throw new Error('Invalid assigned-route response.')
+    const rawPagination = record(payload['pagination'])
+    const pagination: DriverRoutesPagination = {
+      pageNumber: Number(property(rawPagination, 'pageNumber') ?? pageNumber),
+      pageSize: Number(property(rawPagination, 'pageSize') ?? pageSize),
+      totalCount: Number(property(rawPagination, 'totalCount') ?? payload['list'].length),
+      totalPages: Number(property(rawPagination, 'totalPages') ?? 1),
+      hasPreviousPage: Boolean(property(rawPagination, 'hasPreviousPage')),
+      hasNextPage: Boolean(property(rawPagination, 'hasNextPage')),
+    }
+    const list = payload['list']
       .map(value => {
         const item = record(value)
-        const driverLineId = Number(property(item, 'driverLineId'))
-        const shiftTimeId = Number(property(item, 'shiftTimeId'))
-        const tripTypeId = Number(property(item, 'tripTypeId'))
+        const driverLineId = Number(property(item, 'id') ?? property(item, 'driverLineId'))
         const directionId = Number(property(item, 'directionId'))
+        const lineId = Number(property(item, 'lineId'))
         return {
-          id: `${driverLineId}:${shiftTimeId}:${tripTypeId}:${directionId}`,
-          lineName: String(property(item, 'lineName') ?? ''),
+          id: String(driverLineId),
+          lineName: String(property(item, 'directionName') ?? property(item, 'lineName') ?? ''),
           tripTypeName: String(property(item, 'tripTypeName') ?? ''),
           shiftTime: String(property(item, 'shiftTimeName') ?? ''),
           departureTime: String(property(item, 'departureTime') ?? ''),
           directionId,
           driverLineId,
-          shiftTimeId,
-          tripTypeId,
+          shiftTimeId: Number(property(item, 'shiftTimeId') ?? 0),
+          tripTypeId: Number(property(item, 'tripTypeId') ?? 0),
+          ...(property(item, 'status') != null || property(item, 'isActive') != null
+            ? { status: String(property(item, 'status') ?? property(item, 'isActive')) }
+            : {}),
+          ...(typeof property(item, 'fullName') === 'string'
+            ? { driverName: property(item, 'fullName') as string }
+            : {}),
+          ...(typeof property(item, 'vehicleInfo') === 'string'
+            ? { vehicleInfo: property(item, 'vehicleInfo') as string }
+            : {}),
+          ...(typeof property(item, 'passengerCount') === 'number'
+            ? { passengerCount: property(item, 'passengerCount') as number }
+            : {}),
+          ...(typeof property(item, 'estimatedMinutes') === 'number'
+            ? { estimatedMinutes: property(item, 'estimatedMinutes') as number }
+            : {}),
+          ...(Number.isSafeInteger(lineId) ? { lineId } : {}),
         }
       })
-      .filter(
-        item =>
-          Number.isSafeInteger(item.directionId) &&
-          Number.isSafeInteger(item.driverLineId) &&
-          Number.isSafeInteger(item.shiftTimeId) &&
-          Number.isSafeInteger(item.tripTypeId),
-      )
+      .map(value => {
+        if (!Number.isSafeInteger(value.driverLineId) || !Number.isSafeInteger(value.directionId))
+          throw new Error('Invalid assigned-route response.')
+        return value
+      })
+    return { list, pagination }
   }
 
   async activeTrip(): Promise<ActiveTrip | null> {

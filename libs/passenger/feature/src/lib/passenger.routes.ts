@@ -4,6 +4,7 @@ import { AUTH_CONFIG, SessionStore } from '@org/platform'
 import { map } from 'rxjs'
 import { PassengerApi, PASSENGER_IDENTITY, PassengerIdentity } from './passenger.api'
 import { PASSENGER_LOGIN_LANGUAGE, PASSENGER_SET_LANGUAGE } from './passenger.login-config'
+import { PassengerSupportApi } from './support.api'
 
 export interface PassengerFeatureConfig {
   readonly identity: () => PassengerIdentity
@@ -15,7 +16,12 @@ export const PASSENGER_FEATURE_CONFIG = new InjectionToken<PassengerFeatureConfi
 )
 
 export function hasPassengerAccess(roles: readonly string[]): boolean {
-  return roles.includes('Client') && !roles.includes('Driver')
+  const staffRoles = ['Admin', 'Manager', 'Oprator', 'Operator']
+  return (
+    roles.includes('Client') &&
+    !roles.includes('Driver') &&
+    !roles.some(role => staffRoles.includes(role))
+  )
 }
 
 export const passengerRoleGuard: CanActivateFn = () => {
@@ -64,6 +70,7 @@ export function createPassengerRoutes(config: () => PassengerFeatureConfig): Rou
       canActivate: [passengerRoleGuard],
       providers: [
         PassengerApi,
+        PassengerSupportApi,
         { provide: PASSENGER_FEATURE_CONFIG, useFactory: config },
         {
           provide: PASSENGER_IDENTITY,

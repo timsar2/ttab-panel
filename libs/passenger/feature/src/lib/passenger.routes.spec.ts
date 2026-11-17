@@ -14,4 +14,9 @@ describe('Passenger role policy', () => {
     expect(hasPassengerAccess(['Admin'])).toBe(false)
     expect(hasPassengerAccess([])).toBe(false)
   })
+
+  it.each(['Admin', 'Manager', 'Oprator', 'Operator'])(
+    'rejects staff sessions even if they also carry the Client role: %s',
+    role => expect(hasPassengerAccess(['Client', role])).toBe(false),
+  )
 })

@@ -4,16 +4,7 @@ import { DriverApi, RouteCard } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
 import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
-import {
-  HlmCard,
-  HlmCardContent,
-  HlmCardDescription,
-  HlmCardFooter,
-  HlmCardHeader,
-  HlmCardTitle,
-} from '@spartan-ng/helm/card'
-import { HlmInput } from '@spartan-ng/helm/input'
-import { HlmLabel } from '@spartan-ng/helm/label'
+import { DriverRouteCard } from './driver-route-card'
 import {
   HlmSelect,
   HlmSelectContent,
@@ -30,12 +21,7 @@ type TabType = 'your-route' | 'new-route'
   selector: 'lib-route-management-page',
   imports: [
     HlmButton,
-    HlmCard,
-    HlmCardContent,
-    HlmCardDescription,
-    HlmCardFooter,
-    HlmCardHeader,
-    HlmCardTitle,
+    DriverRouteCard,
     HlmTabs,
     HlmTabsContent,
     HlmTabsList,
@@ -49,8 +35,6 @@ type TabType = 'your-route' | 'new-route'
     HlmSelectItem,
     HlmSelectTrigger,
     HlmSelectValue,
-    HlmInput,
-    HlmLabel,
   ],
   template: `
     <div class="page-container" [attr.dir]="fa() ? 'rtl' : 'ltr'">
@@ -85,63 +69,7 @@ type TabType = 'your-route' | 'new-route'
             @if (yourRoutes().length > 0) {
               <div class="routes-grid">
                 @for (route of yourRoutes(); track route.id) {
-                  <hlm-card class="route-card" (click)="startRoute(route)">
-                    <div hlmCardHeader>
-                      <h3 hlmCardTitle>{{ route.lineName }}</h3>
-                      <p hlmCardDescription>{{ route.tripTypeName }}</p>
-                    </div>
-                    <div hlmCardContent>
-                      <div class="route-detail">
-                        <span class="detail-item">
-                          <svg
-                            class="detail-icon"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          {{ route.shiftTime }}
-                        </span>
-                        <span class="detail-item">
-                          <svg
-                            class="detail-icon"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                            />
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                          </svg>
-                          {{ route.departureTime }}
-                        </span>
-                      </div>
-                    </div>
-                    <div hlmCardFooter>
-                      <button
-                        hlmBtn
-                        class="start-route-btn"
-                        (click)="$event.stopPropagation(); startRoute(route)"
-                      >
-                        {{ fa() ? 'شروع سفر' : 'Start Trip' }}
-                      </button>
-                    </div>
-                  </hlm-card>
+                  <lib-driver-route-card [route]="route" [fa]="fa()" (start)="startRoute($event)" />
                 }
               </div>
             } @else {
@@ -155,6 +83,27 @@ type TabType = 'your-route' | 'new-route'
                   }}
                 </p>
               </hlm-alert>
+            }
+            @if (pagination().totalPages > 1) {
+              <nav class="pagination" [attr.aria-label]="fa() ? 'صفحه‌بندی مسیرها' : 'Route pages'">
+                <button
+                  hlmBtn
+                  variant="outline"
+                  [disabled]="!pagination().hasPreviousPage"
+                  (click)="changePage(pagination().pageNumber - 1)"
+                >
+                  {{ fa() ? 'قبلی' : 'Previous' }}
+                </button>
+                <span>{{ pagination().pageNumber }} / {{ pagination().totalPages }}</span>
+                <button
+                  hlmBtn
+                  variant="outline"
+                  [disabled]="!pagination().hasNextPage"
+                  (click)="changePage(pagination().pageNumber + 1)"
+                >
+                  {{ fa() ? 'بعدی' : 'Next' }}
+                </button>
+              </nav>
             }
           </div>
 
@@ -197,63 +146,7 @@ type TabType = 'your-route' | 'new-route'
             @if (filteredRoutes().length > 0) {
               <div class="routes-grid">
                 @for (route of filteredRoutes(); track route.id) {
-                  <hlm-card class="route-card" (click)="startRoute(route)">
-                    <div hlmCardHeader>
-                      <h3 hlmCardTitle>{{ route.lineName }}</h3>
-                      <p hlmCardDescription>{{ route.tripTypeName }}</p>
-                    </div>
-                    <div hlmCardContent>
-                      <div class="route-detail">
-                        <span class="detail-item">
-                          <svg
-                            class="detail-icon"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          {{ route.shiftTime }}
-                        </span>
-                        <span class="detail-item">
-                          <svg
-                            class="detail-icon"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                            />
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                          </svg>
-                          {{ route.departureTime }}
-                        </span>
-                      </div>
-                    </div>
-                    <div hlmCardFooter>
-                      <button
-                        hlmBtn
-                        class="start-route-btn"
-                        (click)="$event.stopPropagation(); startRoute(route)"
-                      >
-                        {{ fa() ? 'شروع سفر' : 'Start Trip' }}
-                      </button>
-                    </div>
-                  </hlm-card>
+                  <lib-driver-route-card [route]="route" [fa]="fa()" (start)="startRoute($event)" />
                 }
               </div>
             } @else {
@@ -282,17 +175,23 @@ type TabType = 'your-route' | 'new-route'
         padding: 1.5rem;
         max-width: 900px;
         margin: 0 auto;
+        color: var(--foreground);
+        font-family: 'Vazirmatn Variable', Vazirmatn, Poppins, sans-serif;
       }
       .page-header {
         margin-bottom: 1.5rem;
       }
       .page-header h1 {
-        font-size: 1.875rem;
+        color: var(--heading);
+        font-size: 1.75rem;
         font-weight: 700;
+        line-height: 1.5;
         margin: 0 0 0.5rem;
       }
       .page-subtitle {
         color: var(--muted-foreground);
+        font-size: 1rem;
+        line-height: 1.7;
         margin: 0;
       }
       .route-tabs {
@@ -329,39 +228,12 @@ type TabType = 'your-route' | 'new-route'
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 1rem;
       }
-      .route-card {
-        cursor: pointer;
-        transition:
-          box-shadow 0.2s,
-          transform 0.2s;
+      .pagination {
         display: flex;
-        flex-direction: column;
-        height: 100%;
-      }
-      .route-card:hover {
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-2px);
-      }
-      .route-detail {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-      }
-      .detail-item {
-        display: flex;
+        justify-content: center;
         align-items: center;
-        gap: 0.5rem;
-        font-size: 0.875rem;
-        color: var(--muted-foreground);
-      }
-      .detail-icon {
-        width: 16px;
-        height: 16px;
-        flex-shrink: 0;
-      }
-      .start-route-btn {
-        width: 100%;
+        gap: 1rem;
+        padding: 1.25rem 0;
       }
     `,
   ],
@@ -376,15 +248,20 @@ export class RouteManagementPage {
   protected readonly loading = signal(true)
   protected readonly error = signal<string | null>(null)
   protected readonly allRoutes = signal<RouteCard[]>([])
+  protected readonly pagination = signal({
+    pageNumber: 1,
+    pageSize: 10,
+    totalCount: 0,
+    totalPages: 1,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  })
   protected readonly activeTab = signal<TabType>('your-route')
   protected readonly filterLine = signal<string>('')
   protected readonly filterTripType = signal<string>('')
   protected readonly filterShift = signal<string>('')
 
-  protected readonly yourRoutes = computed(() => {
-    // In a real implementation, this would filter for the driver's assigned routes
-    return this.allRoutes()
-  })
+  protected readonly yourRoutes = computed(() => this.allRoutes())
 
   protected readonly availableLines = computed(() => {
     const lines = new Map<string, { id: string; name: string }>()
@@ -422,8 +299,12 @@ export class RouteManagementPage {
     this.loading.set(true)
     this.error.set(null)
     try {
-      const routes = await this.api.availableRoutes()
-      this.allRoutes.set(routes)
+      const result = await this.api.availableRoutesPage(
+        this.pagination().pageNumber,
+        this.pagination().pageSize,
+      )
+      this.allRoutes.set(result.list)
+      this.pagination.set(result.pagination)
     } catch {
       this.error.set(
         this.fa()
@@ -441,6 +322,12 @@ export class RouteManagementPage {
 
   protected applyFilters(): void {
     // Filters are applied reactively via computed signal
+  }
+
+  protected changePage(pageNumber: number): void {
+    if (pageNumber < 1 || pageNumber > this.pagination().totalPages) return
+    this.pagination.update(value => ({ ...value, pageNumber }))
+    void this.loadRoutes()
   }
 
   protected async startRoute(route: RouteCard): Promise<void> {

@@ -1,5 +1,12 @@
 @import '../../../libs/shared/platform/src/styles/global.css';
 
+/* Persian-first type hierarchy for the driver app; Latin text falls back to Poppins. */
+body {
+  font-family: 'Vazirmatn Variable', Vazirmatn, Poppins, sans-serif;
+  line-height: 1.6;
+  font-feature-settings: 'ss01' on;
+}
+
 @source './app';
 @source '../../../libs/shared';
 @source '../../../libs/transport/shell/feature';

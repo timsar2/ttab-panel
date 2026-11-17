@@ -10,6 +10,7 @@ import { HlmSpinnerImports } from '@spartan-ng/helm/spinner'
 import { HlmAlertImports } from '@spartan-ng/helm/alert'
 import { HlmSeparatorImports } from '@spartan-ng/helm/separator'
 import { HlmProgressImports } from '@spartan-ng/helm/progress'
+import { FileUploadComponent } from './file-upload.component'
 
 type DocumentType = 'nationalId' | 'drivingLicense' | 'smartCard'
 
@@ -61,6 +62,7 @@ const DOCUMENTS: DocumentInfo[] = [
     HlmAlertImports,
     HlmSeparatorImports,
     HlmProgressImports,
+    FileUploadComponent,
   ],
   template: `
     <div class="page-container" [attr.dir]="fa() ? 'rtl' : 'ltr'">
@@ -102,21 +104,8 @@ const DOCUMENTS: DocumentInfo[] = [
                 <p hlmCardDescription>{{ getDescription(doc.type) }}</p>
               </hlm-card-header>
               <div hlmCardContent>
-                <div class="document-info">
-                  <p class="info-item">
-                    <span class="info-label">{{
-                      fa() ? 'فرمت‌های مجاز' : 'Accepted formats'
-                    }}</span>
-                    <span class="info-value">{{ doc.acceptedFormats }}</span>
-                  </p>
-                  <p class="info-item">
-                    <span class="info-label">{{ fa() ? 'حداکثر حجم' : 'Max size' }}</span>
-                    <span class="info-value">{{ doc.maxSize }}</span>
-                  </p>
-                </div>
-
-                @if (doc.requiresLicenceLevel) {
-                  <div class="form-field">
+                <div class="form-field" [class.form-field-empty]="!doc.requiresLicenceLevel">
+                  @if (doc.requiresLicenceLevel) {
                     <label hlmLabel>{{ fa() ? 'سطح گواهینامه' : 'Licence Level' }}</label>
                     <select
                       hlmInput
@@ -130,8 +119,8 @@ const DOCUMENTS: DocumentInfo[] = [
                       <option value="2">{{ fa() ? 'سطح ۲' : 'Level 2' }}</option>
                       <option value="3">{{ fa() ? 'سطح ۳' : 'Level 3' }}</option>
                     </select>
-                  </div>
-                }
+                  }
+                </div>
 
                 @if (isUploaded(doc.type)) {
                   <div class="uploaded-preview">
@@ -146,38 +135,14 @@ const DOCUMENTS: DocumentInfo[] = [
                     </div>
                   </div>
                 } @else {
-                  <div
-                    class="upload-area"
-                    (click)="fileInput.click()"
-                    (dragover)="onDragOver($event)"
-                    (dragleave)="onDragLeave($event)"
-                    (drop)="onDrop($event, doc.type)"
-                    [class.drag-over]="isDragOver(doc.type)"
-                  >
-                    <input
-                      #fileInput
-                      type="file"
-                      [accept]="getAcceptedMimeTypes(doc.type)"
-                      (change)="onFileSelected($event, doc.type)"
-                      class="file-input"
-                    />
-                    <svg class="upload-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="1.5"
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                      />
-                    </svg>
-                    <p class="upload-text">
-                      {{
-                        fa() ? 'فایل را اینجا بکشید یا کلیک کنید' : 'Drag & drop or click to upload'
-                      }}
-                    </p>
-                    <p class="upload-hint">
-                      {{ fa() ? 'حداکثر' : 'Max' }} {{ doc.maxSize }} • {{ doc.acceptedFormats }}
-                    </p>
-                  </div>
+                  <lib-file-upload
+                    [fa]="fa"
+                    [acceptedMimeTypes]="getAcceptedMimeTypes(doc.type)"
+                    [maxSize]="doc.maxSize"
+                    [acceptedFormats]="doc.acceptedFormats"
+                    (fileSelected)="uploadFile(doc.type, $event)"
+                    (fileDropped)="uploadFile(doc.type, $event)"
+                  />
                 }
 
                 @if (isUploading(doc.type)) {
@@ -248,24 +213,33 @@ const DOCUMENTS: DocumentInfo[] = [
       }
       .documents-grid {
         display: grid;
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
         gap: 1.5rem;
       }
-      @media (min-width: 768px) {
-        .documents-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
+      .document-card {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        height: 100%;
       }
-      @media (min-width: 1024px) {
-        .documents-grid {
-          grid-template-columns: repeat(3, 1fr);
-        }
+      .document-card [hlmCardHeader] {
+        min-height: 8.5rem;
+      }
+      .document-card [hlmCardContent] {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
       }
       .document-header {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         gap: 1rem;
+      }
+      .document-header h3,
+      .document-card [hlmCardDescription] {
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
       .status-badge {
         font-size: 0.75rem;
@@ -281,7 +255,10 @@ const DOCUMENTS: DocumentInfo[] = [
       .document-info {
         display: flex;
         flex-direction: column;
+        justify-content: center;
         gap: 0.5rem;
+        min-height: 7rem;
+        box-sizing: border-box;
         margin-bottom: 1rem;
         padding: 0.75rem;
         background: var(--muted);
@@ -290,19 +267,30 @@ const DOCUMENTS: DocumentInfo[] = [
       .info-item {
         display: flex;
         justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.25rem 0.75rem;
         font-size: 0.875rem;
       }
       .info-label {
         color: var(--muted-foreground);
+        min-width: 0;
+        overflow-wrap: anywhere;
       }
       .info-value {
         font-weight: 500;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        text-align: end;
       }
       .form-field {
         display: flex;
         flex-direction: column;
+        min-height: 3.75rem;
         gap: 0.375rem;
         margin-bottom: 1rem;
+      }
+      .form-field-empty {
+        visibility: hidden;
       }
       .form-field label[hlmLabel] {
         font-size: 0.875rem;
@@ -325,46 +313,6 @@ const DOCUMENTS: DocumentInfo[] = [
       .preview-actions {
         display: flex;
         gap: 0.5rem;
-      }
-      .upload-area {
-        border: 2px dashed var(--border);
-        border-radius: 0.75rem;
-        padding: 2rem;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      .upload-area:hover,
-      .upload-area.drag-over {
-        border-color: var(--primary);
-        background: color-mix(in srgb, var(--primary) 5%, transparent);
-      }
-      .upload-icon {
-        width: 48px;
-        height: 48px;
-        margin: 0 auto 1rem;
-        color: var(--muted-foreground);
-      }
-      .upload-area:hover .upload-icon,
-      .upload-area.drag-over .upload-icon {
-        color: var(--primary);
-      }
-      .upload-text {
-        margin: 0 0 0.5rem;
-        font-weight: 500;
-      }
-      .upload-hint {
-        margin: 0;
-        font-size: 0.75rem;
-        color: var(--muted-foreground);
-      }
-      .file-input {
-        position: absolute;
-        width: 0.1px;
-        height: 0.1px;
-        opacity: 0;
-        overflow: hidden;
-        z-index: -1;
       }
       .upload-progress {
         margin-top: 1rem;
@@ -415,11 +363,6 @@ export class DocumentUploadPage {
     nationalId: null,
     drivingLicense: null,
     smartCard: null,
-  })
-  protected readonly dragOver = signal<Record<DocumentType, boolean>>({
-    nationalId: false,
-    drivingLicense: false,
-    smartCard: false,
   })
   protected readonly licenceLevels = signal<Record<DocumentType, string>>({
     nationalId: '',
@@ -500,41 +443,6 @@ export class DocumentUploadPage {
 
   protected isUploaded(type: DocumentType): boolean {
     return this.uploadedDocs()[type]
-  }
-
-  protected isDragOver(type: DocumentType): boolean {
-    return this.dragOver()[type]
-  }
-
-  protected onDragOver(event: DragEvent): void {
-    event.preventDefault()
-    event.stopPropagation()
-  }
-
-  protected onDragLeave(event: DragEvent): void {
-    event.preventDefault()
-    event.stopPropagation()
-  }
-
-  protected onDrop(event: DragEvent, type: DocumentType): void {
-    event.preventDefault()
-    event.stopPropagation()
-    this.dragOver.update(state => ({ ...state, [type]: false }))
-
-    const file = event.dataTransfer?.files[0]
-    if (file) {
-      this.uploadFile(type, file)
-    }
-  }
-
-  protected onFileSelected(event: Event, type: DocumentType): void {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0]
-    if (file) {
-      this.uploadFile(type, file)
-    }
-    // Reset input value to allow selecting the same file again
-    input.value = ''
   }
 
   protected async uploadFile(type: DocumentType, file: File): Promise<void> {
