@@ -1,97 +1,54 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core'
-import { HlmButton } from '@spartan-ng/helm/button'
+import { ChangeDetectionStrategy, Component, inject, input, output } from '@angular/core'
+import { ShiftTimesStore } from '@org/transport-scheduling-data-access'
 import { RouteCard } from '../driver-pwa-feature/driver.api'
 
 @Component({
   selector: 'lib-driver-route-card',
-  imports: [HlmButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <article class="route-card" [class.inactive]="!isActive()" [attr.dir]="fa() ? 'rtl' : 'ltr'">
+    <article class="route-card" [class.inactive]="!isActive()">
       <div class="card-content">
-        <div class="badge-row">
-          <span class="service-badge" [class.evening]="isEvening()">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              @if (isEvening()) {
-                <path d="M20.9 13A8 8 0 0 1 11 3.1 8 8 0 1 0 20.9 13Z" />
-              } @else {
-                <circle cx="12" cy="12" r="4" />
+        <header class="route-header">
+          <button class="start-button" [disabled]="!isActive()" (click)="start.emit(route())">
+            {{ fa() ? 'شروع مسیر' : 'Start route' }}
+          </button>
+          <div class="route-copy" [attr.dir]="fa() ? 'rtl' : 'ltr'">
+            <h2>{{ routeTitle() }}</h2>
+            <p>{{ routeSubtitle() }}</p>
+          </div>
+          <div class="route-marker" aria-hidden="true">
+            <img src="/assets/images/feasible/routing.svg" alt="" />
+          </div>
+        </header>
+
+        @if (shiftName() || shiftStartTime()) {
+          <div class="shift-time-row" [attr.dir]="fa() ? 'rtl' : 'ltr'">
+            <div class="shift-name">
+              <svg class="shift-clock" viewBox="0 0 24 24" aria-hidden="true">
                 <path
-                  d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2Zm1 11h5v-2h-4V6h-2v7Z"
+                />
+              </svg>
+              <span>{{ shiftName() }}</span>
+            </div>
+            <div class="shift-departure" dir="ltr">
+              <span>{{ shiftStartTime() }}</span>
+              @if (shiftStartTime()) {
+                <img
+                  class="time-icon"
+                  [src]="
+                    isDaytime()
+                      ? '/assets/images/feasible/sun.svg'
+                      : '/assets/images/feasible/moon.svg'
+                  "
+                  alt=""
+                  aria-hidden="true"
                 />
               }
-            </svg>
-            {{ serviceLabel() }}
-          </span>
-          <span class="status-badge" [class.status-inactive]="!isActive()">
-            {{ statusLabel() }}
-          </span>
-        </div>
-
-        <div class="route-heading">
-          <div class="route-marker" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M5 19V5m0 0 4 4m-4-4L1 9m18 10V5m0 14-4-4m4 4 4-4" />
-            </svg>
-          </div>
-          <div class="route-copy">
-            <h2>{{ route().lineName }}</h2>
-            <p>{{ directionLabel() }} <span aria-hidden="true">·</span> {{ routeIdLabel() }}</p>
-          </div>
-        </div>
-
-        <div class="metadata">
-          @if (route().departureTime || route().shiftTime) {
-            <div class="metadata-item">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <path d="M12 7v5l3 2" />
-              </svg>
-              <div>
-                <strong>{{ route().departureTime || route().shiftTime }}</strong
-                ><span>{{ fa() ? 'زمان حرکت' : 'Departure' }}</span>
-              </div>
             </div>
-          }
-          @if (route().tripTypeName) {
-            <div class="metadata-item">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M12 3l9 9-9 9" /></svg>
-              <div>
-                <strong>{{ route().tripTypeName }}</strong
-                ><span>{{ fa() ? 'نوع سرویس' : 'Service type' }}</span>
-              </div>
-            </div>
-          }
-        </div>
-
-        @if (
-          route().driverName ||
-          route().vehicleInfo ||
-          route().passengerCount != null ||
-          route().estimatedMinutes != null
-        ) {
-          <div class="optional-metadata">
-            @if (route().driverName) {
-              <span>{{ fa() ? 'راننده' : 'Driver' }}: {{ route().driverName }}</span>
-            }
-            @if (route().vehicleInfo) {
-              <span>{{ fa() ? 'خودرو' : 'Vehicle' }}: {{ route().vehicleInfo }}</span>
-            }
-            @if (route().passengerCount != null) {
-              <span>{{ route().passengerCount }} {{ fa() ? 'مسافر' : 'passengers' }}</span>
-            }
-            @if (route().estimatedMinutes != null) {
-              <span>{{ route().estimatedMinutes }} {{ fa() ? 'دقیقه' : 'min' }}</span>
-            }
           </div>
         }
       </div>
-
-      <footer class="card-action">
-        <button hlmBtn class="start-button" [disabled]="!isActive()" (click)="start.emit(route())">
-          {{ fa() ? 'شروع سفر' : 'Start trip' }}
-        </button>
-      </footer>
     </article>
   `,
   styles: [
@@ -102,80 +59,46 @@ import { RouteCard } from '../driver-pwa-feature/driver.api'
       }
       .route-card {
         overflow: hidden;
-        height: 100%;
         border: 1px solid var(--border);
-        border-radius: 0.75rem;
+        border-radius: 1.25rem;
         background: var(--card);
         color: var(--card-foreground);
         box-shadow: var(--shadow-sm);
       }
       .card-content {
-        padding: 16px;
+        padding: 18px;
       }
-      .badge-row {
+      .route-header {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-      }
-      .service-badge,
-      .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 12px;
-        font-weight: 650;
-      }
-      .service-badge {
-        color: var(--accent-foreground);
-        background: var(--primary-soft);
-      }
-      .service-badge.evening {
-        color: var(--secondary);
-        background: var(--secondary-soft);
-      }
-      .status-badge {
-        color: var(--success-foreground);
-        background: var(--success-soft);
-      }
-      .status-inactive {
-        color: var(--muted-foreground);
-        background: var(--muted);
-      }
-      svg {
-        width: 18px;
-        height: 18px;
-        flex: 0 0 auto;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 1.8;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-      }
-      .route-heading {
-        display: flex;
+        min-width: 0;
         align-items: center;
         gap: 12px;
-        margin-top: 18px;
+        direction: ltr;
       }
-      .route-marker {
-        display: grid;
-        width: 42px;
-        height: 42px;
-        flex: 0 0 auto;
-        place-items: center;
-        border-radius: 0.5rem;
-        color: var(--secondary);
-        background: var(--secondary-soft);
+      .start-button {
+        width: 32%;
+        min-width: 112px;
+        min-height: 48px;
+        flex: 0 0 32%;
+        border: 0;
+        border-radius: 999px;
+        background: #ff9800;
+        color: #fff;
+        font-size: 15px;
+        font-weight: 650;
+        white-space: nowrap;
       }
-      .route-marker svg {
-        width: 22px;
-        height: 22px;
+      .start-button:hover:not(:disabled) {
+        background: #f28c00;
+      }
+      .start-button:disabled {
+        background: #ffcc80;
+        color: #fff;
       }
       .route-copy {
         min-width: 0;
+        flex: 1 1 auto;
+        text-align: right;
       }
       h2 {
         overflow: hidden;
@@ -183,82 +106,109 @@ import { RouteCard } from '../driver-pwa-feature/driver.api'
         color: var(--heading);
         font-size: 19px;
         font-weight: 700;
-        line-height: 1.55;
-        text-overflow: ellipsis;
-      }
-      .route-copy p {
-        margin: 4px 0 0;
-        color: var(--muted-foreground);
-        font-size: 13px;
-      }
-      .metadata {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 18px;
-        padding-top: 14px;
-        border-top: 1px solid var(--border);
-      }
-      .metadata-item {
-        display: flex;
-        min-width: 0;
-        align-items: center;
-        gap: 9px;
-        color: var(--muted-foreground);
-      }
-      .metadata-item > div {
-        display: grid;
-        min-width: 0;
-        gap: 2px;
-      }
-      .metadata-item strong {
-        overflow: hidden;
-        color: var(--card-foreground);
-        font-size: 14px;
-        font-weight: 650;
+        line-height: 1.5;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .metadata-item span {
-        font-size: 11px;
+      .route-copy p {
+        overflow: hidden;
+        margin: 5px 0 0;
+        color: var(--muted-foreground);
+        font-size: 14px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
-      .optional-metadata {
+      .route-marker {
+        display: grid;
+        width: 60px;
+        height: 60px;
+        flex: 0 0 60px;
+        place-items: center;
+        border-radius: 15px;
+        background: #fff4df;
+        box-shadow: 0 2px 3px rgb(0 0 0 / 12%);
+      }
+      .route-marker img {
+        display: block;
+        width: 38px;
+        height: 38px;
+        object-fit: contain;
+      }
+      .shift-time-row {
         display: flex;
-        flex-wrap: wrap;
-        gap: 6px 14px;
+        min-width: 0;
+        align-items: center;
+        justify-content: space-between;
         margin-top: 14px;
-        color: var(--muted-foreground);
-        font-size: 12px;
+        padding-top: 13px;
+        border-top: 1px solid var(--border);
+        color: var(--card-foreground);
       }
-      .card-action {
-        padding: 12px 16px 16px;
-        background: var(--surface-muted);
+      .shift-name,
+      .shift-departure {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 6px;
+        font-size: 18px;
+        font-weight: 600;
+        white-space: nowrap;
       }
-      .start-button {
-        width: 100%;
-        min-height: 48px;
-        border: 0;
-        border-radius: 0.5rem;
-        background: var(--primary);
-        color: var(--primary-foreground);
-        font-size: 15px;
-        font-weight: 650;
+      .shift-clock {
+        width: 24px;
+        height: 24px;
+        flex: 0 0 24px;
+        fill: #4caf50;
       }
-      .start-button:hover:not(:disabled) {
-        background: var(--primary-hover);
+      .shift-departure {
+        gap: 5px;
+        font-size: 19px;
+        font-weight: 500;
       }
-      .start-button:disabled {
-        background: var(--muted);
-        color: var(--muted-foreground);
+      .time-icon {
+        display: block;
+        width: 22px;
+        height: 22px;
+        flex: 0 0 22px;
+        object-fit: contain;
       }
-      .route-card.inactive {
-        border-color: var(--border);
+      .route-card.inactive .start-button {
+        cursor: not-allowed;
       }
-      @media (max-width: 360px) {
+      @media (max-width: 380px) {
         .card-content {
-          padding: 13px;
+          padding: 14px;
+        }
+        .route-header {
+          gap: 8px;
+        }
+        .start-button {
+          min-width: 96px;
+          min-height: 44px;
+          flex-basis: 31%;
+          font-size: 13px;
+        }
+        .route-marker {
+          width: 52px;
+          height: 52px;
+          flex-basis: 52px;
+        }
+        .route-marker img {
+          width: 34px;
+          height: 34px;
         }
         h2 {
+          font-size: 17px;
+        }
+        .route-copy p {
+          font-size: 12px;
+        }
+        .shift-name,
+        .shift-departure {
+          gap: 4px;
+          font-size: 16px;
+        }
+        .shift-departure {
           font-size: 17px;
         }
       }
@@ -266,38 +216,39 @@ import { RouteCard } from '../driver-pwa-feature/driver.api'
   ],
 })
 export class DriverRouteCard {
+  private readonly shiftTimes = inject(ShiftTimesStore)
   readonly route = input.required<RouteCard>()
   readonly fa = input(false)
   readonly start = output<RouteCard>()
 
-  protected isEvening(): boolean {
-    const type = this.route().tripTypeName.toLowerCase()
-    return type.includes('برگشت') || type.includes('evening') || type.includes('return')
+  protected routeTitle(): string {
+    return this.route().directionName || this.route().lineName
   }
 
-  protected serviceLabel(): string {
-    if (this.isEvening()) return this.fa() ? 'سرویس برگشت' : 'Evening service'
-    return this.fa() ? 'سرویس رفت' : 'Morning service'
+  protected routeSubtitle(): string {
+    const { tripTypeName, lineName } = this.route()
+    const route = [tripTypeName, lineName].filter(Boolean).join(' - ')
+    return this.fa() ? `مسیر ${route}` : `Route ${route}`
   }
 
-  protected directionLabel(): string {
-    return this.fa()
-      ? `جهت ${this.isEvening() ? 'برگشت' : 'رفت'}`
-      : `${this.isEvening() ? 'Return' : 'Outbound'} direction`
+  protected shiftName(): string {
+    return this.shiftTimes.byId().get(this.route().shiftTimeId)?.name || this.route().shiftTime
   }
 
-  protected routeIdLabel(): string {
-    return `${this.fa() ? 'مسیر' : 'Route'} ${this.route().directionId}`
+  protected shiftStartTime(): string {
+    return (
+      this.shiftTimes.byId().get(this.route().shiftTimeId)?.shiftTime || this.route().departureTime
+    )
+  }
+
+  protected isDaytime(): boolean {
+    const hour = Number.parseInt(this.shiftStartTime().split(':')[0] ?? '', 10)
+    return Number.isFinite(hour) && hour <= 12
   }
 
   protected isActive(): boolean {
     return !['inactive', 'false', '0', 'disabled'].includes(
       String(this.route().status ?? '').toLowerCase(),
     )
-  }
-
-  protected statusLabel(): string {
-    if (!this.route().status) return this.fa() ? 'تخصیص‌یافته' : 'Assigned'
-    return this.isActive() ? (this.fa() ? 'فعال' : 'Active') : this.fa() ? 'غیرفعال' : 'Inactive'
   }
 }

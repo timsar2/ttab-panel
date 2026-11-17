@@ -549,6 +549,35 @@ describe('Node cookie authentication BFF', () => {
     await request(app).get('/api/companies').set('Authorization', 'Bearer attacker').expect(401)
   })
 
+  it('proxies authenticated multipart driver uploads within the configured upload limit', async () => {
+    const { app, fetcher, login } = fixture()
+    const logged = await login()
+    const upload = await request(app)
+      .post('/api/v1/drivers/upload-document')
+      .set('Cookie', cookie(logged))
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .field('documentType', 'nationalId')
+      .attach('file', Buffer.alloc(2 * 1024 * 1024, 0x61), {
+        filename: 'identity.png',
+        contentType: 'image/png',
+      })
+      .expect(200)
+
+    expect(upload.body.result).toEqual(['business-data'])
+    const call = fetcher.mock.calls.find(([url]) =>
+      String(url).endsWith('/v1/drivers/upload-document'),
+    )
+    expect(call?.[1]?.method).toBe('POST')
+    expect(call?.[1]?.headers).toMatchObject({
+      Authorization: expect.stringContaining('.signature'),
+    })
+    expect(call?.[1]?.headers).toMatchObject({
+      'Content-Type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+    })
+    expect((call?.[1]?.body as Uint8Array).byteLength).toBeGreaterThan(2 * 1024 * 1024)
+  })
+
   it('validates restore upstream and rejects tampered/duplicate cookies', async () => {
     const { app, login, fetcher } = fixture()
     const logged = await login()
@@ -1000,7 +1029,7 @@ describe('Node cookie authentication BFF', () => {
     await request(f.app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(401)
   })
 
-  it('keeps production sessions capped at 12 hours', async () => {
+  it('keeps production sessions capped at the 90-day access-session minimum', async () => {
     const productionOrigin = 'https://panel.example.test'
     const productionConfig = readAuthBffConfig({
       AUTH_API_URL: 'https://api.example.test',
@@ -1030,8 +1059,8 @@ describe('Node cookie authentication BFF', () => {
       .send({ username: 'test@example.com', password: 'password-secret' })
       .expect(200)
     const maxAge = Number(/Max-Age=(\d+)/.exec(logged.headers['set-cookie'][0])?.[1])
-    expect(maxAge).toBeGreaterThanOrEqual(43_198)
-    expect(maxAge).toBeLessThanOrEqual(43_200)
+    expect(maxAge).toBeGreaterThanOrEqual(90 * 86_400 - 2)
+    expect(maxAge).toBeLessThanOrEqual(90 * 86_400)
   })
 
   it('sanitizes HTTP and application-envelope proxy errors', async () => {

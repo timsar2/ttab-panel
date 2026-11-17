@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core'
 import { ActivatedRoute, Router } from '@angular/router'
-import { DriverApi, Station, Passenger } from '../driver-pwa-feature/driver.api'
+import { ActiveTrip, DriverApi, Station, Passenger } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
 import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
@@ -76,13 +76,31 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
             @if (station()!.passengers.length > 0) {
               <div class="passengers-list">
                 @for (passenger of station()!.passengers; track passenger.id) {
-                  <div
-                    class="passenger-item"
-                    [class.absent]="passenger.isAbsent"
-                    [class.selected]="selectedAbsentIds().includes(passenger.id)"
-                  >
+                  <div class="passenger-item" [class.absent]="isPassengerAbsent(passenger)">
+                    @if (passenger.profileImage) {
+                      <img
+                        class="passenger-avatar"
+                        [src]="passenger.profileImage"
+                        [alt]="passenger.fullName"
+                      />
+                    } @else {
+                      <span class="passenger-avatar placeholder" aria-hidden="true">{{
+                        passenger.fullName.charAt(0)
+                      }}</span>
+                    }
                     <div class="passenger-info">
                       <p class="passenger-name">{{ passenger.fullName }}</p>
+                      <p class="passenger-status">
+                        {{
+                          isPassengerAbsent(passenger)
+                            ? fa()
+                              ? 'غایب'
+                              : 'Absent'
+                            : fa()
+                              ? 'حاضر در ایستگاه'
+                              : 'Present at station'
+                        }}
+                      </p>
                       <p class="passenger-phone">
                         <a [href]="'tel:' + passenger.mobileNumber">{{ passenger.mobileNumber }}</a>
                       </p>
@@ -110,11 +128,11 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
                         variant="outline"
                         size="sm"
                         class="absent-btn"
-                        [class.absent]="passenger.isAbsent"
+                        [class.absent]="isPassengerAbsent(passenger)"
                         (click)="toggleAbsent(passenger)"
                       >
                         {{
-                          passenger.isAbsent
+                          isPassengerAbsent(passenger)
                             ? fa()
                               ? 'حضور دارد'
                               : 'Present'
@@ -169,15 +187,27 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
             <button hlmBtn variant="outline" (click)="goBack()">
               {{ fa() ? 'انصراف' : 'Cancel' }}
             </button>
-            <button hlmBtn [disabled]="submitting()" (click)="submitArrival()">
+            <button
+              hlmBtn
+              [disabled]="submitting() || !isCurrentStation()"
+              (click)="submitArrival()"
+            >
               {{
                 submitting()
                   ? fa()
                     ? 'در حال ثبت...'
                     : 'Submitting...'
-                  : fa()
-                    ? 'تأیید و ثبت رسیدن'
-                    : 'Confirm Arrival'
+                  : isLastStation()
+                    ? fa()
+                      ? 'توقف سفر فعال'
+                      : 'Stop Active Trip'
+                    : isCurrentStation()
+                      ? fa()
+                        ? 'تأیید و ثبت رسیدن'
+                        : 'Confirm Arrival'
+                      : fa()
+                        ? 'ابتدا به ایستگاه بعدی بروید'
+                        : 'Complete the previous station first'
               }}
             </button>
           </div>
@@ -270,6 +300,20 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
         background: var(--card);
         transition: all 0.2s;
       }
+      .passenger-avatar {
+        width: 3.25rem;
+        height: 3.25rem;
+        flex: 0 0 3.25rem;
+        border-radius: 50%;
+        object-fit: cover;
+        background: var(--muted);
+      }
+      .passenger-avatar.placeholder {
+        display: grid;
+        place-items: center;
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
       .passenger-item.absent {
         opacity: 0.6;
         background: var(--muted);
@@ -290,6 +334,11 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
         margin: 0;
         font-size: 0.875rem;
         color: var(--muted-foreground);
+      }
+      .passenger-status {
+        margin: 0 0 0.25rem;
+        font-size: 0.8rem;
+        color: var(--primary);
       }
       .passenger-phone a {
         color: inherit;
@@ -378,6 +427,7 @@ export class StationOperationsPage {
   protected readonly loading = signal(true)
   protected readonly error = signal<string | null>(null)
   protected readonly station = signal<Station | null>(null)
+  private readonly trip = signal<ActiveTrip | null>(null)
   protected readonly selectedAbsentIds = signal<number[]>([])
   protected readonly submitting = signal(false)
   protected readonly submissionError = signal<string | null>(null)
@@ -399,10 +449,16 @@ export class StationOperationsPage {
     this.error.set(null)
     try {
       const trip = await this.api.activeTrip()
+      this.trip.set(trip)
       if (trip) {
         const station = trip.stations.find(s => s.id === id)
         if (station) {
           this.station.set(station)
+          this.selectedAbsentIds.set(
+            station.passengers
+              .filter(passenger => passenger.isAbsent)
+              .map(passenger => passenger.id),
+          )
         } else {
           this.error.set(this.fa() ? 'ایستگاه یافت نشد.' : 'Station not found.')
         }
@@ -424,8 +480,24 @@ export class StationOperationsPage {
     )
   }
 
+  protected isPassengerAbsent(passenger: Passenger): boolean {
+    return this.selectedAbsentIds().includes(passenger.id)
+  }
+
+  protected isCurrentStation(): boolean {
+    const trip = this.trip()
+    const station = this.station()
+    return !!trip && !!station && trip.nextStationId === station.id
+  }
+
+  protected isLastStation(): boolean {
+    const trip = this.trip()
+    const station = this.station()
+    return !!trip && !!station && trip.stations[trip.stations.length - 1]?.id === station.id
+  }
+
   protected async submitArrival(): Promise<void> {
-    const trip = await this.api.activeTrip()
+    const trip = this.trip()
     const station = this.station()
     if (!trip || !station) return
 
@@ -434,16 +506,24 @@ export class StationOperationsPage {
     this.submissionSuccess.set(false)
 
     try {
+      if (this.isLastStation()) {
+        await this.api.endTrip({ tripId: trip.id, directionId: trip.directionId })
+        await this.router.navigateByUrl('/driver/route-selection')
+        return
+      }
+      const stationIndex = trip.stations.findIndex(item => item.id === station.id)
+      const nextStation = trip.stations[stationIndex + 1]
+      if (!nextStation) throw new Error('The next station could not be found.')
       await this.api.submitStationArrival({
         tripId: trip.id,
         stationId: station.id,
         absentPassengerIds: this.selectedAbsentIds(),
       })
+      this.api.advanceToStation(trip.id, nextStation.id)
+      this.trip.set({ ...trip, nextStationId: nextStation.id })
       this.submissionSuccess.set(true)
-      // Reset selections after successful submission
       this.selectedAbsentIds.set([])
-      // Reload station to reflect server state
-      setTimeout(() => this.loadStation(), 1500)
+      await this.router.navigateByUrl('/driver/route-selection')
     } catch {
       this.submissionError.set(
         this.fa()

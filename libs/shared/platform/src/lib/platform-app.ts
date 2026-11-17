@@ -20,7 +20,7 @@ import {
   withNoHttpTransferCache,
 } from '@angular/platform-browser'
 import { AUTH_APPEARANCE, provideAuthFeature } from '@org/auth-feature'
-import { provideAuth, type AuthConfig } from '@org/auth-data-access'
+import { provideAuth, SessionStore, type AuthConfig } from '@org/auth-data-access'
 import { provideTheme, ThemeStore, type ThemeOptions } from '@org/theme'
 import { PreferencesStore } from './preferences.store'
 import { AppDirectionality } from './app-directionality'
@@ -84,6 +84,10 @@ export function providePlatformApp(
     },
     { provide: Directionality, useClass: AppDirectionality },
     provideAppInitializer(() => inject(PreferencesStore).syncDocument()),
+    provideAppInitializer(() => {
+      // Restore cookie-backed sessions in the background without delaying app bootstrap.
+      inject(SessionStore).restore().subscribe()
+    }),
     provideRouter(
       options.routes,
       withComponentInputBinding(),

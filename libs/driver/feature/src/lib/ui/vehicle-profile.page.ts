@@ -10,6 +10,8 @@ import { HlmSpinnerImports } from '@spartan-ng/helm/spinner'
 import { HlmAlertImports } from '@spartan-ng/helm/alert'
 import { HlmAvatarImports } from '@spartan-ng/helm/avatar'
 import { HlmSeparatorImports } from '@spartan-ng/helm/separator'
+import { FileUploadComponent } from './file-upload.component'
+import { uploadStatusLabel } from './upload-status'
 
 type VehicleImageType = 'vehicle' | 'card' | 'insurance'
 
@@ -25,6 +27,7 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
     HlmAlertImports,
     HlmAvatarImports,
     HlmSeparatorImports,
+    FileUploadComponent,
   ],
   template: `
     <div class="page-container" [attr.dir]="fa() ? 'rtl' : 'ltr'">
@@ -153,7 +156,7 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
             <div hlmCardContent>
               <div class="images-grid">
                 <div class="image-upload" [class.has-image]="vehicleImage()">
-                  <label class="image-label">
+                  <div class="image-label">
                     <span class="image-title">{{ fa() ? 'تصویر وسیله' : 'Vehicle Photo' }}</span>
                     @if (vehicleImage()) {
                       <img
@@ -185,35 +188,20 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
                         </button>
                       </div>
                     } @else {
-                      <div class="placeholder" (click)="vehicleFile.click()">
-                        <svg
-                          class="h-12 w-12"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="1.5"
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span>{{ fa() ? 'انتخاب عکس' : 'Select Image' }}</span>
-                      </div>
+                      <lib-file-upload
+                        [fa]="fa"
+                        acceptedMimeTypes=".jpg,.jpeg,.png,.webp"
+                        maxSize="5 MB"
+                        acceptedFormats="JPG, PNG, WebP"
+                        (fileSelected)="onImageSelected($event, 'vehicle')"
+                        (fileDropped)="onImageSelected($event, 'vehicle')"
+                      />
                     }
-                  </label>
-                  <input
-                    #vehicleFile
-                    type="file"
-                    accept="image/*"
-                    (change)="onImageSelected($event, 'vehicle')"
-                    class="file-input"
-                  />
+                  </div>
                 </div>
 
                 <div class="image-upload" [class.has-image]="cardImage()">
-                  <label class="image-label">
+                  <div class="image-label">
                     <span class="image-title">{{
                       fa() ? 'تصویر کارت وسیله' : 'Vehicle Card Image'
                     }}</span>
@@ -247,35 +235,20 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
                         </button>
                       </div>
                     } @else {
-                      <div class="placeholder" (click)="cardFile.click()">
-                        <svg
-                          class="h-12 w-12"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="1.5"
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span>{{ fa() ? 'انتخاب عکس' : 'Select Image' }}</span>
-                      </div>
+                      <lib-file-upload
+                        [fa]="fa"
+                        acceptedMimeTypes=".jpg,.jpeg,.png,.webp"
+                        maxSize="5 MB"
+                        acceptedFormats="JPG, PNG, WebP"
+                        (fileSelected)="onImageSelected($event, 'card')"
+                        (fileDropped)="onImageSelected($event, 'card')"
+                      />
                     }
-                  </label>
-                  <input
-                    #cardFile
-                    type="file"
-                    accept="image/*"
-                    (change)="onImageSelected($event, 'card')"
-                    class="file-input"
-                  />
+                  </div>
                 </div>
 
                 <div class="image-upload" [class.has-image]="insuranceImage()">
-                  <label class="image-label">
+                  <div class="image-label">
                     <span class="image-title">{{
                       fa() ? 'تصویر بیمه‌نامه' : 'Insurance Image'
                     }}</span>
@@ -309,31 +282,16 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
                         </button>
                       </div>
                     } @else {
-                      <div class="placeholder" (click)="insuranceFile.click()">
-                        <svg
-                          class="h-12 w-12"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="1.5"
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2-2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span>{{ fa() ? 'انتخاب عکس' : 'Select Image' }}</span>
-                      </div>
+                      <lib-file-upload
+                        [fa]="fa"
+                        acceptedMimeTypes=".jpg,.jpeg,.png,.webp"
+                        maxSize="5 MB"
+                        acceptedFormats="JPG, PNG, WebP"
+                        (fileSelected)="onImageSelected($event, 'insurance')"
+                        (fileDropped)="onImageSelected($event, 'insurance')"
+                      />
                     }
-                  </label>
-                  <input
-                    #insuranceFile
-                    type="file"
-                    accept="image/*"
-                    (change)="onImageSelected($event, 'insurance')"
-                    class="file-input"
-                  />
+                  </div>
                 </div>
               </div>
 
@@ -348,6 +306,11 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
                     {{ fa() ? 'تصاویر با موفقیت آپلود شدند.' : 'Images uploaded successfully.' }}
                   </p>
                 </hlm-alert>
+              }
+              @if (saving() && hasPendingImages()) {
+                <p class="upload-status" role="status" aria-live="polite">
+                  {{ uploadStatus(fa()) }}
+                </p>
               }
             </div>
           </hlm-card>
@@ -449,10 +412,6 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
         position: relative;
         min-width: 0;
       }
-      .image-label {
-        display: block;
-        cursor: pointer;
-      }
       .image-title {
         display: block;
         font-size: 0.875rem;
@@ -469,51 +428,23 @@ type VehicleImageType = 'vehicle' | 'card' | 'insurance'
         border-radius: 0.5rem;
         border: 1px solid var(--border);
       }
+      .remove-btn {
+        background: var(--destructive);
+        color: var(--destructive-foreground);
+      }
       .image-overlay {
         position: absolute;
         top: 2.5rem;
         right: 0;
         z-index: 10;
       }
-      .remove-btn {
-        background: var(--destructive);
-        color: var(--destructive-foreground);
-      }
       .remove-btn:hover {
         opacity: 0.9;
       }
-      .placeholder {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        aspect-ratio: 4/3;
-        border: 2px dashed var(--border);
-        border-radius: 0.5rem;
+      .upload-status {
+        margin: 1rem 0 0;
         color: var(--muted-foreground);
-        gap: 0.5rem;
-        min-height: 10rem;
-        aspect-ratio: 4/3;
         text-align: center;
-        padding: 0.75rem;
-        box-sizing: border-box;
-        transition: all 0.2s;
-      }
-      .placeholder:hover {
-        border-color: var(--primary);
-        color: var(--primary);
-        background: color-mix(in srgb, var(--primary) 5%, transparent);
-      }
-      .placeholder svg {
-        opacity: 0.5;
-      }
-      .file-input {
-        position: absolute;
-        width: 0.1px;
-        height: 0.1px;
-        opacity: 0;
-        overflow: hidden;
-        z-index: -1;
       }
     `,
   ],
@@ -523,6 +454,7 @@ export class VehicleProfilePage {
   private readonly api = inject(DriverApi)
   private readonly config = inject(DRIVER_FEATURE_CONFIG)
   protected readonly fa = computed(() => this.config.language() === 'fa')
+  protected readonly uploadStatus = uploadStatusLabel
   protected readonly currentYear = new Date().getFullYear()
 
   protected readonly loading = signal(true)
@@ -579,31 +511,36 @@ export class VehicleProfilePage {
     }
   }
 
-  protected onImageSelected(event: Event, type: VehicleImageType): void {
-    const input = event.target as HTMLInputElement
-    if (input.files?.[0]) {
-      const file = input.files[0]
-      if (!file.type.startsWith('image/')) {
-        this.imageError.set(this.fa() ? 'فایل باید یک تصویر باشد.' : 'File must be an image.')
-        return
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        this.imageError.set(
-          this.fa() ? 'حجم فایل نباید بیشتر از ۵ مگابایت باشد.' : 'File size must not exceed 5MB.',
-        )
-        return
-      }
-
-      this.pendingImages.update(images => ({ ...images, [type]: file }))
-      const reader = new FileReader()
-      reader.onload = e => {
-        if (type === 'vehicle') this.vehicleImage.set(e.target?.result as string)
-        else if (type === 'card') this.cardImage.set(e.target?.result as string)
-        else this.insuranceImage.set(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-      this.imageError.set(null)
+  protected onImageSelected(file: File, type: VehicleImageType): void {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+      this.imageError.set(
+        this.fa()
+          ? 'فقط تصاویر JPG، PNG و WebP مجاز هستند.'
+          : 'Only JPG, PNG, and WebP images are accepted.',
+      )
+      return
     }
+    if (file.size > 5 * 1024 * 1024) {
+      this.imageError.set(
+        this.fa() ? 'حجم فایل نباید بیشتر از ۵ مگابایت باشد.' : 'File size must not exceed 5MB.',
+      )
+      return
+    }
+
+    this.pendingImages.update(images => ({ ...images, [type]: file }))
+    const reader = new FileReader()
+    reader.onload = () => {
+      const preview = reader.result as string
+      if (type === 'vehicle') this.vehicleImage.set(preview)
+      else if (type === 'card') this.cardImage.set(preview)
+      else this.insuranceImage.set(preview)
+    }
+    reader.readAsDataURL(file)
+    this.imageError.set(null)
+  }
+
+  protected hasPendingImages(): boolean {
+    return Object.values(this.pendingImages()).some(Boolean)
   }
 
   protected removeImage(type: VehicleImageType): void {
@@ -633,7 +570,7 @@ export class VehicleProfilePage {
       for (const [type, file] of Object.entries(pending)) {
         if (file) {
           await this.api.uploadDocument({
-            documentType: type as any,
+            documentType: type as VehicleImageType,
             file,
           })
         }

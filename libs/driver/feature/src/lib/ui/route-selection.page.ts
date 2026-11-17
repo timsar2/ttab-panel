@@ -2,33 +2,14 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router'
 import { DriverApi, RouteCard, ActiveTrip } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
+import { DriverRouteCard } from './driver-route-card'
 import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
-import {
-  HlmCard,
-  HlmCardContent,
-  HlmCardDescription,
-  HlmCardFooter,
-  HlmCardHeader,
-  HlmCardTitle,
-} from '@spartan-ng/helm/card'
 import { HlmSpinner } from '@spartan-ng/helm/spinner'
 
 @Component({
   selector: 'lib-route-selection-page',
-  imports: [
-    HlmButton,
-    HlmCard,
-    HlmCardContent,
-    HlmCardDescription,
-    HlmCardFooter,
-    HlmCardHeader,
-    HlmCardTitle,
-    HlmSpinner,
-    HlmAlert,
-    HlmAlertDescription,
-    HlmAlertTitle,
-  ],
+  imports: [HlmButton, DriverRouteCard, HlmSpinner, HlmAlert, HlmAlertDescription, HlmAlertTitle],
   template: `
     <div class="page-container" [attr.dir]="fa() ? 'rtl' : 'ltr'">
       <header class="page-header">
@@ -52,24 +33,55 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
           </button>
         </hlm-alert>
       } @else if (activeTrip()) {
-        <hlm-alert class="active-trip-alert" variant="default">
-          <h2 hlmAlertTitle>{{ fa() ? 'سفر فعال وجود دارد' : 'Active trip found' }}</h2>
-          <p hlmAlertDescription>
-            {{
-              fa()
-                ? 'شما یک سفر در حال انجام دارید. می‌توانید به نقشه سفر بروید یا یک مسیر جدید آغاز کنید.'
-                : 'You have an active trip. Continue to the trip map or start a new route.'
-            }}
-          </p>
-          <div class="active-trip-actions">
-            <button hlmBtn (click)="goToLiveMap()">
-              {{ fa() ? 'نمایش نقشه سفر' : 'View Trip Map' }}
-            </button>
-            <button hlmBtn variant="outline" (click)="showRoutes.set(true)">
-              {{ fa() ? 'مشاهده مسیرهای دیگر' : 'View Other Routes' }}
-            </button>
+        @let trip = activeTrip()!;
+        <section class="active-trip-section">
+          <div class="trip-summary">
+            <div>
+              <h2>{{ trip.lineName }} · {{ trip.tripTypeName }}</h2>
+              <p>{{ fa() ? 'ایستگاه‌های سفر فعال' : 'Active trip stations' }}</p>
+            </div>
+            <div class="active-trip-actions">
+              <button hlmBtn variant="outline" (click)="goToLiveMap()">
+                {{ fa() ? 'نمایش نقشه' : 'View Map' }}
+              </button>
+              <button hlmBtn variant="outline" (click)="showRoutes.set(!showRoutes())">
+                {{ fa() ? 'مسیر جدید' : 'New Route' }}
+              </button>
+            </div>
           </div>
-        </hlm-alert>
+          <div class="active-stations">
+            @for (station of trip.stations; track station.id; let i = $index) {
+              <button class="active-station" (click)="openStation(station.id)">
+                <span class="station-index" [class.current]="station.id === trip.nextStationId">
+                  {{ i + 1 }}
+                </span>
+                <span class="station-details">
+                  <strong>{{ station.name }}</strong>
+                  @if (station.address) {
+                    <span>{{ station.address }}</span>
+                  }
+                  <span>{{ station.passengers.length }} {{ fa() ? 'مسافر' : 'passengers' }}</span>
+                </span>
+                <span class="station-state">
+                  @if (station.id === trip.nextStationId) {
+                    {{ fa() ? 'ایستگاه بعدی' : 'Next station' }}
+                  } @else if (isCompletedStation(station.id, trip.nextStationId, trip.stations)) {
+                    {{ fa() ? 'انجام شد' : 'Completed' }}
+                  }
+                </span>
+                <span aria-hidden="true">›</span>
+              </button>
+            } @empty {
+              <p class="empty-stations">
+                {{
+                  fa()
+                    ? 'ایستگاهی برای این سفر ثبت نشده است.'
+                    : 'No stations are available for this trip.'
+                }}
+              </p>
+            }
+          </div>
+        </section>
       }
 
       @if (showRoutes() && routes().length > 0) {
@@ -77,63 +89,7 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
           <h2 class="section-title">{{ fa() ? 'مسیرهای در دسترس' : 'Available Routes' }}</h2>
           <div class="routes-grid">
             @for (route of routes(); track route.id) {
-              <hlm-card class="route-card" (click)="startRoute(route)">
-                <div hlmCardHeader>
-                  <h3 hlmCardTitle>{{ route.lineName }}</h3>
-                  <p hlmCardDescription>{{ route.tripTypeName }}</p>
-                </div>
-                <div hlmCardContent>
-                  <div class="route-detail">
-                    <span class="detail-item">
-                      <svg
-                        class="detail-icon"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      {{ route.shiftTime }}
-                    </span>
-                    <span class="detail-item">
-                      <svg
-                        class="detail-icon"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      {{ route.departureTime }}
-                    </span>
-                  </div>
-                </div>
-                <div hlmCardFooter>
-                  <button
-                    hlmBtn
-                    class="start-route-btn"
-                    (click)="$event.stopPropagation(); startRoute(route)"
-                  >
-                    {{ fa() ? 'شروع سفر' : 'Start Trip' }}
-                  </button>
-                </div>
-              </hlm-card>
+              <lib-driver-route-card [route]="route" [fa]="fa()" (start)="startRoute($event)" />
             }
           </div>
         </section>
@@ -197,6 +153,85 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
         margin-top: 1rem;
         flex-wrap: wrap;
       }
+      .active-trip-section {
+        margin-bottom: 1.5rem;
+      }
+      .trip-summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+      .trip-summary h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+      .trip-summary p {
+        margin: 0.35rem 0 0;
+        color: var(--muted-foreground);
+      }
+      .active-stations {
+        display: grid;
+        gap: 0.65rem;
+      }
+      .active-station {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        width: 100%;
+        padding: 1rem;
+        text-align: start;
+        color: inherit;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        cursor: pointer;
+      }
+      .active-station:hover {
+        border-color: var(--primary);
+      }
+      .station-index {
+        display: grid;
+        place-items: center;
+        width: 2rem;
+        height: 2rem;
+        flex: 0 0 2rem;
+        border-radius: 50%;
+        background: var(--muted);
+        font-weight: 600;
+      }
+      .station-index.current {
+        background: var(--primary);
+        color: var(--primary-foreground);
+      }
+      .station-details {
+        display: grid;
+        gap: 0.2rem;
+        min-width: 0;
+        flex: 1;
+      }
+      .station-details span,
+      .station-state,
+      .empty-stations {
+        color: var(--muted-foreground);
+        font-size: 0.85rem;
+      }
+      .station-details span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .station-state {
+        color: var(--primary);
+      }
+      @media (max-width: 600px) {
+        .trip-summary {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
       .routes-section {
         margin-top: 1.5rem;
       }
@@ -209,40 +244,6 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
         gap: 1rem;
-      }
-      .route-card {
-        cursor: pointer;
-        transition:
-          box-shadow 0.2s,
-          transform 0.2s;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-      }
-      .route-card:hover {
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-2px);
-      }
-      .route-detail {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-      }
-      .detail-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.875rem;
-        color: var(--muted-foreground);
-      }
-      .detail-icon {
-        width: 16px;
-        height: 16px;
-        flex-shrink: 0;
-      }
-      .start-route-btn {
-        width: 100%;
       }
       .page-footer {
         margin-top: 2rem;
@@ -316,5 +317,19 @@ export class RouteSelectionPage {
 
   protected goToLiveMap(): void {
     this.router.navigateByUrl('/driver/live-map')
+  }
+
+  protected openStation(stationId: number): void {
+    this.router.navigate(['/driver/station-operations', stationId])
+  }
+
+  protected isCompletedStation(
+    stationId: number,
+    nextStationId: number | null | undefined,
+    stations: ActiveTrip['stations'],
+  ): boolean {
+    const nextIndex = stations.findIndex(station => station.id === nextStationId)
+    const stationIndex = stations.findIndex(station => station.id === stationId)
+    return nextIndex >= 0 && stationIndex >= 0 && stationIndex < nextIndex
   }
 }

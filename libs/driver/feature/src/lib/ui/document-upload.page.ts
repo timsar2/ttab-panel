@@ -11,6 +11,7 @@ import { HlmAlertImports } from '@spartan-ng/helm/alert'
 import { HlmSeparatorImports } from '@spartan-ng/helm/separator'
 import { HlmProgressImports } from '@spartan-ng/helm/progress'
 import { FileUploadComponent } from './file-upload.component'
+import { uploadStatusLabel } from './upload-status'
 
 type DocumentType = 'nationalId' | 'drivingLicense' | 'smartCard'
 
@@ -29,7 +30,7 @@ const DOCUMENTS: DocumentInfo[] = [
     title: 'National ID Card',
     description: 'Upload a clear photo of your national identity card.',
     requiresLicenceLevel: false,
-    acceptedFormats: 'JPG, PNG, PDF',
+    acceptedFormats: 'JPG, PNG, WebP',
     maxSize: '5 MB',
   },
   {
@@ -37,7 +38,7 @@ const DOCUMENTS: DocumentInfo[] = [
     title: 'Driving License',
     description: 'Upload your driving license. Licence level is required.',
     requiresLicenceLevel: true,
-    acceptedFormats: 'JPG, PNG, PDF',
+    acceptedFormats: 'JPG, PNG, WebP',
     maxSize: '5 MB',
   },
   {
@@ -45,7 +46,7 @@ const DOCUMENTS: DocumentInfo[] = [
     title: 'Driver Smart Card',
     description: 'Upload your driver smart card.',
     requiresLicenceLevel: false,
-    acceptedFormats: 'JPG, PNG, PDF',
+    acceptedFormats: 'JPG, PNG, WebP',
     maxSize: '5 MB',
   },
 ]
@@ -149,7 +150,7 @@ const DOCUMENTS: DocumentInfo[] = [
                   <div class="upload-progress">
                     <hlm-progress [value]="getUploadProgress(doc.type)" class="progress-bar" />
                     <p class="progress-text">
-                      {{ fa() ? 'در حال آپلود...' : 'Uploading...' }}
+                      {{ uploadStatus(fa()) }}
                       {{ getUploadProgress(doc.type) }}%
                     </p>
                   </div>
@@ -341,6 +342,7 @@ export class DocumentUploadPage {
   private readonly api = inject(DriverApi)
   private readonly config = inject(DRIVER_FEATURE_CONFIG)
   protected readonly fa = computed(() => this.config.language() === 'fa')
+  protected readonly uploadStatus = uploadStatusLabel
 
   protected readonly loading = signal(true)
   protected readonly documents = DOCUMENTS
@@ -418,7 +420,7 @@ export class DocumentUploadPage {
   }
 
   protected getAcceptedMimeTypes(type: DocumentType): string {
-    return '.jpg,.jpeg,.png,.pdf'
+    return '.jpg,.jpeg,.png,.webp'
   }
 
   protected getLicenceLevel(type: DocumentType): string {
@@ -446,12 +448,12 @@ export class DocumentUploadPage {
   }
 
   protected async uploadFile(type: DocumentType, file: File): Promise<void> {
-    if (!file.type.match(/^image\/(jpeg|png)$/) && file.type !== 'application/pdf') {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
       this.docErrors.update(errors => ({
         ...errors,
         [type]: this.fa()
-          ? 'فرمت فایل مجاز نیست. فقط JPG، PNG و PDFAccepted است.'
-          : 'Invalid file format. Only JPG, PNG, and PDF accepted.',
+          ? 'فرمت فایل مجاز نیست. فقط JPG، PNG و WebP مجاز است.'
+          : 'Invalid file format. Only JPG, PNG, and WebP are accepted.',
       }))
       return
     }

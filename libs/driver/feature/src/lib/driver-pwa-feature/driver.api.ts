@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http'
 import { inject, Injectable, InjectionToken } from '@angular/core'
+import { ShiftTimesStore } from '@org/transport-scheduling-data-access'
 import { firstValueFrom } from 'rxjs'
 
 export interface DriverIdentity {
@@ -29,6 +30,7 @@ export interface DriverRecord {
 
 export interface RouteCard {
   id: string
+  directionName?: string
   lineName: string
   tripTypeName: string
   shiftTime: string
@@ -125,7 +127,7 @@ export interface EndTripRequest {
 }
 
 export interface DocumentUploadRequest {
-  documentType: 'nationalId' | 'drivingLicense' | 'smartCard'
+  documentType: 'nationalId' | 'drivingLicense' | 'smartCard' | 'vehicle' | 'card' | 'insurance'
   file: File
   licenceLevel?: string
 }
@@ -168,6 +170,47 @@ function dataResult(value: unknown): Record<string, unknown> {
 export class DriverApi {
   private readonly http = inject(HttpClient)
   private readonly identity = inject(DRIVER_IDENTITY)
+  private readonly shiftTimes = inject(ShiftTimesStore)
+
+  private tripProgressKey(driverId: number): string {
+    return `driver-active-trip-progress:${driverId}`
+  }
+
+  private savedNextStationId(driverId: number, tripId: number): number | null {
+    if (typeof sessionStorage === 'undefined') return null
+    try {
+      const saved = sessionStorage.getItem(this.tripProgressKey(driverId))
+      if (!saved) return null
+      const progress = record(JSON.parse(saved) as unknown)
+      if (Number(progress['tripId']) !== tripId) return null
+      const nextStationId = Number(progress['nextStationId'])
+      return Number.isSafeInteger(nextStationId) && nextStationId > 0 ? nextStationId : null
+    } catch {
+      return null
+    }
+  }
+
+  advanceToStation(tripId: number, nextStationId: number): void {
+    const { driverId } = this.scope()
+    if (typeof sessionStorage === 'undefined') return
+    try {
+      sessionStorage.setItem(
+        this.tripProgressKey(driverId),
+        JSON.stringify({ tripId, nextStationId }),
+      )
+    } catch {
+      // Storage may be unavailable; the current station page still advances in memory.
+    }
+  }
+
+  private clearTripProgress(driverId: number): void {
+    if (typeof sessionStorage === 'undefined') return
+    try {
+      sessionStorage.removeItem(this.tripProgressKey(driverId))
+    } catch {
+      // Storage may be unavailable.
+    }
+  }
 
   private scope(): { driverId: number; companyId: number } {
     const { driverId, companyId } = this.identity()
@@ -181,6 +224,43 @@ export class DriverApi {
         'Driver identity or company scope is unavailable. Sign in again or contact your company administrator.',
       )
     return { driverId: driverId as number, companyId: companyId as number }
+  }
+
+  private async currentVehicle(
+    driverId: number,
+    companyId: number,
+  ): Promise<Record<string, unknown>> {
+    const search = dataResult(
+      await firstValueFrom(
+        this.http.post('/api/v1/vehicles/search', {
+          driverId,
+          companyId,
+          pageNumber: 1,
+          pageSize: 10,
+        }),
+      ),
+    )
+    const vehicles = property(search, 'list')
+    const first = Array.isArray(vehicles) ? record(vehicles[0]) : null
+    const id = first ? Number(property(first, 'id')) : 0
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error('No vehicle is registered yet.')
+    return dataResult(await firstValueFrom(this.http.get(`/api/v1/vehicles/${id}`)))
+  }
+
+  private async fileUploadPayload(file: File): Promise<{ extension: string; data: string }> {
+    const extension = file.name.split('.').pop()?.toLowerCase()
+    if (!extension || !['jpg', 'jpeg', 'png', 'webp'].includes(extension))
+      throw new Error('Only JPG, PNG, and WebP images can be uploaded.')
+    const data = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () =>
+        typeof reader.result === 'string'
+          ? resolve(reader.result)
+          : reject(new Error('The selected file could not be read.'))
+      reader.onerror = () => reject(new Error('The selected file could not be read.'))
+      reader.readAsDataURL(file)
+    })
+    return { extension: `.${extension}`, data }
   }
 
   async requestOtp(phone: string): Promise<void> {
@@ -244,65 +324,129 @@ export class DriverApi {
 
   async availableRoutesPage(pageNumber = 1, pageSize = 10): Promise<DriverRoutesPage> {
     const { driverId, companyId } = this.scope()
-    const response = await firstValueFrom(
-      this.http.post<unknown>('/api/v1/lines/search-driver', {
-        companyId,
-        driverId,
-        pageNumber,
-        pageSize,
-      }),
+    await this.shiftTimes.ensureLoaded()
+    const tripRows = await this.driverTrips(driverId)
+    const lineIdsByDirection = new Map<number, Set<number>>()
+    for (const value of tripRows) {
+      const trip = record(value)
+      const directionId = Number(property(trip, 'directionId'))
+      const lineId = Number(property(trip, 'lineId'))
+      if (!Number.isSafeInteger(directionId) || !Number.isSafeInteger(lineId)) continue
+      const lineIds = lineIdsByDirection.get(directionId) ?? new Set<number>()
+      lineIds.add(lineId)
+      lineIdsByDirection.set(directionId, lineIds)
+    }
+
+    const lineLists = await Promise.all(
+      [...lineIdsByDirection].map(async ([directionId]) => ({
+        directionId,
+        lines: await this.linesForDirection(companyId, directionId),
+      })),
     )
-    const payload = dataResult(response)
-    if (!Array.isArray(payload['list'])) throw new Error('Invalid assigned-route response.')
-    const rawPagination = record(payload['pagination'])
+    const linesByDirectionAndId = new Map<string, Record<string, unknown>>()
+    for (const { directionId, lines } of lineLists) {
+      for (const line of lines) {
+        const id = Number(property(line, 'id'))
+        if (Number.isSafeInteger(id)) linesByDirectionAndId.set(`${directionId}:${id}`, line)
+      }
+    }
+
+    const list: RouteCard[] = tripRows.map(value => {
+      const trip = record(value)
+      const directionId = Number(property(trip, 'directionId'))
+      const lineId = Number(property(trip, 'lineId'))
+      const line = linesByDirectionAndId.get(`${directionId}:${lineId}`)
+      const tripTypeName = String(property(trip, 'tripTypeName') ?? '')
+      const isReturn = /برگشت|return|inbound/i.test(tripTypeName)
+      const assignedShiftName = line
+        ? property(line, isReturn ? 'returnShiftTimeName' : 'entranceShiftTimeName')
+        : undefined
+      const tripShiftName = property(trip, 'shiftTimeName')
+      const tripShiftId = Number(property(trip, 'shiftTimeId'))
+      const shift =
+        this.shiftTimes.byId().get(tripShiftId) ??
+        this.shiftTimes.findByName(
+          typeof assignedShiftName === 'string' ? assignedShiftName : undefined,
+        ) ??
+        this.shiftTimes.findByName(typeof tripShiftName === 'string' ? tripShiftName : undefined)
+      const driverLineId = Number(property(trip, 'driverLineId'))
+      const tripTypeId = Number(property(trip, 'tripTypeId'))
+      return {
+        id: `${driverLineId}-${tripTypeId}-${shift?.id ?? tripShiftId}`,
+        directionName: String(
+          property(line ?? trip, 'directionName') ?? property(trip, 'directionName') ?? '',
+        ),
+        lineName: String(property(line ?? trip, 'name') ?? property(trip, 'lineName') ?? ''),
+        tripTypeName,
+        shiftTime: shift?.name ?? String(assignedShiftName ?? tripShiftName ?? ''),
+        departureTime: shift?.shiftTime ?? String(property(trip, 'departureTime') ?? ''),
+        directionId,
+        driverLineId,
+        shiftTimeId: shift?.id ?? tripShiftId,
+        tripTypeId,
+      }
+    })
+    if (
+      list.some(
+        route =>
+          !Number.isSafeInteger(route.driverLineId) || !Number.isSafeInteger(route.directionId),
+      )
+    )
+      throw new Error('Invalid assigned-route response.')
+
+    const rawPagination = {
+      totalCount: list.length,
+      totalPages: Math.ceil(list.length / pageSize),
+    }
     const pagination: DriverRoutesPagination = {
       pageNumber: Number(property(rawPagination, 'pageNumber') ?? pageNumber),
       pageSize: Number(property(rawPagination, 'pageSize') ?? pageSize),
-      totalCount: Number(property(rawPagination, 'totalCount') ?? payload['list'].length),
+      totalCount: Number(property(rawPagination, 'totalCount')),
       totalPages: Number(property(rawPagination, 'totalPages') ?? 1),
-      hasPreviousPage: Boolean(property(rawPagination, 'hasPreviousPage')),
-      hasNextPage: Boolean(property(rawPagination, 'hasNextPage')),
+      hasPreviousPage: pageNumber > 1,
+      hasNextPage: pageNumber < Number(property(rawPagination, 'totalPages')),
     }
-    const list = payload['list']
-      .map(value => {
-        const item = record(value)
-        const driverLineId = Number(property(item, 'id') ?? property(item, 'driverLineId'))
-        const directionId = Number(property(item, 'directionId'))
-        const lineId = Number(property(item, 'lineId'))
-        return {
-          id: String(driverLineId),
-          lineName: String(property(item, 'directionName') ?? property(item, 'lineName') ?? ''),
-          tripTypeName: String(property(item, 'tripTypeName') ?? ''),
-          shiftTime: String(property(item, 'shiftTimeName') ?? ''),
-          departureTime: String(property(item, 'departureTime') ?? ''),
-          directionId,
-          driverLineId,
-          shiftTimeId: Number(property(item, 'shiftTimeId') ?? 0),
-          tripTypeId: Number(property(item, 'tripTypeId') ?? 0),
-          ...(property(item, 'status') != null || property(item, 'isActive') != null
-            ? { status: String(property(item, 'status') ?? property(item, 'isActive')) }
-            : {}),
-          ...(typeof property(item, 'fullName') === 'string'
-            ? { driverName: property(item, 'fullName') as string }
-            : {}),
-          ...(typeof property(item, 'vehicleInfo') === 'string'
-            ? { vehicleInfo: property(item, 'vehicleInfo') as string }
-            : {}),
-          ...(typeof property(item, 'passengerCount') === 'number'
-            ? { passengerCount: property(item, 'passengerCount') as number }
-            : {}),
-          ...(typeof property(item, 'estimatedMinutes') === 'number'
-            ? { estimatedMinutes: property(item, 'estimatedMinutes') as number }
-            : {}),
-          ...(Number.isSafeInteger(lineId) ? { lineId } : {}),
-        }
-      })
-      .map(value => {
-        if (!Number.isSafeInteger(value.driverLineId) || !Number.isSafeInteger(value.directionId))
-          throw new Error('Invalid assigned-route response.')
-        return value
-      })
-    return { list, pagination }
+    const offset = (pageNumber - 1) * pageSize
+    return { list: list.slice(offset, offset + pageSize), pagination }
+  }
+
+  private async driverTrips(driverId: number): Promise<unknown[]> {
+    const response = await firstValueFrom(
+      this.http.get<unknown>(`/api/v1/trips/driver/${driverId}`),
+    )
+    if (Array.isArray(response)) return response
+    const result = property(record(response), 'result')
+    if (Array.isArray(result)) return result
+    throw new Error('Invalid assigned-route response.')
+  }
+
+  private async linesForDirection(
+    companyId: number,
+    directionId: number,
+  ): Promise<Record<string, unknown>[]> {
+    const lines: Record<string, unknown>[] = []
+    let pageNumber = 1
+    let totalPages = 1
+    do {
+      const payload = dataResult(
+        await firstValueFrom(
+          this.http.post('/api/v1/lines/search', {
+            companyId,
+            directionId,
+            pageNumber,
+            pageSize: 100,
+          }),
+        ),
+      )
+      if (!Array.isArray(payload['list'])) throw new Error('Invalid line lookup response.')
+      lines.push(...payload['list'].map(record))
+      const pagination = record(payload['pagination'])
+      totalPages = Number(
+        property(pagination, 'totalPages') ?? property(pagination, 'totalPage') ?? 1,
+      )
+      pageNumber += 1
+    } while (pageNumber <= totalPages)
+    return lines
   }
 
   async activeTrip(): Promise<ActiveTrip | null> {
@@ -367,7 +511,7 @@ export class DriverApi {
         })
       : []
     const vehicle = record(property(value, 'vehicle') ?? {})
-    return {
+    const trip: ActiveTrip = {
       id: Number(property(value, 'id')),
       driverLineId: Number(property(value, 'driverLineId')),
       shiftTimeId: Number(property(value, 'shiftTimeId')),
@@ -402,6 +546,62 @@ export class DriverApi {
             : null,
       },
     }
+    const savedNextStationId = this.savedNextStationId(driverId, trip.id)
+    if (savedNextStationId !== null) {
+      const savedIndex = trip.stations.findIndex(station => station.id === savedNextStationId)
+      const serverIndex = trip.stations.findIndex(station => station.id === trip.nextStationId)
+      if (savedIndex > serverIndex) trip.nextStationId = savedNextStationId
+      else this.clearTripProgress(driverId)
+    }
+    trip.stations = await Promise.all(
+      trip.stations.map(async station => {
+        const existingPassengers = new Map(
+          station.passengers.map(passenger => [passenger.id, passenger]),
+        )
+        const passengers = await this.stationPassengers(station.id)
+        return {
+          ...station,
+          passengers: passengers.map(passenger => ({
+            ...passenger,
+            isAbsent: existingPassengers.get(passenger.id)?.isAbsent ?? passenger.isAbsent,
+          })),
+        }
+      }),
+    )
+    return trip
+  }
+
+  async stationPassengers(stationId: number): Promise<Passenger[]> {
+    this.scope()
+    const response = record(
+      await firstValueFrom(
+        this.http.post<unknown>('/api/v1/stationpassengers/search-passenger-station', {
+          stationId,
+        }),
+      ),
+    )
+    if (response['code'] !== '2000') throw new Error('Station passengers could not be loaded.')
+    const result = property(response, 'result')
+    const rows = Array.isArray(result)
+      ? result
+      : result && typeof result === 'object' && Array.isArray(property(record(result), 'list'))
+        ? (property(record(result), 'list') as unknown[])
+        : []
+    return rows
+      .map(raw => {
+        const passenger = record(raw)
+        return {
+          id: Number(property(passenger, 'passengerId') ?? property(passenger, 'id')),
+          fullName: String(property(passenger, 'fullName') ?? ''),
+          mobileNumber: String(property(passenger, 'mobileNumber') ?? ''),
+          profileImage:
+            typeof property(passenger, 'profileImage') === 'string'
+              ? (property(passenger, 'profileImage') as string)
+              : null,
+          isAbsent: Boolean(property(passenger, 'isAbsent')),
+        }
+      })
+      .filter(passenger => Number.isSafeInteger(passenger.id) && passenger.id > 0)
   }
 
   async routeGeometry(tripId: number, directionId: number): Promise<RouteGeometry> {
@@ -456,7 +656,7 @@ export class DriverApi {
   }
 
   async endTrip(request: EndTripRequest): Promise<void> {
-    this.scope()
+    const { driverId } = this.scope()
     const response = record(
       await firstValueFrom(
         this.http.post('/api/v1/trips/end-trip', {
@@ -467,6 +667,7 @@ export class DriverApi {
     )
     if (response['code'] !== '2000' || response['result'] !== true)
       throw new Error('The trip could not be ended.')
+    this.clearTripProgress(driverId)
   }
 
   /** Publish live driver location to backend; backend broadcasts to trip group via SignalR. */
@@ -486,20 +687,47 @@ export class DriverApi {
 
   async uploadDocument(request: DocumentUploadRequest): Promise<string> {
     const { driverId, companyId } = this.scope()
+    if (
+      request.documentType === 'vehicle' ||
+      request.documentType === 'card' ||
+      request.documentType === 'insurance'
+    ) {
+      const current = await this.currentVehicle(driverId, companyId)
+      const imageProperty = {
+        vehicle: 'carImage',
+        card: 'carCardImage',
+        insurance: 'carInsuranceImage',
+      }[request.documentType]
+      const saved = dataResult(
+        await firstValueFrom(
+          this.http.post('/api/v1/vehicles', {
+            id: property(current, 'id'),
+            driverId,
+            vehicleTypeId: property(current, 'vehicleTypeId'),
+            carPlate: property(current, 'carPlate'),
+            color: property(current, 'color'),
+            produnctionYear: property(current, 'produnctionYear'),
+            capacity: property(current, 'capacity'),
+            [imageProperty]: await this.fileUploadPayload(request.file),
+          }),
+        ),
+      )
+      const path = property(saved, imageProperty)
+      return typeof path === 'string' ? path : ''
+    }
+
     const formData = new FormData()
     formData.append('driverId', String(driverId))
     formData.append('companyId', String(companyId))
     formData.append('documentType', request.documentType)
     formData.append('file', request.file)
-    if (request.licenceLevel) {
-      formData.append('licenceLevel', request.licenceLevel)
-    }
+    if (request.licenceLevel) formData.append('licenceLevel', request.licenceLevel)
     const response = record(
       await firstValueFrom(this.http.post('/api/v1/drivers/upload-document', formData)),
     )
     if (response['code'] !== '2000' || typeof response['result'] !== 'string')
       throw new Error('The document could not be uploaded.')
-    return response['result'] as string
+    return response['result']
   }
 
   async profile(): Promise<Record<string, unknown>> {
@@ -514,12 +742,21 @@ export class DriverApi {
 
   async updateVehicle(value: Record<string, unknown>): Promise<void> {
     const { driverId, companyId } = this.scope()
+    const current = await this.currentVehicle(driverId, companyId)
+    const requestedTypeId = Number(value['vehicleType'])
     dataResult(
       await firstValueFrom(
-        this.http.put('/api/v1/drivers/vehicle', {
-          companyId,
+        this.http.post('/api/v1/vehicles', {
+          id: property(current, 'id'),
           driverId,
-          ...value,
+          vehicleTypeId:
+            Number.isSafeInteger(requestedTypeId) && requestedTypeId > 0
+              ? requestedTypeId
+              : property(current, 'vehicleTypeId'),
+          carPlate: value['vehiclePlate'] ?? property(current, 'carPlate'),
+          color: value['vehicleColor'] ?? property(current, 'color'),
+          produnctionYear: value['vehicleYear'] ?? property(current, 'produnctionYear'),
+          capacity: value['vehicleCapacity'] ?? property(current, 'capacity'),
         }),
       ),
     )

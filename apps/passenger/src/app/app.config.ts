@@ -4,6 +4,7 @@ import { PreferencesStore } from '@org/platform'
 import { appRoutes } from './app.routes'
 import { AuthBackend } from '@org/platform'
 import { passengerAuthBackend } from './passenger/mobile-auth.backend'
+import { ShiftTimesStore } from '@org/transport-scheduling-data-access'
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -14,6 +15,9 @@ export const appConfig: ApplicationConfig = {
       routes: appRoutes,
     }),
     { provide: AuthBackend, useFactory: passengerAuthBackend },
+    provideAppInitializer(() => {
+      inject(ShiftTimesStore)
+    }),
     provideAppInitializer(() => {
       const preferences = inject(PreferencesStore)
       afterNextRender(() => {

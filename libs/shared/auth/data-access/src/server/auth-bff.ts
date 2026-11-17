@@ -219,7 +219,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   )
   const fetcher = options.fetch ?? globalThis.fetch
   const storage = options.storage ?? createMemorySessionStorage()
-  const maxSessionLifetime = config.production ? 12 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000
+  const maxSessionLifetime = config.production ? 90 * 86_400_000 : 24 * 60 * 60 * 1000
   const trackingConnections = new Map<string, Set<AuthBffTrackingConnection>>()
   const report = (diagnostic: AuthDiagnostic) => {
     try {
@@ -553,7 +553,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     }
     next()
   })
-  router.use(express.raw({ type: () => true, limit: '1mb' }))
+  router.use(express.raw({ type: () => true, limit: '6mb' }))
   router.use((req, res) => {
     const rawPath = req.url.split('?')[0]
     const operation: AuthDiagnostic['operation'] =
@@ -573,6 +573,12 @@ export function createAuthBff(options: AuthBffOptions): Router & {
                     ? 'logout'
                     : 'proxy'
     void (async () => {
+      if (
+        /^\/auth(?:\/|$)/i.test(rawPath) &&
+        Buffer.isBuffer(req.body) &&
+        req.body.length > 1024 * 1024
+      )
+        throw new Failure(413)
       // Reject encoded paths altogether: no normalization, traversal or endpoint aliases.
       if (
         !/^\/(?:[A-Za-z0-9_-]+\/?)*$/.test(rawPath) ||
