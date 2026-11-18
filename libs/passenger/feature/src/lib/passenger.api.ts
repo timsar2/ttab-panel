@@ -63,6 +63,19 @@ function record(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>
 }
 
+function field(value: Record<string, unknown>, name: string): unknown {
+  const pascalName = `${name[0].toUpperCase()}${name.slice(1)}`
+  return value[name] ?? value[pascalName]
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+function optionalString(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
+
 function listResult(value: unknown): unknown[] {
   const envelope = record(value)
   if (envelope['code'] !== '2000' || !Array.isArray(envelope['result']))
@@ -229,35 +242,50 @@ export class PassengerApi {
       }
     }
     const value = record(body)
-    const stations = Array.isArray(value['Stations'])
-      ? value['Stations'].map(raw => {
-          const item = record(raw)
-          return {
-            id: Number(item['Id']),
-            name: String(item['Name'] ?? ''),
-            address: typeof item['Address'] === 'string' ? item['Address'] : undefined,
-            lat: typeof item['Lat'] === 'number' ? item['Lat'] : undefined,
-            lng: typeof item['Lng'] === 'number' ? item['Lng'] : undefined,
-          }
-        })
+    const id = Number(field(value, 'id'))
+    const driverId = Number(field(value, 'driverId'))
+    if (!Number.isSafeInteger(id) || id <= 0 || !Number.isSafeInteger(driverId) || driverId <= 0)
+      throw new Error('The active-trip response is missing a valid trip or driver id.')
+
+    const rawStations = field(value, 'stations')
+    const stations = Array.isArray(rawStations)
+      ? rawStations
+          .map(raw => {
+            const item = record(raw)
+            const stationId = Number(field(item, 'id'))
+            const name = field(item, 'name')
+            return {
+              id: stationId,
+              name: typeof name === 'string' ? name : '',
+              address: optionalString(field(item, 'address')) ?? undefined,
+              lat: optionalNumber(field(item, 'lat')),
+              lng: optionalNumber(field(item, 'lng')),
+            }
+          })
+          .filter(station => Number.isSafeInteger(station.id) && station.id > 0 && station.name)
       : []
+    const stationId = Number(field(value, 'passengerStationId') ?? field(value, 'stationId'))
+    const nextStationId = Number(field(value, 'nextStationId'))
+
     return {
-      id: Number(value['Id']),
-      driverId: Number(value['DriverId']),
-      fullName: String(value['FullName'] ?? ''),
-      mobileNumber: String(value['MobileNumber'] ?? ''),
-      driverImage: typeof value['DriverImage'] === 'string' ? value['DriverImage'] : null,
-      carTypeName: typeof value['CarTypeName'] === 'string' ? value['CarTypeName'] : null,
-      carPlate: typeof value['CarPlate'] === 'string' ? value['CarPlate'] : null,
-      carImage: typeof value['CarImage'] === 'string' ? value['CarImage'] : null,
-      passengerStationId:
-        typeof value['PassengerStationId'] === 'number' ? value['PassengerStationId'] : null,
-      nextStationId: typeof value['NextStationId'] === 'number' ? value['NextStationId'] : null,
+      id,
+      driverId,
+      fullName: String(field(value, 'fullName') ?? ''),
+      mobileNumber: String(field(value, 'mobileNumber') ?? ''),
+      driverImage: optionalString(field(value, 'driverImage')),
+      carTypeName: optionalString(field(value, 'carTypeName')),
+      carPlate: optionalString(field(value, 'carPlate')),
+      carImage: optionalString(field(value, 'carImage')),
+      passengerStationId: Number.isSafeInteger(stationId) && stationId > 0 ? stationId : null,
+      nextStationId:
+        Number.isSafeInteger(nextStationId) && nextStationId > 0 ? nextStationId : null,
       stations,
     }
   }
 
   async driverLocation(driverId: number): Promise<PassengerDriverLocation | null> {
+    if (!Number.isSafeInteger(driverId) || driverId <= 0)
+      throw new Error('A valid driver id is required to load the driver location.')
     const envelope = record(
       await firstValueFrom(
         this.http.get<unknown>('/api/v1/routings/location', { params: { driverId } }),

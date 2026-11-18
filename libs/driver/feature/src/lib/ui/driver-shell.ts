@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router, RouterOutlet } from '@angular/router'
 import { SessionStore } from '@org/platform'
 import { AppLayout, LayoutNavItem } from '@org/layout'
-import { DriverApi, DriverRecord } from '../driver-pwa-feature/driver.api'
+import { DriverApi, DriverHomeDetails } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
 import { HlmButtonImports } from '@spartan-ng/helm/button'
 import {
@@ -23,14 +23,12 @@ import {
       <span layoutBrand class="truncate font-semibold">Driver</span>
       <div layoutHeader class="flex w-full min-w-0 items-center justify-between gap-3">
         <div class="min-w-0">
-          <span class="block truncate font-semibold">{{
-            driver()?.fullName ?? (fa() ? 'رانندہ' : 'Driver')
-          }}</span>
-          @if (driver(); as d) {
+          <span class="block truncate font-semibold">{{ driverName() }}</span>
+          @if (homeDetails(); as details) {
             <span class="text-muted-foreground block truncate text-sm">
-              {{ d.vehicleType ?? (fa() ? 'نوع وسیله' : 'Vehicle type') }}
-              @if (d.vehiclePlate) {
-                · {{ d.vehiclePlate }}
+              {{ details.vehicle.name ?? (fa() ? 'نوع وسیله' : 'Vehicle type') }}
+              @if (details.vehicle.plate) {
+                · {{ details.vehicle.plate }}
               }
             </span>
           }
@@ -57,7 +55,12 @@ export class DriverShell {
   private readonly router = inject(Router)
   private readonly config = inject(DRIVER_FEATURE_CONFIG)
   protected readonly fa = computed(() => this.config.language() === 'fa')
-  protected readonly driver = signal<DriverRecord | null>(null)
+  private readonly profile = signal<Record<string, unknown> | null>(null)
+  protected readonly driverName = computed(() => {
+    const profile = this.profile()
+    return `${String(profile?.['firstName'] ?? '')} ${String(profile?.['lastName'] ?? '')}`.trim()
+  })
+  protected readonly homeDetails = signal<DriverHomeDetails | null>(null)
 
   protected readonly navigationLabel = computed(() => (this.fa() ? 'ناوبری' : 'Navigation'))
 
@@ -103,12 +106,12 @@ export class DriverShell {
   }
 
   private async loadDriver(): Promise<void> {
-    try {
-      const driver = await this.api.driver()
-      this.driver.set(driver)
-    } catch {
-      /* Driver info will remain null; UI shows placeholder */
-    }
+    const [details, profile] = await Promise.allSettled([
+      this.api.driverHomeDetails(),
+      this.api.profile(),
+    ])
+    if (details.status === 'fulfilled') this.homeDetails.set(details.value)
+    if (profile.status === 'fulfilled') this.profile.set(profile.value)
   }
 
   protected async logout(): Promise<void> {

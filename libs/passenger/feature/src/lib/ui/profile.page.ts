@@ -31,6 +31,51 @@ import { HlmButtonImports } from '@spartan-ng/helm/button'
     }
     @if (!loading() && profile()) {
       <form class="panel stack" (submit)="$event.preventDefault(); save()">
+        <header class="profile-identity">
+          <button
+            class="profile-avatar-trigger"
+            type="button"
+            [disabled]="saving()"
+            [attr.aria-label]="fa() ? 'تغییر تصویر نمایه' : 'Change profile photo'"
+            (click)="openImagePicker(profileImageInput)"
+          >
+            @if (displayProfilePhoto(); as image) {
+              <img [src]="image" alt="" (error)="profileImageFailed.set(true)" />
+            } @else {
+              <span class="profile-avatar-fallback" aria-hidden="true">{{
+                profileInitials()
+              }}</span>
+            }
+            <span class="profile-avatar-edit" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4Z" />
+              </svg>
+            </span>
+          </button>
+          <input
+            #profileImageInput
+            class="profile-file-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            tabindex="-1"
+            aria-hidden="true"
+            (change)="selectImage($event)"
+          />
+          <div class="profile-identity-copy">
+            <h2>{{ profileDisplayName() }}</h2>
+            <p>{{ fa() ? 'تصویر حساب کاربری' : 'Your account photo' }}</p>
+            @if (imagePreview()) {
+              <p class="profile-image-pending" role="status">
+                {{
+                  fa()
+                    ? 'تصویر جدید انتخاب شد؛ برای ثبت، ذخیره تغییرات را بزنید.'
+                    : 'New photo selected. Save changes to apply it.'
+                }}
+              </p>
+            }
+          </div>
+        </header>
         <div class="grid">
           <label
             >{{ fa() ? 'نام' : 'First name'
@@ -108,26 +153,6 @@ import { HlmButtonImports } from '@spartan-ng/helm/button'
             (input)="address.set($any($event.target).value)"
           ></textarea>
         </label>
-        @if (profile()?.['profileImage']; as image) {
-          <div>
-            <p>{{ fa() ? 'تصویر فعلی' : 'Current profile image' }}</p>
-            <img class="vehicle-image" [src]="$any(image)" alt="" />
-          </div>
-        }
-        <label
-          >{{ fa() ? 'تصویر نمایه' : 'Profile image'
-          }}<input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            (change)="selectImage($event)"
-        /></label>
-        @if (imagePreview()) {
-          <img
-            class="vehicle-image"
-            [src]="imagePreview()"
-            alt="{{ fa() ? 'پیش‌نمایش تصویر جدید' : 'New profile image preview' }}"
-          />
-        }
         <p class="notice">
           {{
             fa()
@@ -180,6 +205,24 @@ export class PassengerProfilePage {
   protected readonly postalCode = signal('')
   protected readonly address = signal('')
   protected readonly imagePreview = signal<string | null>(null)
+  protected readonly profileImageFailed = signal(false)
+  protected readonly profileDisplayName = computed(() =>
+    `${this.firstName().trim()} ${this.lastName().trim()}`.trim(),
+  )
+  protected readonly profileInitials = computed(() => {
+    const initials = [this.firstName().trim(), this.lastName().trim()]
+      .map(name => name[0])
+      .filter(Boolean)
+      .join('')
+    return initials || 'P'
+  })
+  protected readonly displayProfilePhoto = computed(() => {
+    if (this.profileImageFailed()) return null
+    const preview = this.imagePreview()
+    if (preview) return preview
+    const image = this.profile()?.['profileImage']
+    return typeof image === 'string' && image ? image : null
+  })
   private readonly imageUpload = signal<{ extension: string; data: string } | null>(null)
   protected readonly provinceId = signal('')
   protected readonly cityId = signal('')
@@ -194,6 +237,7 @@ export class PassengerProfilePage {
     try {
       const [profile, provinces] = await Promise.all([this.api.profile(), this.api.provinces()])
       this.profile.set(profile)
+      this.profileImageFailed.set(false)
       this.provinces.set(provinces)
       this.firstName.set(String(profile['firstName'] ?? ''))
       this.lastName.set(String(profile['lastName'] ?? ''))
@@ -229,6 +273,12 @@ export class PassengerProfilePage {
         this.fa() ? 'بارگذاری شهرها ناموفق بود.' : 'Could not load cities for this province.',
       )
     }
+  }
+
+  protected openImagePicker(input: HTMLInputElement): void {
+    if (this.saving()) return
+    input.value = ''
+    input.click()
   }
 
   protected async save(): Promise<void> {
@@ -306,6 +356,7 @@ export class PassengerProfilePage {
         }
         this.imageUpload.set({ extension: extensions[file.type], data: reader.result })
         this.imagePreview.set(reader.result)
+        this.profileImageFailed.set(false)
         this.saveError.set(null)
       },
       { once: true },

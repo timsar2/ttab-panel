@@ -9,5 +9,11 @@
 @source '../../../libs/spartan/card';
 @source '../../../libs/spartan/field';
 @source '../../../libs/spartan/input';
+@source '../../../libs/spartan/input-group';
 @source '../../../libs/spartan/label';
+@source '../../../libs/spartan/button';
+@source '../../../libs/spartan/calendar';
+@source '../../../libs/spartan/date-picker';
+@source '../../../libs/spartan/popover';
+@source '../../../libs/spartan/select';
 @source '../../../libs/spartan/sidebar';

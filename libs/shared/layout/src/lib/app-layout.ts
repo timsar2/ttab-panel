@@ -130,7 +130,15 @@ export interface LayoutNavItem {
             [attr.aria-expanded]="sidebar.isMobile() ? sidebar.openMobile() : sidebar.open()"
             aria-controls="app-navigation"
             [attr.title]="toggleNavigationLabel()"
-          ></button>
+          >
+            @if (sidebar.isMobile()) {
+              <span class="theme-mobile-menu-icon" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+            }
+          </button>
           <ng-content select="[layoutHeader]" />
         </header>
         <section class="theme-page-content"><ng-content /></section>

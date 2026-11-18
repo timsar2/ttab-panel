@@ -17,6 +17,8 @@ export interface DriverPublisherOptions {
   distanceFilterMeters?: number
   /** Safety throttle so high-frequency GPS doesn't spam server. */
   minIntervalMs?: number
+  /** Heartbeat interval to resend the latest fix even when the driver is stationary. */
+  periodicIntervalMs?: number
   getContext: () => Omit<DriverPublishPayload, 'lat' | 'lng'> | null
   onError?: (error: unknown) => void
 }
@@ -89,8 +91,8 @@ export class DriverLocationPublisherService {
       { enableHighAccuracy: true, maximumAge: 5_000, timeout: 20_000 },
     )
 
-    // Periodic safety send (Flutter also emitted periodic updates).
-    const interval = Math.max(10_000, options.minIntervalMs ?? 30_000)
+    // Keep the last known fix flowing even when GPS reports no movement.
+    const interval = Math.max(1_000, options.periodicIntervalMs ?? 30_000)
     this.timerId = setInterval(() => void this.maybeSend(this.latestPoint, true), interval)
 
     return true

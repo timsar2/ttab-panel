@@ -14,6 +14,7 @@ import {
 } from '@spartan-ng/helm/select'
 import { HlmSpinner } from '@spartan-ng/helm/spinner'
 import { HlmTabs, HlmTabsContent, HlmTabsList, HlmTabsTrigger } from '@spartan-ng/helm/tabs'
+import { HlmFieldImports } from '@spartan-ng/helm/field'
 
 type TabType = 'your-route' | 'new-route'
 
@@ -35,6 +36,7 @@ type TabType = 'your-route' | 'new-route'
     HlmSelectItem,
     HlmSelectTrigger,
     HlmSelectValue,
+    HlmFieldImports,
   ],
   template: `
     <div class="page-container" [attr.dir]="fa() ? 'rtl' : 'ltr'">
@@ -109,37 +111,58 @@ type TabType = 'your-route' | 'new-route'
 
           <div hlmTabsContent="new-route">
             <div class="filter-section">
+              <div class="filter-heading">
+                <h2>{{ fa() ? 'پیدا کردن مسیر' : 'Find a route' }}</h2>
+                <p>
+                  {{
+                    fa()
+                      ? 'برای مشاهده مسیرهای موجود، گزینه‌ها را انتخاب کنید.'
+                      : 'Choose your preferences to find available routes.'
+                  }}
+                </p>
+              </div>
               <div class="filter-row">
-                <hlm-select [(value)]="filterLine" (valueChange)="applyFilters()">
-                  <hlm-select-trigger>
-                    <hlm-select-value [placeholder]="fa() ? 'خط را انتخاب کنید' : 'Select line'" />
-                  </hlm-select-trigger>
-                  <hlm-select-content>
-                    @for (line of availableLines(); track line.id) {
-                      <hlm-select-item [value]="line.id">{{ line.name }}</hlm-select-item>
-                    }
-                  </hlm-select-content>
-                </hlm-select>
-                <hlm-select [(value)]="filterTripType" (valueChange)="applyFilters()">
-                  <hlm-select-trigger>
-                    <hlm-select-value [placeholder]="fa() ? 'نوع سفر' : 'Trip type'" />
-                  </hlm-select-trigger>
-                  <hlm-select-content>
-                    @for (type of availableTripTypes(); track type.id) {
-                      <hlm-select-item [value]="type.id">{{ type.name }}</hlm-select-item>
-                    }
-                  </hlm-select-content>
-                </hlm-select>
-                <hlm-select [(value)]="filterShift" (valueChange)="applyFilters()">
-                  <hlm-select-trigger>
-                    <hlm-select-value [placeholder]="fa() ? 'شیفت' : 'Shift'" />
-                  </hlm-select-trigger>
-                  <hlm-select-content>
-                    @for (shift of availableShifts(); track shift.id) {
-                      <hlm-select-item [value]="shift.id">{{ shift.name }}</hlm-select-item>
-                    }
-                  </hlm-select-content>
-                </hlm-select>
+                <div hlmField>
+                  <label hlmFieldLabel for="route-line">{{ fa() ? 'خط' : 'Line' }}</label>
+                  <hlm-select [(value)]="filterLine" (valueChange)="applyFilters()">
+                    <hlm-select-trigger id="route-line">
+                      <hlm-select-value [placeholder]="fa() ? 'همه خطوط' : 'All lines'" />
+                    </hlm-select-trigger>
+                    <hlm-select-content>
+                      @for (line of availableLines(); track line.id) {
+                        <hlm-select-item [value]="line.id">{{ line.name }}</hlm-select-item>
+                      }
+                    </hlm-select-content>
+                  </hlm-select>
+                </div>
+                <div hlmField>
+                  <label hlmFieldLabel for="route-trip-type">{{
+                    fa() ? 'نوع سفر' : 'Trip type'
+                  }}</label>
+                  <hlm-select [(value)]="filterTripType" (valueChange)="applyFilters()">
+                    <hlm-select-trigger id="route-trip-type">
+                      <hlm-select-value [placeholder]="fa() ? 'همه انواع سفر' : 'All trip types'" />
+                    </hlm-select-trigger>
+                    <hlm-select-content>
+                      @for (type of availableTripTypes(); track type.id) {
+                        <hlm-select-item [value]="type.id">{{ type.name }}</hlm-select-item>
+                      }
+                    </hlm-select-content>
+                  </hlm-select>
+                </div>
+                <div hlmField>
+                  <label hlmFieldLabel for="route-shift">{{ fa() ? 'شیفت' : 'Shift' }}</label>
+                  <hlm-select [(value)]="filterShift" (valueChange)="applyFilters()">
+                    <hlm-select-trigger id="route-shift">
+                      <hlm-select-value [placeholder]="fa() ? 'همه شیفت‌ها' : 'All shifts'" />
+                    </hlm-select-trigger>
+                    <hlm-select-content>
+                      @for (shift of availableShifts(); track shift.id) {
+                        <hlm-select-item [value]="shift.id">{{ shift.name }}</hlm-select-item>
+                      }
+                    </hlm-select-content>
+                  </hlm-select>
+                </div>
               </div>
             </div>
 
@@ -210,18 +233,39 @@ type TabType = 'your-route' | 'new-route'
       }
       .filter-section {
         margin-bottom: 1.5rem;
-        padding: 1rem;
-        background: var(--muted);
-        border-radius: 0.75rem;
+        padding: 1.25rem;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground) 6%, transparent);
+      }
+      .filter-heading {
+        margin-bottom: 1.25rem;
+      }
+      .filter-heading h2 {
+        color: var(--heading);
+        font-size: 1.125rem;
+        font-weight: 600;
+        line-height: 1.5;
+        margin: 0 0 0.25rem;
+      }
+      .filter-heading p {
+        color: var(--muted-foreground);
+        font-size: 0.875rem;
+        line-height: 1.6;
+        margin: 0;
       }
       .filter-row {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 1rem;
       }
-      .filter-row hlm-select {
-        flex: 1;
-        min-width: 180px;
+      .filter-row [hlmField] {
+        min-width: 0;
+      }
+      .filter-row hlm-select,
+      .filter-row hlm-select-trigger {
+        width: 100%;
       }
       .routes-grid {
         display: grid;
@@ -234,6 +278,18 @@ type TabType = 'your-route' | 'new-route'
         align-items: center;
         gap: 1rem;
         padding: 1.25rem 0;
+      }
+      @media (max-width: 640px) {
+        .page-container {
+          padding: 1rem;
+        }
+        .filter-section {
+          padding: 1rem;
+        }
+        .filter-row {
+          grid-template-columns: 1fr;
+          gap: 0.875rem;
+        }
       }
     `,
   ],

@@ -9,6 +9,7 @@ import {
 import { Router } from '@angular/router'
 import { NeshanLiveLocation, NeshanMapComponent, NeshanMapPoint } from '@org/shared-maps'
 import { DriverLocationPublisherService } from '@org/shared-tracking'
+import { SessionStore } from '@org/platform'
 import { environment } from '@org/platform/config'
 import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
@@ -303,6 +304,7 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
 export class LiveTripMapPage {
   private readonly api = inject(DriverApi)
   private readonly router = inject(Router)
+  private readonly session = inject(SessionStore)
   protected readonly config = inject(DRIVER_FEATURE_CONFIG)
   protected readonly publisher = inject(DriverLocationPublisherService)
 
@@ -354,17 +356,12 @@ export class LiveTripMapPage {
 
   private async startRealtime(): Promise<void> {
     this.publishError.set(null)
-
-    let driverId: number | null = null
-    try {
-      driverId = (await this.api.driver().catch(() => null))?.id ?? null
-    } catch {
-      /* ignore */
-    }
+    const driverId = this.session.user()?.businessEntityId ?? null
 
     const started = await this.publisher.start({
       distanceFilterMeters: 10,
       minIntervalMs: 5000,
+      periodicIntervalMs: environment.production ? 30_000 : 15_000,
       getContext: () => {
         const currentTrip = this.trip()
         if (!currentTrip) return null

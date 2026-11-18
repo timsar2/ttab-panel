@@ -52,6 +52,21 @@ export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSs
   if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(options.appId)) {
     throw new Error('Platform SSR appId must be a lowercase URL-safe identifier.')
   }
+  // Dev-only: trust the self-signed TLS cert on the loopback backend so the
+  // server-side SignalR negotiate (and any Node fetch) succeeds over https.
+  if (!options.environment.production) {
+    try {
+      const api = new URL(options.environment.apiUrl)
+      const loopback =
+        api.hostname === 'localhost' || api.hostname === '127.0.0.1' || api.hostname === '[::1]'
+      if (api.protocol === 'https:' && loopback) {
+        process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
+      }
+    } catch {
+      /* ignore malformed apiUrl */
+    }
+  }
+
   const serverDistFolder = dirname(fileURLToPath(options.moduleUrl))
   const browserDistFolder = resolve(serverDistFolder, '../browser')
   const app = express()

@@ -510,6 +510,26 @@ describe('Node cookie authentication BFF', () => {
     expect(fetcher).not.toHaveBeenCalled()
   })
 
+  it('accepts the paired localhost dev-server origin on port 4400', async () => {
+    const developmentConfig = readAuthBffConfig(
+      {
+        AUTH_API_URL: 'http://127.0.0.1:5000/api',
+        AUTH_PUBLIC_ORIGIN: 'http://localhost:4200',
+        AUTH_SESSION_SECRET: secret,
+        NODE_ENV: 'development',
+      },
+      { apiUrl: 'http://127.0.0.1:5000/api', production: false, developmentOrigin: origin },
+    )
+    const { app, fetcher } = fixture(undefined, 86_400_000, developmentConfig)
+    await request(app)
+      .post('/api/auth/mobile-register')
+      .set('Origin', 'http://localhost:4400')
+      .set('X-Auth-Request', '1')
+      .send({ mobile: '09123456789' })
+      .expect(200)
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
+
   it('blocks token/logout bypasses, encoded paths and unsupported methods', async () => {
     const { app, fetcher } = fixture()
     for (const path of [

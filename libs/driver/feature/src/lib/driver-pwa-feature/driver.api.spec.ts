@@ -36,6 +36,37 @@ describe('DriverApi route scoping and joins', () => {
 
   afterEach(() => http.verify())
 
+  it('loads violation choices for the reported person type', async () => {
+    const result = api.supportViolationTypes(1)
+    const request = http.expectOne('/api/v1/support/violation-types/1')
+    expect(request.request.method).toBe('GET')
+    request.flush({ code: '2000', result: [{ id: 5, code: 'P1', title: 'Passenger violation' }] })
+
+    await expect(result).resolves.toEqual([{ id: 5, code: 'P1', title: 'Passenger violation' }])
+  })
+
+  it('submits a support complaint with its selected violation and trip context', async () => {
+    const result = api.submitSupportReport({
+      supportTypeId: 3,
+      subject: 'Passenger complaint',
+      body: 'A passenger violated the rules during the trip.',
+      reportedPersonId: 42,
+      tripId: 91,
+      violationTypeId: 5,
+      occurredAt: '2026-11-17T10:00',
+    })
+    const request = http.expectOne('/api/v1/support')
+    expect(request.request.body).toMatchObject({
+      SupportTypeId: 3,
+      ReportedPersonId: 42,
+      TripId: 91,
+      ViolationTypeIds: '5',
+    })
+    request.flush({ code: '2000', result: true })
+
+    await expect(result).resolves.toBeUndefined()
+  })
+
   it('sends the authenticated driver id with driver search', async () => {
     const result = api.driver()
     const request = http.expectOne('/api/v1/drivers/search')
@@ -45,65 +76,105 @@ describe('DriverApi route scoping and joins', () => {
     await expect(result).resolves.toMatchObject({ id: 27, fullName: 'Driver' })
   })
 
-  it('loads active-trip passengers separately for each station', async () => {
-    api.advanceToStation(91, 13)
-    const result = api.activeTrip()
-    http.expectOne('/api/v1/trips/active-trip/27').flush({
+  it('loads the home driver and assigned vehicle by their specific IDs', async () => {
+    const result = api.driverHomeDetails()
+    const profileResult = api.profile()
+    http.expectOne('/api/v1/drivers/27').flush({
+      code: '2000',
+      result: { id: 27, driverLicenceLevelId: 2 },
+    })
+    http.expectOne('/api/users/27').flush({
+      code: '2000',
+      result: { id: 27, firstName: 'Driver', lastName: 'Name' },
+    })
+    const vehicleSearch = http.expectOne('/api/v1/vehicle/search')
+    expect(vehicleSearch.request.body).toEqual({ driverId: 27 })
+    vehicleSearch.flush({
       code: '2000',
       result: {
-        id: 91,
-        driverLineId: 44,
-        shiftTimeId: 8,
-        tripTypeId: 1,
-        directionId: 7,
-        lineName: 'Route A',
-        tripTypeName: 'رفت',
-        shiftTime: 'صبح',
-        departureTime: '07:00',
-        nextStationId: 12,
-        stations: [
-          { id: 12, name: 'First stop', passengers: [] },
-          { id: 13, name: 'Last stop', passengers: [] },
+        list: [
+          {
+            id: 82,
+            driverId: 27,
+            fullName: 'Driver Name',
+            carTypeName: 'Minibus',
+            carPlate: '12345678',
+            produnctionYear: 2023,
+            capacity: 12,
+            color: 'White',
+            carImage: '/vehicle.png',
+          },
         ],
-        vehicle: {},
       },
     })
 
-    await new Promise(resolve => setTimeout(resolve, 0))
-    const stationRequests = http.match('/api/v1/stationpassengers/search-passenger-station')
-    expect(stationRequests).toHaveLength(2)
-    const requestsByStationId = new Map(
-      stationRequests.map(request => [request.request.body.stationId, request]),
-    )
-    const firstStation = requestsByStationId.get(12)
-    const secondStation = requestsByStationId.get(13)
-    expect(firstStation).toBeDefined()
-    expect(secondStation).toBeDefined()
-    if (!firstStation || !secondStation) throw new Error('Missing station passenger requests.')
-    firstStation.flush({
-      code: '2000',
-      result: [
-        {
-          id: 701,
-          passengerId: 35,
-          fullName: 'Sam Passenger',
-          mobileNumber: '09120000000',
-          profileImage: '/passenger.png',
-        },
-      ],
-    })
-    secondStation.flush({ code: '2000', result: [] })
-
     await expect(result).resolves.toMatchObject({
+      driver: { id: 27, driverLicenceLevelId: 2 },
+      vehicle: { name: 'Minibus', plate: '12345678', capacity: 12 },
+    })
+    await expect(profileResult).resolves.toMatchObject({
+      id: 27,
+      firstName: 'Driver',
+      lastName: 'Name',
+    })
+    http.expectNone('/api/v1/drivers/search')
+    http.expectNone('/api/v1/vehicles/82')
+  })
+
+  it('uses passengers embedded in each active-trip station', async () => {
+    api.advanceToStation(91, 13)
+    const result = api.activeTrip()
+    http.expectOne('/api/v1/trips/active-trip/27').flush({
+      id: 91,
+      directionId: 7,
+      driverLineId: 44,
+      driverId: 27,
+      nextStationId: 12,
+      fullName: 'Driver Name',
+      stations: [
+        {
+          id: 12,
+          name: 'First stop',
+          address: 'First address',
+          lat: 36.69,
+          lng: 48.45,
+          passengers: [
+            {
+              id: 35,
+              fullName: 'Sam Passenger',
+              mobileNumber: '09120000000',
+              profileImage: '/passenger.png',
+            },
+          ],
+        },
+        { id: 13, name: 'Last stop', passengers: [] },
+      ],
+      passengerAbsence: [],
+    })
+
+    const trip = await result
+    expect(trip).toMatchObject({
       nextStationId: 13,
       stations: [
         {
           id: 12,
-          passengers: [{ id: 35, fullName: 'Sam Passenger', profileImage: '/passenger.png' }],
+          address: 'First address',
+          lat: 36.69,
+          lng: 48.45,
+          passengers: [
+            {
+              id: 35,
+              fullName: 'Sam Passenger',
+              mobileNumber: '09120000000',
+              profileImage: '/passenger.png',
+            },
+          ],
         },
         { id: 13, passengers: [] },
       ],
     })
+    await expect(api.activeTripForStation()).resolves.toBe(trip)
+    http.expectNone('/api/v1/trips/active-trip/27')
   })
 
   it('joins driver trips to searched lines and shift times by their IDs and names', async () => {

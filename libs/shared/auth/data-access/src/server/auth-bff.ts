@@ -245,6 +245,16 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   }
   const allowedConnection = (req: Request) =>
     secure || ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '')
+  const allowedOrigins = new Set([config.publicOrigin])
+  if (!config.production) {
+    const publicUrl = new URL(config.publicOrigin)
+    if (publicUrl.hostname === 'localhost' && ['4200', '4400'].includes(publicUrl.port)) {
+      for (const port of ['4200', '4400']) {
+        publicUrl.port = port
+        allowedOrigins.add(publicUrl.origin)
+      }
+    }
+  }
 
   const trackingHubUrl = () => {
     const api = new URL(config.apiUrl)
@@ -269,7 +279,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     return new signalR.HubConnectionBuilder()
       .withUrl(trackingHubUrl(), { accessTokenFactory, withCredentials: false })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-      .configureLogging(signalR.LogLevel.Warning)
+      .configureLogging(signalR.LogLevel.Information)
       .build()
   }
 
@@ -546,7 +556,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     }
     if (
       !['GET', 'HEAD', 'OPTIONS'].includes(req.method) &&
-      (req.headers.origin !== config.publicOrigin || req.headers['x-auth-request'] !== '1')
+      (!allowedOrigins.has(req.headers.origin ?? '') || req.headers['x-auth-request'] !== '1')
     ) {
       res.status(403).json({ messages: ['Request denied.'] })
       return

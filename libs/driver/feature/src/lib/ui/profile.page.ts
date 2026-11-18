@@ -50,7 +50,9 @@ import { HlmSeparatorImports } from '@spartan-ng/helm/separator'
                 @if (profileImage()) {
                   <img [src]="profileImage()" alt="" hlmAvatarImage />
                 } @else {
-                  <span hlmAvatarFallback>{{ driver()?.fullName?.charAt(0) ?? 'D' }}</span>
+                  <span hlmAvatarFallback>{{
+                    profile()?.['firstName']?.toString()?.charAt(0) ?? 'D'
+                  }}</span>
                 }
               </hlm-avatar>
               <div class="avatar-actions">
@@ -63,7 +65,7 @@ import { HlmSeparatorImports } from '@spartan-ng/helm/separator'
                     #fileInput
                   />
                 </label>
-                @if (profileImage() || driver()?.profileImage) {
+                @if (profileImage() || profile()?.['profileImage']) {
                   <button hlmBtn variant="ghost" size="sm" (click)="removeImage()">
                     {{ fa() ? 'حذف' : 'Remove' }}
                   </button>
@@ -293,7 +295,7 @@ export class DriverProfilePage {
   protected readonly saving = signal(false)
   protected readonly error = signal<string | null>(null)
   protected readonly success = signal(false)
-  protected readonly driver = signal<any>(null)
+  protected readonly profile = signal<Record<string, unknown> | null>(null)
   protected readonly profileImage = signal<string | null>(null)
   protected readonly provinces = signal<{ id: number; name: string }[]>([])
   protected readonly cities = signal<{ id: number; name: string }[]>([])
@@ -315,22 +317,21 @@ export class DriverProfilePage {
   protected async loadData(): Promise<void> {
     this.loading.set(true)
     try {
-      const [driver, profile, provinces] = await Promise.all([
-        this.api.driver(),
-        this.api.profile(),
-        this.api.provinces(),
-      ])
-      this.driver.set(driver)
-      this.profileImage.set(driver.profileImage ?? null)
+      const [profile, provinces] = await Promise.all([this.api.profile(), this.api.provinces()])
+      this.profile.set(profile)
+      this.profileImage.set(
+        typeof profile['profileImage'] === 'string' ? profile['profileImage'] : null,
+      )
       this.provinces.set(provinces)
 
       this.formData = {
-        fullName: driver.fullName ?? '',
-        mobileNumber: driver.mobileNumber ?? '',
-        email: (profile as any)['email'] ?? '',
-        address: (profile as any)['address'] ?? '',
-        provinceId: String((profile as any)['provinceId'] ?? ''),
-        cityId: String((profile as any)['cityId'] ?? ''),
+        fullName:
+          `${String(profile['firstName'] ?? '')} ${String(profile['lastName'] ?? '')}`.trim(),
+        mobileNumber: String(profile['mobileNumber'] ?? ''),
+        email: String(profile['email'] ?? ''),
+        address: String(profile['address'] ?? ''),
+        provinceId: String(profile['provinceId'] ?? ''),
+        cityId: String(profile['cityId'] ?? ''),
       }
 
       if (this.formData.provinceId) {

@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router } from '@angular/router'
 import { DriverApi, RouteCard, ActiveTrip } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
+import { NeshanMapComponent, NeshanMapPoint } from '@org/shared-maps'
+import { environment } from '@org/platform/config'
 import { DriverRouteCard } from './driver-route-card'
 import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
@@ -9,7 +11,15 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
 
 @Component({
   selector: 'lib-route-selection-page',
-  imports: [HlmButton, DriverRouteCard, HlmSpinner, HlmAlert, HlmAlertDescription, HlmAlertTitle],
+  imports: [
+    HlmButton,
+    DriverRouteCard,
+    NeshanMapComponent,
+    HlmSpinner,
+    HlmAlert,
+    HlmAlertDescription,
+    HlmAlertTitle,
+  ],
   template: `
     <div class="page-container" [attr.dir]="fa() ? 'rtl' : 'ltr'">
       <header class="page-header">
@@ -35,6 +45,13 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
       } @else if (activeTrip()) {
         @let trip = activeTrip()!;
         <section class="active-trip-section">
+          <lib-neshan-map
+            class="active-trip-map"
+            [apiKey]="neshanMapApiKey"
+            [serviceApiKey]="neshanServiceApiKey"
+            [points]="mapPoints()"
+            [language]="config.language()"
+          />
           <div class="trip-summary">
             <div>
               <h2>{{ trip.lineName }} · {{ trip.tripTypeName }}</h2>
@@ -49,38 +66,54 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
               </button>
             </div>
           </div>
-          <div class="active-stations">
+          <ol class="active-stations" [attr.aria-label]="fa() ? 'مراحل سفر' : 'Trip steps'">
             @for (station of trip.stations; track station.id; let i = $index) {
-              <button class="active-station" (click)="openStation(station.id)">
-                <span class="station-index" [class.current]="station.id === trip.nextStationId">
-                  {{ i + 1 }}
-                </span>
-                <span class="station-details">
-                  <strong>{{ station.name }}</strong>
-                  @if (station.address) {
-                    <span>{{ station.address }}</span>
-                  }
-                  <span>{{ station.passengers.length }} {{ fa() ? 'مسافر' : 'passengers' }}</span>
-                </span>
-                <span class="station-state">
-                  @if (station.id === trip.nextStationId) {
-                    {{ fa() ? 'ایستگاه بعدی' : 'Next station' }}
-                  } @else if (isCompletedStation(station.id, trip.nextStationId, trip.stations)) {
-                    {{ fa() ? 'انجام شد' : 'Completed' }}
+              <li
+                class="stepper-item"
+                [class.current]="station.id === trip.nextStationId"
+                [class.completed]="
+                  isCompletedStation(station.id, trip.nextStationId, trip.stations)
+                "
+              >
+                <span class="stepper-node" aria-hidden="true">
+                  @if (isCompletedStation(station.id, trip.nextStationId, trip.stations)) {
+                    <svg viewBox="0 0 20 20" fill="none">
+                      <path d="m5 10 3.2 3.2L15 6.5" />
+                    </svg>
+                  } @else {
+                    {{ i + 1 }}
                   }
                 </span>
-                <span aria-hidden="true">›</span>
-              </button>
+                <button class="active-station" (click)="openStation(station.id)">
+                  <span class="station-details">
+                    <strong>{{ station.name }}</strong>
+                    @if (station.address) {
+                      <span>{{ station.address }}</span>
+                    }
+                    <span>{{ station.passengers.length }} {{ fa() ? 'مسافر' : 'passengers' }}</span>
+                  </span>
+                  <span class="station-state">
+                    @if (station.id === trip.nextStationId) {
+                      {{ fa() ? 'ایستگاه بعدی' : 'Current stop' }}
+                    } @else if (isCompletedStation(station.id, trip.nextStationId, trip.stations)) {
+                      {{ fa() ? 'انجام شد' : 'Completed' }}
+                    } @else {
+                      {{ fa() ? 'پیش رو' : 'Upcoming' }}
+                    }
+                  </span>
+                  <span class="station-chevron" aria-hidden="true">›</span>
+                </button>
+              </li>
             } @empty {
-              <p class="empty-stations">
+              <li class="empty-stations">
                 {{
                   fa()
                     ? 'ایستگاهی برای این سفر ثبت نشده است.'
                     : 'No stations are available for this trip.'
                 }}
-              </p>
+              </li>
             }
-          </div>
+          </ol>
         </section>
       }
 
@@ -156,6 +189,15 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
       .active-trip-section {
         margin-bottom: 1.5rem;
       }
+      .active-trip-map {
+        display: block;
+        height: 15rem;
+        margin-bottom: 1rem;
+      }
+      .active-trip-map ::ng-deep [role='region'] {
+        min-height: 0;
+        height: 100%;
+      }
       .trip-summary {
         display: flex;
         align-items: center;
@@ -173,38 +215,86 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
         color: var(--muted-foreground);
       }
       .active-stations {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .stepper-item {
+        position: relative;
+        min-height: 6rem;
+        padding-inline-start: 3.25rem;
+        padding-block: 0.35rem;
+      }
+      .stepper-item:not(:last-child)::after {
+        position: absolute;
+        z-index: 0;
+        inset-inline-start: 0.95rem;
+        top: 2.7rem;
+        bottom: -0.35rem;
+        width: 2px;
+        background: var(--border);
+        content: '';
+      }
+      .stepper-item.completed:not(:last-child)::after {
+        background: var(--primary);
+      }
+      .stepper-node {
+        position: absolute;
+        z-index: 1;
+        inset-inline-start: 0;
+        top: 1.15rem;
         display: grid;
-        gap: 0.65rem;
+        place-items: center;
+        width: 2rem;
+        height: 2rem;
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        background: var(--muted);
+        color: var(--muted-foreground);
+        font-weight: 600;
+      }
+      .stepper-node svg {
+        width: 1rem;
+        height: 1rem;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .stepper-item.current .stepper-node {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: var(--primary-foreground);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 16%, transparent);
+      }
+      .stepper-item.completed .stepper-node {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: var(--primary-foreground);
       }
       .active-station {
         display: flex;
         align-items: center;
         gap: 0.8rem;
         width: 100%;
-        padding: 1rem;
+        min-height: 5.25rem;
+        padding: 0.85rem 1rem;
         text-align: start;
         color: inherit;
         background: var(--card);
         border: 1px solid var(--border);
         border-radius: 0.75rem;
         cursor: pointer;
+        transition:
+          border-color 150ms ease,
+          background-color 150ms ease;
       }
-      .active-station:hover {
+      .active-station:hover,
+      .stepper-item.current .active-station {
         border-color: var(--primary);
       }
-      .station-index {
-        display: grid;
-        place-items: center;
-        width: 2rem;
-        height: 2rem;
-        flex: 0 0 2rem;
-        border-radius: 50%;
-        background: var(--muted);
-        font-weight: 600;
-      }
-      .station-index.current {
-        background: var(--primary);
-        color: var(--primary-foreground);
+      .stepper-item.current .active-station {
+        background: color-mix(in srgb, var(--primary) 4%, var(--card));
       }
       .station-details {
         display: grid;
@@ -225,8 +315,27 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
       }
       .station-state {
         color: var(--primary);
+        white-space: nowrap;
+      }
+      .stepper-item:not(.current):not(.completed) .station-state {
+        color: var(--muted-foreground);
+      }
+      .station-chevron {
+        color: var(--muted-foreground);
+        font-size: 1.25rem;
       }
       @media (max-width: 600px) {
+        .page-container {
+          padding: 1rem;
+        }
+        .page-header {
+          margin-bottom: 1.25rem;
+        }
+        .active-trip-map {
+          height: 12rem;
+          margin-inline: -1rem;
+          width: calc(100% + 2rem);
+        }
         .trip-summary {
           align-items: flex-start;
           flex-direction: column;
@@ -260,12 +369,25 @@ export class RouteSelectionPage {
   private readonly router = inject(Router)
   private readonly config = inject(DRIVER_FEATURE_CONFIG)
   protected readonly fa = computed(() => this.config.language() === 'fa')
+  protected readonly neshanMapApiKey = environment.neshanMapApiKey ?? null
+  protected readonly neshanServiceApiKey = environment.neshanServiceApiKey ?? null
 
   protected readonly loading = signal(true)
   protected readonly error = signal<string | null>(null)
   protected readonly routes = signal<RouteCard[]>([])
   protected readonly activeTrip = signal<ActiveTrip | null>(null)
   protected readonly showRoutes = signal(false)
+  protected readonly mapPoints = computed<NeshanMapPoint[]>(() =>
+    (this.activeTrip()?.stations ?? [])
+      .filter(station => typeof station.lat === 'number' && typeof station.lng === 'number')
+      .map((station, index) => ({
+        id: station.id,
+        order: station.order ?? index + 1,
+        name: station.name,
+        lat: station.lat ?? null,
+        lng: station.lng ?? null,
+      })),
+  )
 
   constructor() {
     this.loadData()

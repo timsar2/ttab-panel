@@ -28,6 +28,18 @@ export interface DriverRecord {
   insuranceImage?: string | null
 }
 
+export interface DriverHomeDetails {
+  readonly driver: Record<string, unknown>
+  readonly vehicle: {
+    readonly name: string | null
+    readonly plate: string | null
+    readonly color: string | null
+    readonly year: number | null
+    readonly capacity: number | null
+    readonly image: string | null
+  }
+}
+
 export interface RouteCard {
   id: string
   directionName?: string
@@ -75,6 +87,12 @@ export interface ActiveTrip {
   nextStationId?: number | null
   passengerStationId?: number | null
   lineId?: number | null
+}
+
+export interface DriverSupportViolationType {
+  id: number
+  code: string | null
+  title: string
 }
 
 export interface Station {
@@ -171,6 +189,11 @@ export class DriverApi {
   private readonly http = inject(HttpClient)
   private readonly identity = inject(DRIVER_IDENTITY)
   private readonly shiftTimes = inject(ShiftTimesStore)
+  private activeTripCache: ActiveTrip | null | undefined
+
+  async activeTripForStation(): Promise<ActiveTrip | null> {
+    return this.activeTripCache === undefined ? this.activeTrip() : this.activeTripCache
+  }
 
   private tripProgressKey(driverId: number): string {
     return `driver-active-trip-progress:${driverId}`
@@ -192,6 +215,14 @@ export class DriverApi {
 
   advanceToStation(tripId: number, nextStationId: number): void {
     const { driverId } = this.scope()
+    if (this.activeTripCache?.id === tripId) {
+      const stationIndex = this.activeTripCache.stations.findIndex(
+        station => station.id === nextStationId,
+      )
+      if (stationIndex >= 0) {
+        this.activeTripCache = { ...this.activeTripCache, nextStationId }
+      }
+    }
     if (typeof sessionStorage === 'undefined') return
     try {
       sessionStorage.setItem(
@@ -226,24 +257,29 @@ export class DriverApi {
     return { driverId: driverId as number, companyId: companyId as number }
   }
 
-  private async currentVehicle(
-    driverId: number,
-    companyId: number,
-  ): Promise<Record<string, unknown>> {
-    const search = dataResult(
-      await firstValueFrom(
-        this.http.post('/api/v1/vehicles/search', {
-          driverId,
-          companyId,
-          pageNumber: 1,
-          pageSize: 10,
-        }),
-      ),
+  private async vehicleSearchResult(driverId: number): Promise<Record<string, unknown>> {
+    const response = record(
+      await firstValueFrom(this.http.post('/api/v1/vehicle/search', { driverId })),
     )
-    const vehicles = property(search, 'list')
-    const first = Array.isArray(vehicles) ? record(vehicles[0]) : null
-    const id = first ? Number(property(first, 'id')) : 0
+    if (response['code'] !== '2000') throw new Error('Vehicle search failed.')
+    const result = property(response, 'result')
+    const vehicles = Array.isArray(result)
+      ? result
+      : result && typeof result === 'object' && Array.isArray(property(record(result), 'list'))
+        ? (property(record(result), 'list') as unknown[])
+        : result && typeof result === 'object'
+          ? [result]
+          : []
+    const first = vehicles.length > 0 ? record(vehicles[0]) : null
+    if (!first) throw new Error('No vehicle is registered yet.')
+    const id = Number(property(first, 'id') ?? property(first, 'vehicleId'))
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error('No vehicle is registered yet.')
+    return first
+  }
+
+  private async currentVehicle(driverId: number): Promise<Record<string, unknown>> {
+    const vehicle = await this.vehicleSearchResult(driverId)
+    const id = Number(property(vehicle, 'id') ?? property(vehicle, 'vehicleId'))
     return dataResult(await firstValueFrom(this.http.get(`/api/v1/vehicles/${id}`)))
   }
 
@@ -315,6 +351,43 @@ export class DriverApi {
       cardImage: typeof result['cardImage'] === 'string' ? result['cardImage'] : null,
       insuranceImage:
         typeof result['insuranceImage'] === 'string' ? result['insuranceImage'] : null,
+    }
+  }
+
+  async driverHomeDetails(): Promise<DriverHomeDetails> {
+    const { driverId } = this.scope()
+    const [driver, vehicle] = await Promise.all([
+      firstValueFrom(this.http.get<unknown>(`/api/v1/drivers/${driverId}`)).then(dataResult),
+      this.vehicleSearchResult(driverId),
+    ])
+    return {
+      driver,
+      vehicle: {
+        name:
+          typeof property(vehicle, 'carTypeName') === 'string'
+            ? (property(vehicle, 'carTypeName') as string)
+            : null,
+        plate:
+          typeof property(vehicle, 'carPlate') === 'string'
+            ? (property(vehicle, 'carPlate') as string)
+            : null,
+        color:
+          typeof property(vehicle, 'color') === 'string'
+            ? (property(vehicle, 'color') as string)
+            : null,
+        year:
+          typeof property(vehicle, 'produnctionYear') === 'number'
+            ? (property(vehicle, 'produnctionYear') as number)
+            : null,
+        capacity:
+          typeof property(vehicle, 'capacity') === 'number'
+            ? (property(vehicle, 'capacity') as number)
+            : null,
+        image:
+          typeof property(vehicle, 'carImage') === 'string'
+            ? (property(vehicle, 'carImage') as string)
+            : null,
+      },
     }
   }
 
@@ -456,7 +529,10 @@ export class DriverApi {
         observe: 'response',
       }),
     )
-    if (response.status === 204 || response.body == null) return null
+    if (response.status === 204 || response.body == null) {
+      this.activeTripCache = null
+      return null
+    }
     let body: unknown = response.body
     if (typeof body === 'string') {
       try {
@@ -466,7 +542,10 @@ export class DriverApi {
       }
     }
     const envelope = record(body)
-    if ('result' in envelope && envelope['result'] == null) return null
+    if ('result' in envelope && envelope['result'] == null) {
+      this.activeTripCache = null
+      return null
+    }
     const value =
       envelope['result'] && typeof envelope['result'] === 'object'
         ? record(envelope['result'])
@@ -553,55 +632,8 @@ export class DriverApi {
       if (savedIndex > serverIndex) trip.nextStationId = savedNextStationId
       else this.clearTripProgress(driverId)
     }
-    trip.stations = await Promise.all(
-      trip.stations.map(async station => {
-        const existingPassengers = new Map(
-          station.passengers.map(passenger => [passenger.id, passenger]),
-        )
-        const passengers = await this.stationPassengers(station.id)
-        return {
-          ...station,
-          passengers: passengers.map(passenger => ({
-            ...passenger,
-            isAbsent: existingPassengers.get(passenger.id)?.isAbsent ?? passenger.isAbsent,
-          })),
-        }
-      }),
-    )
+    this.activeTripCache = trip
     return trip
-  }
-
-  async stationPassengers(stationId: number): Promise<Passenger[]> {
-    this.scope()
-    const response = record(
-      await firstValueFrom(
-        this.http.post<unknown>('/api/v1/stationpassengers/search-passenger-station', {
-          stationId,
-        }),
-      ),
-    )
-    if (response['code'] !== '2000') throw new Error('Station passengers could not be loaded.')
-    const result = property(response, 'result')
-    const rows = Array.isArray(result)
-      ? result
-      : result && typeof result === 'object' && Array.isArray(property(record(result), 'list'))
-        ? (property(record(result), 'list') as unknown[])
-        : []
-    return rows
-      .map(raw => {
-        const passenger = record(raw)
-        return {
-          id: Number(property(passenger, 'passengerId') ?? property(passenger, 'id')),
-          fullName: String(property(passenger, 'fullName') ?? ''),
-          mobileNumber: String(property(passenger, 'mobileNumber') ?? ''),
-          profileImage:
-            typeof property(passenger, 'profileImage') === 'string'
-              ? (property(passenger, 'profileImage') as string)
-              : null,
-          isAbsent: Boolean(property(passenger, 'isAbsent')),
-        }
-      })
-      .filter(passenger => Number.isSafeInteger(passenger.id) && passenger.id > 0)
   }
 
   async routeGeometry(tripId: number, directionId: number): Promise<RouteGeometry> {
@@ -623,6 +655,7 @@ export class DriverApi {
 
   async startTrip(request: TripStartRequest): Promise<void> {
     this.scope()
+    this.activeTripCache = undefined
     const response = record(
       await firstValueFrom(
         this.http.post('/api/v1/trips', {
@@ -668,6 +701,7 @@ export class DriverApi {
     if (response['code'] !== '2000' || response['result'] !== true)
       throw new Error('The trip could not be ended.')
     this.clearTripProgress(driverId)
+    this.activeTripCache = null
   }
 
   /** Publish live driver location to backend; backend broadcasts to trip group via SignalR. */
@@ -692,7 +726,7 @@ export class DriverApi {
       request.documentType === 'card' ||
       request.documentType === 'insurance'
     ) {
-      const current = await this.currentVehicle(driverId, companyId)
+      const current = await this.currentVehicle(driverId)
       const imageProperty = {
         vehicle: 'carImage',
         card: 'carCardImage',
@@ -741,8 +775,8 @@ export class DriverApi {
   }
 
   async updateVehicle(value: Record<string, unknown>): Promise<void> {
-    const { driverId, companyId } = this.scope()
-    const current = await this.currentVehicle(driverId, companyId)
+    const { driverId } = this.scope()
+    const current = await this.currentVehicle(driverId)
     const requestedTypeId = Number(value['vehicleType'])
     dataResult(
       await firstValueFrom(
@@ -793,5 +827,51 @@ export class DriverApi {
     )
     if (response['code'] !== '2000' || response['result'] !== true)
       throw new Error('The support ticket could not be submitted.')
+  }
+
+  async supportViolationTypes(personTypeId: 1 | 2): Promise<DriverSupportViolationType[]> {
+    const response = record(
+      await firstValueFrom(this.http.get(`/api/v1/support/violation-types/${personTypeId}`)),
+    )
+    const result = response['result']
+    if (response['code'] !== '2000' || !Array.isArray(result)) {
+      throw new Error('Support violation types could not be loaded.')
+    }
+    return result.map(value => {
+      const item = record(value)
+      const id = Number(property(item, 'id'))
+      const title = property(item, 'title')
+      const code = property(item, 'code')
+      if (!Number.isSafeInteger(id) || id <= 0 || typeof title !== 'string') {
+        throw new Error('The support service returned an invalid violation type.')
+      }
+      return { id, title, code: typeof code === 'string' ? code : null }
+    })
+  }
+
+  async submitSupportReport(request: {
+    supportTypeId: 3 | 4
+    subject: string
+    body: string
+    reportedPersonId: number
+    tripId: number
+    violationTypeId: number
+    occurredAt: string
+  }): Promise<void> {
+    const response = record(
+      await firstValueFrom(
+        this.http.post('/api/v1/support', {
+          Id: 0,
+          SupportTypeId: request.supportTypeId,
+          Subject: request.subject,
+          Body: request.body,
+          ReportedPersonId: request.reportedPersonId,
+          TripId: request.tripId,
+          ViolationTypeIds: String(request.violationTypeId),
+          OccureAt: request.occurredAt,
+        }),
+      ),
+    )
+    if (response['code'] !== '2000') throw new Error('The support report could not be submitted.')
   }
 }

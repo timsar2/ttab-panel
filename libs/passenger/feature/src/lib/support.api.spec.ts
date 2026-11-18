@@ -76,7 +76,7 @@ describe('PassengerSupportApi', () => {
       ReportedPersonId: 176,
       TripId: 72,
       ViolationTypeIds: '8,9',
-      OccureAt: '2026-11-16T08:30',
+      OccureAt: '2026-11-16T08:30:00',
     }
     const result = api.create(payload)
     const request = http.expectOne('/api/v1/support')
@@ -110,6 +110,31 @@ describe('PassengerSupportApi', () => {
       id: 41,
       caseFiles: [{ tripId: 72, violations: [{ id: 8, code: 'D1' }] }],
     })
+  })
+
+  it('keeps numeric violation IDs in the backend CSV payload', async () => {
+    const payload = {
+      Id: 0 as const,
+      SupportTypeId: 3,
+      Subject: 'Report',
+      Body: 'Details',
+      ReportedPersonId: 176,
+      TripId: 72,
+      ViolationTypeIds: '8,9',
+      OccureAt: '2024-03-20T08:30:00',
+    }
+    const result = api.create(payload)
+    const request = http.expectOne('/api/v1/support')
+    expect(request.request.body.ViolationTypeIds).toBe('8,9')
+    expect(request.request.body.ViolationTypeIds).not.toContain('D1')
+    expect(request.request.body.TripId).toBe(72)
+    expect(request.request.body).not.toHaveProperty('Code')
+    request.flush({
+      code: '2000',
+      massage: 'Created',
+      result: { id: 42, supportTypeId: 3, subject: 'Report' },
+    })
+    await expect(result).resolves.toMatchObject({ id: 42 })
   })
 
   it('loads authorized ticket conversations and posts replies without an IsAnswer flag', async () => {

@@ -448,7 +448,7 @@ export class StationOperationsPage {
     this.loading.set(true)
     this.error.set(null)
     try {
-      const trip = await this.api.activeTrip()
+      const trip = await this.api.activeTripForStation()
       this.trip.set(trip)
       if (trip) {
         const station = trip.stations.find(s => s.id === id)

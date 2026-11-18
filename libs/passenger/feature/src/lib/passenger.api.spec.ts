@@ -84,6 +84,74 @@ describe('PassengerApi', () => {
     })
   })
 
+  it('reads the camelCase active-trip response and uses its driver id for location lookup', async () => {
+    const result = api.activeTrip()
+    http.expectOne('/api/v1/trips/passenger-active-trip/165').flush({
+      id: 1526,
+      driverLineId: 64,
+      directionId: 22,
+      driverId: 315,
+      stationId: 0,
+      nextStationId: 89,
+      fullName: 'کیوان نصیری',
+      carTypeName: 'مینی بوس',
+      carPlate: '65ع18987',
+      carImage: 'https://api.ttabline.com/Files/Images/Vehicle/vehicle.jpg',
+      mobileNumber: '09368937323',
+      stations: [
+        {
+          id: 87,
+          name: 'شهرک الهیه',
+          address: 'الهیه ابتدای لاله و عاصم زنجانی',
+          lat: 36.69054927885622,
+          lng: 48.4571260213852,
+        },
+        {
+          id: 89,
+          name: 'ابتدای گلشهر',
+          address: 'تقاطه پل امام حسین',
+          lat: 36.67062155695412,
+          lng: 48.53678226470948,
+        },
+      ],
+    })
+
+    const trip = await result
+    expect(trip).toMatchObject({
+      id: 1526,
+      driverId: 315,
+      fullName: 'کیوان نصیری',
+      mobileNumber: '09368937323',
+      carTypeName: 'مینی بوس',
+      carPlate: '65ع18987',
+      carImage: 'https://api.ttabline.com/Files/Images/Vehicle/vehicle.jpg',
+      passengerStationId: null,
+      nextStationId: 89,
+      stations: [
+        { id: 87, name: 'شهرک الهیه', lat: 36.69054927885622, lng: 48.4571260213852 },
+        { id: 89, name: 'ابتدای گلشهر', lat: 36.67062155695412, lng: 48.53678226470948 },
+      ],
+    })
+
+    const location = api.driverLocation(trip!.driverId)
+    http.expectOne('/api/v1/routings/location?driverId=315').flush({
+      code: '2000',
+      result: {
+        tripId: 1526,
+        driverId: 315,
+        lat: 36.69,
+        lng: 48.45,
+        receivedAt: '2026-11-17T13:00:00Z',
+      },
+    })
+    await expect(location).resolves.toMatchObject({ tripId: 1526, driverId: 315 })
+  })
+
+  it('rejects an invalid driver id rather than requesting the location with NaN', async () => {
+    await expect(api.driverLocation(Number.NaN)).rejects.toThrow('valid driver id')
+    http.expectNone('/api/v1/routings/location?driverId=NaN')
+  })
+
   it('loads the authorized driver location and handles a cleared location', async () => {
     const result = api.driverLocation(176)
     const request = http.expectOne('/api/v1/routings/location?driverId=176')

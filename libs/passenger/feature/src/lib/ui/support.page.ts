@@ -6,7 +6,15 @@ import {
   inject,
   signal,
 } from '@angular/core'
+import { BrnCalendarI18nService, type MonthLabels } from '@spartan-ng/brain/calendar'
+import {
+  BrnJalaliDateAdapter,
+  JalaliDate as SpartanJalaliDate,
+  provideDateAdapter,
+} from '@spartan-ng/brain/date-time'
 import { RouterLink } from '@angular/router'
+import { HlmDatePickerImports } from '@spartan-ng/helm/date-picker'
+import { HlmFieldImports } from '@spartan-ng/helm/field'
 import { PassengerApi, ActiveTrip } from '../passenger.api'
 import {
   CreateSupportRequest,
@@ -17,6 +25,15 @@ import {
   SupportViolationType,
 } from '../support.api'
 import { PASSENGER_FEATURE_CONFIG } from '../passenger.routes'
+import {
+  currentJalaliDate,
+  isBeforeOccurrenceMinimum,
+  isValidOccurrenceDate,
+  formatJalaliDate,
+  formatServerDateTime,
+  parseJalaliDate,
+} from './jalali-date'
+import { buildViolationReportFields, violationOptionLabel } from './support-form'
 
 const supportTypes = [
   { id: 1, en: 'Suggestion', fa: 'پیشنهاد' },
@@ -25,27 +42,122 @@ const supportTypes = [
   { id: 4, en: 'Driver violation report', fa: 'گزارش تخلف راننده' },
 ] as const
 
+const jalaliMonthNamesFa = [
+  'فروردین',
+  'اردیبهشت',
+  'خرداد',
+  'تیر',
+  'مرداد',
+  'شهریور',
+  'مهر',
+  'آبان',
+  'آذر',
+  'دی',
+  'بهمن',
+  'اسفند',
+] as const
+const jalaliMonthNamesEn = [
+  'Farvardin',
+  'Ordibehesht',
+  'Khordad',
+  'Tir',
+  'Mordad',
+  'Shahrivar',
+  'Mehr',
+  'Aban',
+  'Azar',
+  'Dey',
+  'Bahman',
+  'Esfand',
+] as const
+const jalaliWeekdayNamesFa = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه']
+const jalaliWeekdayNamesEn = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+]
+
+function localizedDigits(value: string, language: 'fa' | 'en'): string {
+  return language === 'fa' ? value.replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]) : value
+}
+
+function jalaliCalendarI18n(language: () => 'fa' | 'en') {
+  const months = (): MonthLabels =>
+    [...(language() === 'fa' ? jalaliMonthNamesFa : jalaliMonthNamesEn)] as unknown as MonthLabels
+  const weekdays = () => (language() === 'fa' ? jalaliWeekdayNamesFa : jalaliWeekdayNamesEn)
+  const monthName = (month: number) => months()[month]
+  const yearLabel = (year: number) => localizedDigits(String(year), language())
+  return {
+    formatWeekdayName: (index: number) =>
+      language() === 'fa'
+        ? ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش'][index]
+        : ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][index],
+    formatHeader: (month: number, year: number) => `${monthName(month)} ${yearLabel(year)}`,
+    formatYear: yearLabel,
+    formatMonth: monthName,
+    labelPrevious: () => (language() === 'fa' ? 'ماه قبل' : 'Previous month'),
+    labelNext: () => (language() === 'fa' ? 'ماه بعد' : 'Next month'),
+    labelWeekday: (index: number) => weekdays()[index],
+    months,
+    years: (startYear?: number, endYear?: number) => {
+      const minYear = startYear ?? 1131
+      const maxYear = endYear ?? currentJalaliDate().year + 10
+      return Array.from(
+        { length: Math.max(0, maxYear - minYear + 1) },
+        (_, index) => minYear + index,
+      )
+    },
+    firstDayOfWeek: () => 6 as const,
+  }
+}
+
 @Component({
   selector: 'lib-passenger-support-page',
-  imports: [RouterLink],
+  imports: [RouterLink, HlmDatePickerImports, HlmFieldImports],
+  providers: [
+    provideDateAdapter(BrnJalaliDateAdapter),
+    {
+      provide: BrnCalendarI18nService,
+      useFactory: () => {
+        const service = new BrnCalendarI18nService()
+        const language = inject(PASSENGER_FEATURE_CONFIG).language
+        service.use(jalaliCalendarI18n(language))
+        return service
+      },
+    },
+  ],
   template: `
-    <div class="page-head">
-      <h1>{{ fa() ? 'راهنمایی و پشتیبانی' : 'Help and support' }}</h1>
-      <p>
-        {{
-          fa()
-            ? 'ثبت و پیگیری درخواست‌های پشتیبانی'
-            : 'Create and follow up on your support requests'
-        }}
-      </p>
+    <div class="page-head support-intro">
+      <span class="support-mark" aria-hidden="true">{{ fa() ? '؟' : '?' }}</span>
+      <div class="support-intro-copy">
+        <span class="support-kicker">{{ fa() ? 'مرکز پشتیبانی' : 'PASSENGER CARE' }}</span>
+        <h1>{{ fa() ? 'راهنمایی و پشتیبانی' : 'Help and support' }}</h1>
+        <p>
+          {{
+            fa()
+              ? 'ثبت و پیگیری درخواست‌های پشتیبانی'
+              : 'Create and follow up on your support requests'
+          }}
+        </p>
+      </div>
     </div>
 
     @if (pageError()) {
       <p class="panel error" role="alert">{{ pageError() }}</p>
     }
 
-    <section class="panel stack" aria-labelledby="support-form-heading">
-      <h2 id="support-form-heading">{{ fa() ? 'درخواست جدید' : 'New request' }}</h2>
+    <section class="panel stack support-compose" aria-labelledby="support-form-heading">
+      <div class="section-heading">
+        <span class="section-index" aria-hidden="true">{{ fa() ? '۰۱' : '01' }}</span>
+        <div>
+          <span class="section-kicker">{{ fa() ? 'ارسال برای بررسی' : 'SEND FOR REVIEW' }}</span>
+          <h2 id="support-form-heading">{{ fa() ? 'درخواست جدید' : 'New request' }}</h2>
+        </div>
+      </div>
       <label>
         {{ fa() ? 'نوع درخواست' : 'Request type' }}
         <select [value]="supportTypeId()" (change)="selectType($event)">
@@ -73,77 +185,126 @@ const supportTypes = [
       </label>
 
       @if (isViolationReport()) {
-        @if (activeTrip()) {
+        @if (activeTripLoading()) {
+          <p role="status">{{ fa() ? 'در حال بررسی سفر فعال...' : 'Checking active trip...' }}</p>
+        } @else if (activeTrip()) {
           <p class="notice">
             {{
               fa()
-                ? 'گزارش باید به سفر فعال شما مربوط باشد.'
-                : 'Reports must refer to your active trip.'
+                ? 'در صورت ارتباط گزارش با سفر فعال، شناسه سفر به‌صورت خودکار ثبت می‌شود.'
+                : 'If this report concerns your active trip, its ID will be included automatically.'
             }}
             {{ fa() ? 'شناسه سفر' : 'Trip ID' }}: {{ activeTrip()!.id }}
           </p>
-          @if (supportTypeId() === 4) {
-            <label>
-              {{ fa() ? 'راننده گزارش‌شده' : 'Reported driver' }}
-              <input [value]="activeTrip()!.driverId" readonly />
+        } @else {
+          <p class="error trip-required" role="alert">
+            {{
+              fa()
+                ? 'برای ثبت گزارش تخلف، داشتن سفر فعال الزامی است.'
+                : 'An active trip is required to submit a violation report.'
+            }}
+          </p>
+        }
+        <label>
+          {{
+            supportTypeId() === 4
+              ? fa()
+                ? 'شناسه راننده گزارش‌شده'
+                : 'Reported driver ID'
+              : fa()
+                ? 'شناسه مسافر گزارش‌شده'
+                : 'Reported passenger ID'
+          }}
+          <input
+            type="number"
+            min="3"
+            [value]="
+              supportTypeId() === 4 && activeTrip() ? activeTrip()!.driverId : reportedPersonId()
+            "
+            [readonly]="supportTypeId() === 4 && !!activeTrip()"
+            (input)="reportedPersonId.set($any($event.target).value)"
+          />
+        </label>
+        <fieldset class="date-picker">
+          <legend>
+            {{ fa() ? 'زمان وقوع (تقویم شمسی)' : 'Occurrence date and time' }}
+          </legend>
+          <div hlmField>
+            <label hlmFieldLabel for="support-occurred-date">
+              {{ fa() ? 'تاریخ شمسی' : 'Jalali date' }}
             </label>
-          } @else {
-            <label>
-              {{ fa() ? 'شناسه مسافر گزارش‌شده' : 'Reported passenger ID' }}
-              <input
-                type="number"
-                min="3"
-                [value]="reportedPersonId()"
-                (input)="reportedPersonId.set($any($event.target).value)"
+            <hlm-date-picker
+              captionLayout="dropdown"
+              [attr.dir]="fa() ? 'rtl' : 'ltr'"
+              [date]="selectedJalaliDate()"
+              [defaultFocusedDate]="defaultFocusedDate"
+              [minDate]="minimumDate"
+              [formatDate]="formatPickerDate"
+              [autoCloseOnSelect]="true"
+              (dateChange)="selectJalaliDate($event)"
+            >
+              <hlm-date-picker-input
+                inputId="support-occurred-date"
+                [placeholder]="fa() ? '۱۴۰۵/۰۸/۲۷' : '1405/08/27'"
+                [parseDate]="parsePickerDate"
+                [formatInputDate]="formatPickerDate"
+                [forceInvalid]="showDateError()"
+                [calendarAriaLabel]="fa() ? 'باز کردن تقویم شمسی' : 'Open Jalali calendar'"
+                [clearAriaLabel]="fa() ? 'پاک کردن تاریخ' : 'Clear date'"
+                showClear
               />
-            </label>
-          }
-          <label>
-            {{ fa() ? 'زمان وقوع' : 'Occurrence date and time' }}
-            <input
-              type="datetime-local"
-              [value]="occurredAt()"
-              (input)="occurredAt.set($any($event.target).value)"
-            />
-          </label>
-          @if (violationTypesLoading()) {
-            <p role="status">
-              {{ fa() ? 'در حال بارگذاری انواع تخلف...' : 'Loading violation types...' }}
-            </p>
-          } @else if (violationTypes().length) {
-            <fieldset class="stack">
-              <legend>{{ fa() ? 'انواع تخلف' : 'Violation types' }}</legend>
-              @for (violation of violationTypes(); track violation.id) {
-                <label class="choice">
-                  <input
-                    type="checkbox"
-                    [checked]="selectedViolationIds().has(violation.id)"
-                    (change)="toggleViolation(violation.id, $event)"
-                  />
-                  <span
-                    >{{ violation.title }}
-                    @if (violation.code) {
-                      · {{ violation.code }}
-                    }
-                  </span>
-                </label>
-              }
-            </fieldset>
-          } @else {
-            <p class="notice">
+            </hlm-date-picker>
+            <p hlmFieldDescription>
               {{
                 fa()
-                  ? 'نوع تخلفی دریافت نشد؛ امکان ارسال گزارش وجود ندارد.'
-                  : 'No violation types were returned; this report cannot be submitted.'
+                  ? 'سال، ماه و روز را از تقویم شمسی انتخاب کنید یا تاریخ را وارد کنید.'
+                  : 'Choose a Jalali year, month, and day, or type the date.'
               }}
             </p>
+            @if (showDateError()) {
+              <hlm-field-error>{{ dateError() }}</hlm-field-error>
+            }
+          </div>
+          <label>
+            {{ fa() ? 'ساعت' : 'Time' }}
+            <input
+              type="time"
+              required
+              [value]="occurredTime()"
+              [attr.aria-invalid]="showTimeError() ? 'true' : null"
+              [attr.aria-describedby]="showTimeError() ? 'jalali-time-error' : null"
+              (input)="setOccurredTime($any($event.target).value)"
+              (blur)="timeTouched.set(true)"
+            />
+          </label>
+          @if (showTimeError()) {
+            <p id="jalali-time-error" class="error field-error" role="alert">{{ timeError() }}</p>
           }
+        </fieldset>
+        @if (violationTypesLoading()) {
+          <p role="status">
+            {{ fa() ? 'در حال بارگذاری انواع تخلف...' : 'Loading violation types...' }}
+          </p>
+        } @else if (violationTypes().length) {
+          <fieldset class="stack">
+            <legend>{{ fa() ? 'انواع تخلف' : 'Violation types' }}</legend>
+            @for (violation of violationTypes(); track violation.id) {
+              <label class="choice">
+                <input
+                  type="checkbox"
+                  [checked]="selectedViolationIds().has(violation.id)"
+                  (change)="toggleViolation(violation.id, $event)"
+                />
+                <span>{{ violationOptionLabel(violation) }}</span>
+              </label>
+            }
+          </fieldset>
         } @else {
           <p class="notice">
             {{
               fa()
-                ? 'برای ثبت گزارش تخلف، ابتدا باید سفر فعال داشته باشید.'
-                : 'An active trip is required to submit a violation report.'
+                ? 'نوع تخلفی دریافت نشد؛ امکان ارسال گزارش وجود ندارد.'
+                : 'No violation types were returned; this report cannot be submitted.'
             }}
           </p>
         }
@@ -173,7 +334,15 @@ const supportTypes = [
     </section>
 
     <section class="panel stack support-history" aria-labelledby="support-history-heading">
-      <h2 id="support-history-heading">{{ fa() ? 'درخواست‌های من' : 'My requests' }}</h2>
+      <div class="section-heading history-heading">
+        <span class="section-index" aria-hidden="true">{{ fa() ? '۰۲' : '02' }}</span>
+        <div>
+          <span class="section-kicker">{{
+            fa() ? 'پیگیری گفتگوها' : 'TRACK YOUR CONVERSATIONS'
+          }}</span>
+          <h2 id="support-history-heading">{{ fa() ? 'درخواست‌های من' : 'My requests' }}</h2>
+        </div>
+      </div>
       @if (ticketsLoading()) {
         <p role="status">{{ fa() ? 'در حال دریافت درخواست‌ها...' : 'Loading requests...' }}</p>
       } @else if (!tickets().length) {
@@ -186,6 +355,7 @@ const supportTypes = [
                 <span>{{ ticket.subject }}</span>
                 <small>
                   {{ typeLabel(ticket.supportTypeId) }} ·
+                  {{ formatServerDate(ticket.requestDate) }} ·
                   {{
                     ticket.isAnswered
                       ? fa()
@@ -289,15 +459,116 @@ const supportTypes = [
       .support-history {
         margin-top: 1rem;
       }
+      .page-head h1 {
+        font-size: clamp(1.5rem, 3vw, 1.75rem);
+        line-height: 1.35;
+      }
+      .support-intro {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem 1.15rem;
+        border-inline-start: 4px solid var(--primary);
+        border-radius: 0.7rem;
+        background: var(--muted);
+      }
+      .support-mark {
+        display: grid;
+        width: 2.75rem;
+        height: 2.75rem;
+        flex: 0 0 2.75rem;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-size: 1.3rem;
+        font-weight: 700;
+      }
+      .support-intro-copy {
+        min-width: 0;
+      }
+      .support-intro-copy h1 {
+        margin: 0.15rem 0 0.2rem;
+      }
+      .support-kicker,
+      .section-kicker {
+        display: block;
+        color: var(--muted-foreground);
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.09em;
+      }
+      .support-compose {
+        border-block-start: 3px solid var(--primary);
+      }
+      .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding-block-end: 0.8rem;
+        border-block-end: 1px solid var(--border);
+      }
+      .section-heading h2 {
+        margin: 0.15rem 0 0;
+      }
+      .section-index {
+        display: grid;
+        width: 2.25rem;
+        height: 2.25rem;
+        flex: 0 0 2.25rem;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 0.55rem;
+        color: var(--primary);
+        font-size: 0.8rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .history-heading .section-index {
+        background: var(--muted);
+      }
+      .page-head p {
+        font-size: 0.95rem;
+        line-height: 1.6;
+      }
+      .stack > h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        line-height: 1.4;
+      }
+      .date-picker {
+        display: grid;
+        gap: 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 0.7rem;
+        padding: 1rem;
+      }
+      .date-picker hlm-date-picker {
+        width: 100%;
+      }
+      .field-error {
+        margin: -0.35rem 0 0;
+        font-size: 0.875rem;
+      }
+      .trip-required {
+        margin: 0;
+      }
       .choice {
         display: flex;
         align-items: center;
         gap: 0.6rem;
         font-weight: 400;
       }
+      :host label {
+        font-size: 0.95rem;
+        line-height: 1.55;
+      }
       .choice input {
-        width: auto;
-        min-height: auto;
+        width: 2rem;
+        height: 2rem;
+        min-height: 2rem;
+        flex: 0 0 2rem;
+        accent-color: var(--primary);
       }
       fieldset {
         border: 1px solid var(--border);
@@ -358,11 +629,31 @@ export class PassengerSupportPage {
   private readonly config = inject(PASSENGER_FEATURE_CONFIG)
   protected readonly fa = computed(() => this.config.language() === 'fa')
   protected readonly supportTypes = supportTypes
+  protected readonly violationOptionLabel = violationOptionLabel
   protected readonly supportTypeId = signal(2)
   protected readonly subject = signal('')
   protected readonly body = signal('')
   protected readonly reportedPersonId = signal('')
-  protected readonly occurredAt = signal('')
+  protected readonly occurredDate = signal('')
+  protected readonly occurredTime = signal('')
+  protected readonly dateTouched = signal(false)
+  protected readonly timeTouched = signal(false)
+  protected readonly activeTripLoading = signal(true)
+  protected readonly minimumDate = new SpartanJalaliDate(1131, 10, 12)
+  protected readonly defaultFocusedDate = (() => {
+    const current = currentJalaliDate()
+    return new SpartanJalaliDate(current.year, current.month, current.day)
+  })()
+  protected readonly selectedJalaliDate = computed(() => {
+    const selected = parseJalaliDate(this.occurredDate())
+    return selected ? new SpartanJalaliDate(selected.year, selected.month, selected.day) : undefined
+  })
+  protected readonly formatPickerDate = (date: SpartanJalaliDate): string =>
+    formatJalaliDate({ year: date.year, month: date.month, day: date.day }, this.fa())
+  protected readonly parsePickerDate = (value: string): SpartanJalaliDate | null => {
+    const parsed = parseJalaliDate(value)
+    return parsed ? new SpartanJalaliDate(parsed.year, parsed.month, parsed.day) : null
+  }
   protected readonly activeTrip = signal<ActiveTrip | null>(null)
   protected readonly violationTypes = signal<SupportViolationType[]>([])
   protected readonly selectedViolationIds = signal<ReadonlySet<number>>(new Set())
@@ -387,13 +678,18 @@ export class PassengerSupportPage {
       return false
     if (!this.isViolationReport()) return true
     const reportedId =
-      this.supportTypeId() === 4 ? this.activeTrip()?.driverId : Number(this.reportedPersonId())
+      this.supportTypeId() === 4 && this.activeTrip()
+        ? this.activeTrip()!.driverId
+        : Number(this.reportedPersonId())
     const violations = [...this.selectedViolationIds()]
     return Boolean(
       this.activeTrip() &&
       reportedId &&
       reportedId > 2 &&
-      this.occurredAt() &&
+      isValidOccurrenceDate(this.occurredDate()) &&
+      /^\d{2}:\d{2}$/.test(this.occurredTime()) &&
+      Number(this.occurredTime().slice(0, 2)) <= 23 &&
+      Number(this.occurredTime().slice(3, 5)) <= 59 &&
       violations.length > 0 &&
       violations.every(id => Number.isSafeInteger(id) && id > 0) &&
       violations.join(',').length <= 100 &&
@@ -405,13 +701,16 @@ export class PassengerSupportPage {
   constructor() {
     afterNextRender(() => {
       void this.loadTickets()
-      void this.passengerApi.activeTrip().then(
-        trip => this.activeTrip.set(trip),
-        () =>
-          this.pageError.set(
-            this.fa() ? 'دریافت سفر فعال ناموفق بود.' : 'Could not load the active trip.',
-          ),
-      )
+      void this.passengerApi
+        .activeTrip()
+        .then(
+          trip => this.activeTrip.set(trip),
+          () =>
+            this.pageError.set(
+              this.fa() ? 'دریافت سفر فعال ناموفق بود.' : 'Could not load the active trip.',
+            ),
+        )
+        .finally(() => this.activeTripLoading.set(false))
     })
   }
 
@@ -420,13 +719,58 @@ export class PassengerSupportPage {
     return item ? (this.fa() ? item.fa : item.en) : String(id)
   }
 
+  protected formatServerDate(value: string): string {
+    return formatServerDateTime(value, this.fa())
+  }
+
+  protected selectJalaliDate(date: SpartanJalaliDate | null): void {
+    this.occurredDate.set(
+      date
+        ? formatJalaliDate({ year: date.year, month: date.month, day: date.day }, this.fa())
+        : '',
+    )
+    this.dateTouched.set(true)
+  }
+
+  protected dateError(): string {
+    if (!this.occurredDate())
+      return this.fa() ? 'انتخاب تاریخ شمسی الزامی است.' : 'A Jalali date is required.'
+    const parsed = parseJalaliDate(this.occurredDate())
+    if (parsed && isBeforeOccurrenceMinimum(parsed)) {
+      return this.fa()
+        ? 'تاریخ وقوع باید ۱۲ دی ۱۱۳۱ یا پس از آن باشد (۱ ژانویه ۱۷۵۳).'
+        : 'Occurrence date must be 1131/10/12 Jalali or later (January 1, 1753 Gregorian).'
+    }
+    return this.fa() ? 'تاریخ شمسی معتبر وارد کنید.' : 'Enter a valid Jalali date.'
+  }
+
+  protected showDateError(): boolean {
+    return this.dateTouched() && !isValidOccurrenceDate(this.occurredDate())
+  }
+
+  protected timeError(): string {
+    return this.fa() ? 'انتخاب ساعت وقوع الزامی است.' : 'An occurrence time is required.'
+  }
+
+  protected showTimeError(): boolean {
+    return this.timeTouched() && !/^([01]\d|2[0-3]):[0-5]\d$/.test(this.occurredTime())
+  }
+
+  protected setOccurredTime(value: string): void {
+    this.occurredTime.set(value)
+    this.timeTouched.set(true)
+  }
+
   protected selectType(event: Event): void {
     const id = Number((event.target as HTMLSelectElement).value)
     if (!supportTypes.some(type => type.id === id)) return
     this.supportTypeId.set(id)
     this.formError.set('')
     this.reportedPersonId.set('')
-    this.occurredAt.set('')
+    this.occurredDate.set('')
+    this.occurredTime.set('')
+    this.dateTouched.set(false)
+    this.timeTouched.set(false)
     this.selectedViolationIds.set(new Set())
     this.violationTypes.set([])
     if (id === 3 || id === 4) void this.loadViolationTypes(id === 3 ? 1 : 2)
@@ -445,7 +789,9 @@ export class PassengerSupportPage {
     this.formError.set('')
     const isReport = this.isViolationReport()
     const reportedPersonId =
-      this.supportTypeId() === 4 ? this.activeTrip()?.driverId : Number(this.reportedPersonId())
+      this.supportTypeId() === 4 && this.activeTrip()
+        ? this.activeTrip()!.driverId
+        : Number(this.reportedPersonId())
     const request: CreateSupportRequest = {
       Id: 0,
       SupportTypeId: this.supportTypeId(),
@@ -453,10 +799,13 @@ export class PassengerSupportPage {
       Body: this.body().trim(),
       ...(isReport
         ? {
-            ReportedPersonId: reportedPersonId,
-            TripId: this.activeTrip()!.id,
-            ViolationTypeIds: [...this.selectedViolationIds()].join(','),
-            OccureAt: this.occurredAt(),
+            ...buildViolationReportFields({
+              reportedPersonId,
+              tripId: this.activeTrip()!.id,
+              violationIds: [...this.selectedViolationIds()],
+              occurredDate: this.occurredDate(),
+              occurredTime: this.occurredTime(),
+            }),
           }
         : {}),
     }
@@ -466,7 +815,8 @@ export class PassengerSupportPage {
       this.subject.set('')
       this.body.set('')
       this.reportedPersonId.set('')
-      this.occurredAt.set('')
+      this.occurredDate.set('')
+      this.occurredTime.set('')
       this.selectedViolationIds.set(new Set())
       await this.openTicket(ticket)
     } catch (error) {

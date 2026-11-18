@@ -70,6 +70,10 @@ interface MutableGeoJsonSource {
       <div
         #mapHost
         class="bg-muted min-h-80 w-full overflow-hidden rounded-lg border sm:min-h-[28rem] lg:min-h-[36rem]"
+        [style.height]="fitContainer() ? '100%' : null"
+        [style.min-height]="fitContainer() ? '0' : null"
+        [style.border]="fitContainer() ? '0' : null"
+        [style.border-radius]="fitContainer() ? '0' : null"
         [attr.aria-label]="
           language() === 'fa' ? 'نقشه نشان و ایستگاه‌های مسیر' : 'Neshan map and route stations'
         "
@@ -95,6 +99,8 @@ export class NeshanMapComponent {
   readonly liveLocations = input<readonly NeshanLiveLocation[]>([])
   /** When true, keep camera following live location. */
   readonly followLive = input(false)
+  /** Make the map canvas fill the allocated parent height. */
+  readonly fitContainer = input(false)
   readonly language = input<'en' | 'fa'>('en')
 
   private readonly mapHost = viewChild<ElementRef<HTMLDivElement>>('mapHost')

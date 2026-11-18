@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core'
 import { FormsModule } from '@angular/forms'
-import { DriverApi } from '../driver-pwa-feature/driver.api'
+import { ActiveTrip, DriverApi, DriverSupportViolationType } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
 import { HlmButtonImports } from '@spartan-ng/helm/button'
 import { HlmCardImports } from '@spartan-ng/helm/card'
@@ -58,24 +58,100 @@ import { HlmTextareaImports } from '@spartan-ng/helm/textarea'
                 </div>
 
                 <div class="form-field">
-                  <label hlmLabel>{{ fa() ? 'دسته‌بندی' : 'Category' }}</label>
+                  <label hlmLabel>{{ fa() ? 'نوع درخواست' : 'Request type' }}</label>
                   <select
                     hlmInput
-                    [(ngModel)]="formData.category"
-                    name="category"
+                    [(ngModel)]="formData.supportTypeId"
+                    name="supportTypeId"
                     [disabled]="submitting()"
                     required
+                    (ngModelChange)="selectSupportType($event)"
                   >
-                    <option value="">{{ fa() ? 'انتخاب دسته‌بندی' : 'Select category' }}</option>
-                    <option value="technical">{{ fa() ? 'فنی و تکنیکی' : 'Technical' }}</option>
-                    <option value="billing">
-                      {{ fa() ? 'صورتحساب و پرداخت' : 'Billing & Payment' }}
+                    <option [ngValue]="2">
+                      {{ fa() ? 'تیکت کاربران' : 'User support ticket' }}
                     </option>
-                    <option value="account">{{ fa() ? 'حساب کاربری' : 'Account' }}</option>
-                    <option value="route">{{ fa() ? 'مسیرها و سفرها' : 'Routes & Trips' }}</option>
-                    <option value="other">{{ fa() ? 'سایر' : 'Other' }}</option>
+                    <option [ngValue]="3">
+                      {{ fa() ? 'شکایت از مسافر' : 'Passenger complaint' }}
+                    </option>
+                    <option [ngValue]="4">
+                      {{ fa() ? 'شکایت از راننده' : 'Driver complaint' }}
+                    </option>
                   </select>
                 </div>
+
+                @if (!isViolationReport()) {
+                  <div class="form-field">
+                    <label hlmLabel>{{ fa() ? 'دسته‌بندی' : 'Category' }}</label>
+                    <select
+                      hlmInput
+                      [(ngModel)]="formData.category"
+                      name="category"
+                      [disabled]="submitting()"
+                      required
+                    >
+                      <option value="">{{ fa() ? 'انتخاب دسته‌بندی' : 'Select category' }}</option>
+                      <option value="technical">{{ fa() ? 'فنی و تکنیکی' : 'Technical' }}</option>
+                      <option value="billing">
+                        {{ fa() ? 'صورتحساب و پرداخت' : 'Billing & Payment' }}
+                      </option>
+                      <option value="account">{{ fa() ? 'حساب کاربری' : 'Account' }}</option>
+                      <option value="route">
+                        {{ fa() ? 'مسیرها و سفرها' : 'Routes & Trips' }}
+                      </option>
+                      <option value="other">{{ fa() ? 'سایر' : 'Other' }}</option>
+                    </select>
+                  </div>
+                }
+
+                @if (isViolationReport()) {
+                  <div class="form-field">
+                    <label hlmLabel>{{
+                      fa() ? 'شناسه شخص گزارش‌شده' : 'Reported person ID'
+                    }}</label>
+                    <input
+                      hlmInput
+                      type="number"
+                      min="3"
+                      [(ngModel)]="formData.reportedPersonId"
+                      name="reportedPersonId"
+                      required
+                    />
+                  </div>
+                  <div class="form-field">
+                    <label hlmLabel>{{ fa() ? 'نوع تخلف' : 'Violation type' }}</label>
+                    <select
+                      hlmInput
+                      [(ngModel)]="formData.violationTypeId"
+                      name="violationTypeId"
+                      required
+                      [disabled]="violationTypesLoading() || !violationTypes().length"
+                    >
+                      <option [ngValue]="null">
+                        {{ fa() ? 'انتخاب نوع تخلف' : 'Select a violation' }}
+                      </option>
+                      @for (violation of violationTypes(); track violation.id) {
+                        <option [ngValue]="violation.id">
+                          {{ violation.title }}{{ violation.code ? ' · ' + violation.code : '' }}
+                        </option>
+                      }
+                    </select>
+                    @if (violationTypesLoading()) {
+                      <p role="status">
+                        {{ fa() ? 'در حال دریافت انواع تخلف...' : 'Loading violation types...' }}
+                      </p>
+                    }
+                  </div>
+                  <div class="form-field">
+                    <label hlmLabel>{{ fa() ? 'زمان وقوع' : 'Occurrence date and time' }}</label>
+                    <input
+                      hlmInput
+                      type="datetime-local"
+                      [(ngModel)]="formData.occurredAt"
+                      name="occurredAt"
+                      required
+                    />
+                  </div>
+                }
 
                 <div class="form-field">
                   <label hlmLabel>{{ fa() ? 'اولویت' : 'Priority' }}</label>
@@ -326,18 +402,52 @@ export class SupportPage {
   protected readonly submitting = signal(false)
   protected readonly error = signal<string | null>(null)
   protected readonly success = signal(false)
+  protected readonly violationTypes = signal<DriverSupportViolationType[]>([])
+  protected readonly violationTypesLoading = signal(false)
+  protected readonly activeTrip = signal<ActiveTrip | null>(null)
+  protected isViolationReport(): boolean {
+    return this.formData.supportTypeId === 3 || this.formData.supportTypeId === 4
+  }
 
   protected formData = {
     subject: '',
+    supportTypeId: 2 as 2 | 3 | 4,
     category: '',
     priority: 'medium',
     message: '',
+    reportedPersonId: '',
+    violationTypeId: null as number | null,
+    occurredAt: '',
+  }
+
+  protected async selectSupportType(value: number): Promise<void> {
+    this.formData.supportTypeId = Number(value) as 2 | 3 | 4
+    this.formData.violationTypeId = null
+    this.violationTypes.set([])
+    if (!this.isViolationReport()) return
+    this.violationTypesLoading.set(true)
+    try {
+      this.violationTypes.set(
+        await this.api.supportViolationTypes(this.formData.supportTypeId === 3 ? 1 : 2),
+      )
+    } catch (error) {
+      this.error.set(error instanceof Error ? error.message : 'Could not load violation types.')
+    } finally {
+      this.violationTypesLoading.set(false)
+    }
   }
 
   protected isFormValid(): boolean {
     return (
       this.formData.subject.trim().length > 0 &&
-      this.formData.category.trim().length > 0 &&
+      (this.isViolationReport() || this.formData.category.trim().length > 0) &&
+      (!this.isViolationReport() ||
+        Boolean(
+          Number(this.formData.reportedPersonId) > 2 &&
+          this.formData.violationTypeId &&
+          this.formData.occurredAt &&
+          this.activeTrip(),
+        )) &&
       this.formData.message.trim().length >= 20
     )
   }
@@ -359,9 +469,37 @@ export class SupportPage {
     this.success.set(false)
 
     try {
-      await this.api.submitSupportTicket(this.formData.subject, this.formData.message)
+      if (this.isViolationReport()) {
+        const trip = this.activeTrip()
+        if (!trip)
+          throw new Error(
+            this.fa()
+              ? 'برای ثبت شکایت باید سفر فعالی داشته باشید.'
+              : 'An active trip is required to submit a complaint.',
+          )
+        await this.api.submitSupportReport({
+          supportTypeId: this.formData.supportTypeId as 3 | 4,
+          subject: this.formData.subject,
+          body: this.formData.message,
+          reportedPersonId: Number(this.formData.reportedPersonId),
+          tripId: trip.id,
+          violationTypeId: this.formData.violationTypeId!,
+          occurredAt: this.formData.occurredAt,
+        })
+      } else {
+        await this.api.submitSupportTicket(this.formData.subject, this.formData.message)
+      }
       this.success.set(true)
-      this.formData = { subject: '', category: '', priority: 'medium', message: '' }
+      this.formData = {
+        subject: '',
+        supportTypeId: 2,
+        category: '',
+        priority: 'medium',
+        message: '',
+        reportedPersonId: '',
+        violationTypeId: null,
+        occurredAt: '',
+      }
     } catch {
       this.error.set(
         this.fa()
@@ -372,5 +510,12 @@ export class SupportPage {
     } finally {
       this.submitting.set(false)
     }
+  }
+
+  constructor() {
+    void this.api
+      .activeTrip()
+      .then(trip => this.activeTrip.set(trip))
+      .catch(() => this.activeTrip.set(null))
   }
 }
