@@ -1,1 +1,1 @@
-export { sharedProductionEnvironment as environment } from '@org/platform/config'
+export { environment } from '@org/platform/config'

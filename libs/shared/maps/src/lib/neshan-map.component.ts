@@ -9,11 +9,12 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   viewChild,
 } from '@angular/core'
 import type { Map as NeshanMap } from '@neshan-maps-platform/maplibre-sdk'
-import { MapCoordinate, neshanDirectionsUrl, neshanRouteCoordinates } from './neshan-directions'
+import { MapCoordinate, NeshanLineString, parseRouteGeoJson } from './neshan-directions'
 
 export interface NeshanMapPoint {
   readonly id: number
@@ -70,6 +71,7 @@ interface MutableGeoJsonSource {
       <div
         #mapHost
         class="bg-muted min-h-80 w-full overflow-hidden rounded-lg border sm:min-h-[28rem] lg:min-h-[36rem]"
+        [class.cursor-crosshair]="selectLocation()"
         [style.height]="fitContainer() ? '100%' : null"
         [style.min-height]="fitContainer() ? '0' : null"
         [style.border]="fitContainer() ? '0' : null"
@@ -93,6 +95,7 @@ export class NeshanMapComponent {
   readonly apiKey = input<string | null>(null)
   readonly serviceApiKey = input<string | null>(null)
   readonly points = input<readonly NeshanMapPoint[]>([])
+  readonly routeGeoJson = input<string | NeshanLineString | null>(null)
   /** Live driver/vehicle marker updated in real time. */
   readonly liveLocation = input<NeshanLiveLocation | null>(null)
   /** Multiple live markers, for administration tracking views. */
@@ -101,6 +104,8 @@ export class NeshanMapComponent {
   readonly followLive = input(false)
   /** Make the map canvas fill the allocated parent height. */
   readonly fitContainer = input(false)
+  readonly selectLocation = input(false)
+  readonly locationSelect = output<{ readonly lat: number; readonly lng: number }>()
   readonly language = input<'en' | 'fa'>('en')
 
   private readonly mapHost = viewChild<ElementRef<HTMLDivElement>>('mapHost')
@@ -142,23 +147,20 @@ export class NeshanMapComponent {
     effect(() => {
       const map = this.map()
       const ready = this.ready()
-      const points = this.points()
-      const serviceApiKey = this.serviceApiKey()?.trim()
+      const routeGeoJson = this.routeGeoJson()
       if (!map || !ready) return
-      const requestVersion = ++this.routeRequestVersion
-      const url = neshanDirectionsUrl(points)
-      if (!url) {
+      this.routeRequestVersion++
+      const route = parseRouteGeoJson(routeGeoJson)
+      if (!route) {
         this.clearRoute(map)
-        this.routeError.set(false)
+        this.routeError.set(!!routeGeoJson)
         return
       }
-      if (!serviceApiKey) {
-        this.clearRoute(map)
-        this.routeError.set(true)
-        return
-      }
+      const geometry = route.coordinates as MapCoordinate[]
+      this.setRoute(map, geometry)
+      if (!this.liveLocation() && this.liveLocations().length === 0)
+        this.fitCoordinates(map, geometry)
       this.routeError.set(false)
-      void this.loadRoute(map, url, serviceApiKey, requestVersion)
     })
 
     effect(() => {
@@ -222,6 +224,11 @@ export class NeshanMapComponent {
         trackResize: true,
       })
       map.addControl(new sdk.default.NavigationControl(), 'top-right')
+      map.on('click', event => {
+        if (!this.selectLocation()) return
+        const { lat, lng } = event.lngLat
+        if (this.validCoord(lat, lng)) this.locationSelect.emit({ lat, lng })
+      })
       map.on('load', () => {
         if (!this.disposed) this.ready.set(true)
       })
@@ -340,27 +347,6 @@ export class NeshanMapComponent {
     if (map.getLayer('live-driver-pulse')) map.removeLayer('live-driver-pulse')
     if (map.getLayer('live-driver-direction')) map.removeLayer('live-driver-direction')
     if (map.getSource('live-driver')) map.removeSource('live-driver')
-  }
-
-  private async loadRoute(
-    map: NeshanMap,
-    url: string,
-    serviceApiKey: string,
-    requestVersion: number,
-  ) {
-    try {
-      const response = await fetch(url, { headers: { 'Api-Key': serviceApiKey } })
-      if (!response.ok) throw new Error('Neshan route request failed.')
-      const coordinates = neshanRouteCoordinates(await response.json())
-      if (this.disposed || requestVersion !== this.routeRequestVersion) return
-      this.setRoute(map, coordinates)
-      if (!this.liveLocation()) this.fitCoordinates(map, coordinates)
-      this.routeError.set(false)
-    } catch {
-      if (this.disposed || requestVersion !== this.routeRequestVersion) return
-      this.clearRoute(map)
-      this.routeError.set(true)
-    }
   }
 
   private setRoute(map: NeshanMap, coordinates: readonly MapCoordinate[]) {

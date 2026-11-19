@@ -56,13 +56,13 @@ describe('RoutesApi', () => {
       code: '2000',
       massage: 'Success',
       result: [
-        { id: 42, name: 'االا', departureTime: '17:51:00' },
-        { id: 2, name: 'ابهر بیمارستان امید', departureTime: '07:30:00' },
+        { id: 42, name: 'االا', departureTime: '17:51:00', routeGeoJson: null },
+        { id: 2, name: 'ابهر بیمارستان امید', departureTime: '07:30:00', routeGeoJson: null },
       ],
     })
     await expect(result).resolves.toEqual([
-      { id: 42, name: 'االا', departureTime: '17:51:00' },
-      { id: 2, name: 'ابهر بیمارستان امید', departureTime: '07:30:00' },
+      { id: 42, name: 'االا', departureTime: '17:51:00', routeGeoJson: null },
+      { id: 2, name: 'ابهر بیمارستان امید', departureTime: '07:30:00', routeGeoJson: null },
     ])
   })
 
@@ -73,9 +73,14 @@ describe('RoutesApi', () => {
     routeRequest.flush({
       code: '2000',
       massage: 'Success',
-      result: { id: 42, name: 'Route', departureTime: '07:30:00' },
+      result: { id: 42, name: 'Route', departureTime: '07:30:00', routeGeoJson: null },
     })
-    await expect(detail).resolves.toEqual({ id: 42, name: 'Route', departureTime: '07:30:00' })
+    await expect(detail).resolves.toEqual({
+      id: 42,
+      name: 'Route',
+      departureTime: '07:30:00',
+      routeGeoJson: null,
+    })
 
     const stations = firstValueFrom(api.stations(routeId(42)))
     const stationRequest = http.expectOne('/test-api/v1/stations/search')
@@ -113,5 +118,60 @@ describe('RoutesApi', () => {
       { id: 7, orderNo: 1, lat: 0, lng: 0 },
       { id: 8, orderNo: 2 },
     ])
+  })
+
+  it('saves an edited Station with the selected sequence number', async () => {
+    const save = firstValueFrom(
+      api.saveStation(routeId(42), {
+        id: 7,
+        directionId: routeId(42),
+        name: 'First stop',
+        address: 'Main street',
+        cityId: 12,
+        coordinate: { lat: 35.7, lng: 51.4 },
+        orderNo: 2,
+      }),
+    )
+    const request = http.expectOne('/test-api/v1/stations')
+    expect(request.request.method).toBe('POST')
+    expect(request.request.body).toEqual({
+      id: 7,
+      directionId: 42,
+      name: 'First stop',
+      address: 'Main street',
+      cityId: 12,
+      coordinate: { lat: 35.7, lng: 51.4 },
+      orderNo: 2,
+    })
+    request.flush({ code: '2000', massage: 'Success', result: null })
+    await expect(save).resolves.toBeUndefined()
+  })
+
+  it('sends a serialized LineString geometry when saving a Direction', async () => {
+    const save = firstValueFrom(
+      api.save(routeId(42), {
+        companyId: 12,
+        name: 'Route',
+        departureTime: '07:30',
+        routeGeoJson: {
+          type: 'LineString',
+          coordinates: [
+            [51.4, 35.7],
+            [51.5, 35.8],
+          ],
+        },
+      }),
+    )
+    const request = http.expectOne('/test-api/v1/directions')
+    expect(request.request.method).toBe('POST')
+    expect(request.request.body).toEqual({
+      id: 42,
+      companyId: 12,
+      name: 'Route',
+      departureTime: '07:30',
+      routeGeoJson: '{"type":"LineString","coordinates":[[51.4,35.7],[51.5,35.8]]}',
+    })
+    request.flush({ code: '2000', massage: 'Success', result: { id: 42 } })
+    await expect(save).resolves.toBe(42)
   })
 })

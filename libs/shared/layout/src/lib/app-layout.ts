@@ -1,7 +1,8 @@
 import { Directionality } from '@angular/cdk/bidi'
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core'
 import { RouterLink, RouterLinkActive } from '@angular/router'
-import { NgIcon } from '@ng-icons/core'
+import { NgIcon, provideIcons } from '@ng-icons/core'
+import { lucideMenu } from '@ng-icons/lucide'
 import {
   HlmSidebar,
   HlmSidebarContent,
@@ -43,6 +44,7 @@ export interface LayoutNavItem {
   ],
   providers: [
     HlmSidebarService,
+    provideIcons({ lucideMenu }),
     provideHlmSidebarConfig({
       mobileBreakpoint: '767px',
       closeMobileSidebarOnMenuButtonClick: true,
@@ -121,24 +123,30 @@ export interface LayoutNavItem {
       </hlm-sidebar>
       <main hlmSidebarInset class="theme-content-column">
         <header>
-          <button
-            hlmSidebarTrigger
-            class="theme-menu-trigger bg-background border-border hover:bg-accent rounded-md border"
-            type="button"
-            [srOnlyText]="navigationLabel()"
-            [attr.aria-label]="toggleNavigationLabel()"
-            [attr.aria-expanded]="sidebar.isMobile() ? sidebar.openMobile() : sidebar.open()"
-            aria-controls="app-navigation"
-            [attr.title]="toggleNavigationLabel()"
-          >
-            @if (sidebar.isMobile()) {
-              <span class="theme-mobile-menu-icon" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-              </span>
-            }
-          </button>
+          @if (sidebar.isMobile()) {
+            <button
+              class="theme-menu-trigger theme-mobile-menu-trigger bg-background border-border hover:bg-accent rounded-md border"
+              type="button"
+              (click)="sidebar.toggleSidebar()"
+              [attr.aria-label]="toggleNavigationLabel()"
+              [attr.aria-expanded]="sidebar.openMobile()"
+              aria-controls="app-navigation"
+              [attr.title]="toggleNavigationLabel()"
+            >
+              <ng-icon name="lucideMenu" size="22" aria-hidden="true" />
+            </button>
+          } @else {
+            <button
+              hlmSidebarTrigger
+              class="theme-menu-trigger bg-background border-border hover:bg-accent rounded-md border"
+              type="button"
+              [srOnlyText]="navigationLabel()"
+              [attr.aria-label]="toggleNavigationLabel()"
+              [attr.aria-expanded]="sidebar.open()"
+              aria-controls="app-navigation"
+              [attr.title]="toggleNavigationLabel()"
+            ></button>
+          }
           <ng-content select="[layoutHeader]" />
         </header>
         <section class="theme-page-content"><ng-content /></section>

@@ -52,6 +52,7 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
           [apiKey]="neshanMapApiKey"
           [serviceApiKey]="neshanServiceApiKey"
           [points]="mapPoints()"
+          [routeGeoJson]="activeTrip.routeGeoJson"
           [liveLocation]="liveLocation()"
           [followLive]="true"
           [language]="config.language()"

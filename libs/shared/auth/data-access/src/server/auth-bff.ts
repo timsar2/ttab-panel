@@ -49,6 +49,8 @@ export interface AuthBffOptions {
 
 export interface AuthBffTrackingConnection {
   on(eventName: string, handler: (...args: unknown[]) => void): void
+  onreconnecting?(handler: () => void): void
+  onreconnected?(handler: () => void): void
   onclose(handler: () => void): void
   start(): Promise<void>
   stop(): Promise<void>
@@ -279,7 +281,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
     return new signalR.HubConnectionBuilder()
       .withUrl(trackingHubUrl(), { accessTokenFactory, withCredentials: false })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
-      .configureLogging(signalR.LogLevel.Information)
+      .configureLogging(config.production ? signalR.LogLevel.Warning : signalR.LogLevel.Information)
       .build()
   }
 
@@ -781,15 +783,28 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         const send = (typeName: unknown, payload: unknown) => {
           const chunk = `data: ${JSON.stringify({ typeName, payload })}\n\n`
           if (closed) return
-          if (connected) res.write(chunk)
-          else pending.push(chunk)
+          if (!config.production)
+            console.info('[SSE] NotificationFromServer received', { typeName, payload })
+          if (connected) {
+            res.write(chunk)
+            if (!config.production)
+              console.info('[SSE] Event written to browser response', { typeName })
+          } else pending.push(chunk)
         }
-        connection.on('notificationFromServer', (...args: unknown[]) => send(args[0], args[1]))
+        connection.on('NotificationFromServer', (...args: unknown[]) => send(args[0], args[1]))
+        connection.onreconnecting?.(() => {
+          if (!config.production) console.info('[SSE] Upstream SignalR reconnecting')
+        })
+        connection.onreconnected?.(() => {
+          if (!config.production) console.info('[SSE] Upstream SignalR reconnected')
+        })
         connection.onclose(() => {
+          if (!config.production) console.info('[SSE] Upstream SignalR connection closed')
           if (!res.writableEnded && !res.destroyed) res.end()
         })
         res.on('close', () => {
           closed = true
+          if (!config.production) console.info('[SSE] Browser connection closed or aborted')
           clearInterval(heartbeat)
           sessionConnections.delete(connection)
           if (!sessionConnections.size) trackingConnections.delete(session.id)
@@ -797,15 +812,20 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         })
         await connection.start()
         if (closed) return
+        if (!config.production) console.info('[SSE] Upstream SignalR connection established')
 
         res.status(200)
         res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
         res.setHeader('Connection', 'keep-alive')
         res.setHeader('X-Accel-Buffering', 'no')
         res.flushHeaders()
+        if (!config.production) console.info('[SSE] Browser stream established')
         res.write('retry: 3000\n\n')
         connected = true
-        for (const chunk of pending) res.write(chunk)
+        for (const chunk of pending) {
+          res.write(chunk)
+          if (!config.production) console.info('[SSE] Buffered event written to browser response')
+        }
       } else if (req.method === 'GET' && rawPath === '/auth/session') {
         res.json((await current(req, res)).metadata)
       } else if (req.method === 'POST' && rawPath === '/auth/refresh') {

@@ -104,9 +104,19 @@ export function createRouteRoutes(config: RouteFeatureConfig): Routes {
           loadComponent: () => import('./ui/route-map-page').then(module => module.RouteMapPage),
         },
         {
+          path: 'detail/:id/stations/add',
+          data: { breadcrumb: null },
+          loadComponent: () => import('./ui/station-editor').then(module => module.StationEditor),
+        },
+        {
+          path: 'detail/:id/stations/detail/:stationId',
+          data: { breadcrumb: null },
+          loadComponent: () => import('./ui/station-editor').then(module => module.StationEditor),
+        },
+        {
           path: 'detail/:id/stations',
           data: { breadcrumb: null },
-          loadComponent: () => import('./ui/route-map-page').then(module => module.RouteMapPage),
+          loadComponent: () => import('./ui/stations-page').then(module => module.StationsPage),
         },
         {
           path: 'detail/:id/lines',

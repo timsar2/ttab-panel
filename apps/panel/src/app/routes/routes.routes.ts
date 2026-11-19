@@ -7,8 +7,18 @@ import { CompanyContextStore } from '@org/transport-company-data-access'
 import { panelConfig } from '../panel.config'
 import { of } from 'rxjs'
 
-const routeManagementRoles = ['Admin', 'Manager'] as const
-const readRouteActions = new Set<RouteAccessRequest['action']>(['search', 'detail', 'stations'])
+const routeManagementRoles = ['Admin', 'Manager', 'Operator', 'Oprator'] as const
+const allowedRouteActions = new Set<RouteAccessRequest['action']>([
+  'search',
+  'detail',
+  'stations',
+  'price',
+  'create',
+  'update',
+  'savePrice',
+  'stationDetail',
+  'saveStation',
+])
 
 function activeCompany(context = inject(CompanyContextStore)) {
   return computed(() => (context.status() === 'ready' ? (context.company()?.id ?? null) : null))
@@ -21,12 +31,12 @@ export function canReadRouteRequest(
 ) {
   return (
     activeCompanyId === request.companyId &&
-    readRouteActions.has(request.action) &&
+    allowedRouteActions.has(request.action) &&
     hasAnyRole(roles, routeManagementRoles)
   )
 }
 
-/** Read-only until Route CRUD, Line/Station ownership, and map-key policy are approved. */
+/** Route operations are scoped to the selected company and management roles. */
 export function createPanelRouteRoutes() {
   return createRouteRoutes({
     path: '',
@@ -36,6 +46,8 @@ export function createPanelRouteRoutes() {
       search: 'v1/directions/search',
       stations: 'v1/stations/search',
       save: 'v1/directions',
+      prices: 'v1/directionprices',
+      stationSave: 'v1/stations',
     },
     company: () => activeCompany(),
     access: () => {
@@ -55,8 +67,8 @@ export function createPanelRouteRoutes() {
     lineRoutes: () => createPanelLineRoutes(inject(ROUTE_DIRECTION_ID)),
     heading: 'Routes',
     deniedMessage: {
-      en: 'Route reads require an Admin/Manager role and the selected company. Writes await ownership approval.',
-      fa: 'خواندن مسیر به نقش مدیر و شرکت انتخاب‌شده نیاز دارد. ثبت تغییرات تا تأیید مالکیت غیرفعال است.',
+      en: 'Route access requires an Admin, Manager, or Operator role and the selected company.',
+      fa: 'دسترسی به مسیر به نقش مدیر، سرپرست یا اپراتور و انتخاب شرکت نیاز دارد.',
     },
   })
 }

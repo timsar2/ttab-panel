@@ -87,6 +87,7 @@ export interface ActiveTrip {
   nextStationId?: number | null
   passengerStationId?: number | null
   lineId?: number | null
+  routeGeoJson: string | null
 }
 
 export interface DriverSupportViolationType {
@@ -604,6 +605,10 @@ export class DriverApi {
       tripTypeName: String(property(value, 'tripTypeName') ?? ''),
       shiftTime: String(property(value, 'shiftTime') ?? ''),
       departureTime: String(property(value, 'departureTime') ?? ''),
+      routeGeoJson:
+        typeof property(value, 'routeGeoJson') === 'string'
+          ? (property(value, 'routeGeoJson') as string)
+          : null,
       nextStationId:
         typeof property(value, 'nextStationId') === 'number'
           ? (property(value, 'nextStationId') as number)

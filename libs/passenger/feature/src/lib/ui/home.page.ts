@@ -6,6 +6,7 @@ import {
   computed,
   effect,
   inject,
+  isDevMode,
   signal,
 } from '@angular/core'
 import { RouterLink } from '@angular/router'
@@ -425,6 +426,7 @@ import {
                 [apiKey]="neshanMapApiKey"
                 [serviceApiKey]="neshanServiceApiKey"
                 [points]="mapPoints()"
+                [routeGeoJson]="currentTrip.routeGeoJson"
                 [liveLocation]="liveDriverLocation()"
                 [followLive]="true"
                 [language]="config.language()"
@@ -502,6 +504,7 @@ import {
                 [apiKey]="neshanMapApiKey"
                 [serviceApiKey]="neshanServiceApiKey"
                 [points]="mapPoints()"
+                [routeGeoJson]="selectedDirection()?.routeGeoJson ?? null"
                 [language]="config.language()"
               />
               @if (selectedStations().length) {
@@ -1091,6 +1094,9 @@ export class PassengerHomePage {
   protected readonly passenger = signal<PassengerRecord | null>(null)
   protected readonly shifts = signal<Choice[]>([])
   protected readonly directions = signal<Choice[]>([])
+  protected readonly selectedDirection = computed(
+    () => this.directions().find(item => String(item.id) === this.selectedDirectionId()) ?? null,
+  )
   protected readonly assignedStations = signal<Choice[]>([])
   protected readonly trip = signal<ActiveTrip | null>(null)
   protected readonly tripLoaded = signal(false)
@@ -1165,6 +1171,13 @@ export class PassengerHomePage {
     const loc = this.matchingStreamLocation() ?? this.driverLocation()
     if (!trip || !loc) return null
     if (loc.tripId !== trip.id || loc.driverId !== trip.driverId) return null
+    if (isDevMode())
+      console.info('[PassengerMap] Driver coordinates received', {
+        tripId: loc.tripId,
+        driverId: loc.driverId,
+        lat: loc.lat,
+        lng: loc.lng,
+      })
     return {
       id: loc.driverId,
       lat: loc.lat,

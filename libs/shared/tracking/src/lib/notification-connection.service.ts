@@ -26,7 +26,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 }
 
 /**
- * Reusable transport for the backend's notificationFromServer envelope.
+ * Reusable transport for the backend's NotificationFromServer envelope.
  * Passenger apps should use the same-origin cookie stream so JWTs stay on the server;
  * configure/connect remain available to trusted non-cookie consumers of the library.
  */
@@ -83,6 +83,7 @@ export class NotificationConnectionService implements OnDestroy {
       .build()
 
     connection.on(NOTIFICATION_FROM_SERVER, (typeName: unknown, payload: unknown) => {
+      console.log('NOTIFICATION_FROM_SERVER recived')
       this.dispatch(typeName, payload, 'signalr')
     })
     connection.onreconnecting(error => {
@@ -166,8 +167,10 @@ export class NotificationConnectionService implements OnDestroy {
     }
     source.onmessage = event => {
       try {
+        if (isDevMode()) console.info('[SSE] Raw event received', event.data)
         const envelope = asRecord(JSON.parse(event.data) as unknown)
         if (!envelope) throw new Error('Notification envelope must be an object.')
+        if (isDevMode()) console.info('[SSE] Notification type identified', envelope['typeName'])
         this.dispatch(envelope['typeName'], envelope['payload'], 'event-stream')
       } catch (error) {
         this.log('Notification stream received invalid event data', error)

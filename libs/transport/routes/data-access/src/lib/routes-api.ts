@@ -33,18 +33,31 @@ import {
 } from 'rxjs'
 import { RoutesStore } from './routes.store'
 import {
+  DirectionPrice,
+  DirectionPriceDraft,
   DirectionRoute,
   DirectionRouteDraft,
   RouteId,
   RouteStation,
+  StationDraft,
   decodeRoute,
+  decodeDirectionPrice,
   decodeStation,
   routeId,
   routeWrite,
 } from './route.models'
 
 export interface RouteAccessRequest {
-  readonly action: 'search' | 'detail' | 'stations' | 'create' | 'update'
+  readonly action:
+    | 'search'
+    | 'detail'
+    | 'stations'
+    | 'create'
+    | 'update'
+    | 'price'
+    | 'savePrice'
+    | 'stationDetail'
+    | 'saveStation'
   readonly companyId: number
   readonly id?: RouteId
 }
@@ -57,6 +70,8 @@ export interface RoutesDataConfig {
     readonly search: string
     readonly stations: string
     readonly save: string
+    readonly prices?: string
+    readonly stationSave?: string
   }
   readonly company: () => Signal<number | null>
   /** Client preflight only; the backend must independently authorize company and Route ownership. */
@@ -209,6 +224,83 @@ export class RoutesApi {
           this.config.endpoints.save,
           value => unwrapTransport(value, responseRouteId),
           body,
+          { apiUrl: this.config.apiUrl },
+        ),
+      )
+    })
+  }
+
+  price(directionId: RouteId): Observable<DirectionPrice | null> {
+    return this.run('price', directionId, () => {
+      if (!this.config.endpoints.prices)
+        throw new TransportError('contract', 0, 'Route prices are not configured.')
+      return this.http.request(
+        'GET',
+        `${this.config.endpoints.prices}/${directionId}`,
+        value =>
+          unwrapTransport(value, result => (result === null ? null : decodeDirectionPrice(result))),
+        undefined,
+        { apiUrl: this.config.apiUrl },
+      )
+    })
+  }
+
+  savePrice(directionId: RouteId, draft: DirectionPriceDraft): Observable<void> {
+    return defer(() => {
+      if (!this.config.endpoints.prices)
+        throw new TransportError('contract', 0, 'Route prices are not configured.')
+      const action = draft.id == null ? 'savePrice' : 'savePrice'
+      return this.run(action, directionId, () =>
+        this.http.request(
+          'POST',
+          this.config.endpoints.prices!,
+          value => {
+            unwrapTransport(value, () => undefined)
+          },
+          { ...draft, directionId },
+          { apiUrl: this.config.apiUrl },
+        ),
+      )
+    })
+  }
+
+  station(stationId: number, directionId: RouteId): Observable<RouteStation | null> {
+    return this.run('stationDetail', directionId, () =>
+      this.http
+        .request(
+          'GET',
+          `${this.config.endpoints.stations.replace(/\/search$/, '')}/${stationId}`,
+          value =>
+            unwrapTransport(value, result => (result === null ? null : decodeStation(result))),
+          undefined,
+          { apiUrl: this.config.apiUrl },
+        )
+        .pipe(
+          map(station => {
+            if (station && (station.id !== stationId || station.directionId !== directionId))
+              throw new TransportError(
+                'contract',
+                0,
+                'The requested Station does not match the response.',
+              )
+            return station
+          }),
+        ),
+    )
+  }
+
+  saveStation(directionId: RouteId, draft: StationDraft): Observable<void> {
+    return defer(() => {
+      const endpoint =
+        this.config.endpoints.stationSave ?? this.config.endpoints.stations.replace(/\/search$/, '')
+      return this.run('saveStation', directionId, () =>
+        this.http.request(
+          'POST',
+          endpoint,
+          value => {
+            unwrapTransport(value, () => undefined)
+          },
+          { ...draft, directionId },
           { apiUrl: this.config.apiUrl },
         ),
       )

@@ -286,7 +286,7 @@ describe('Node cookie authentication BFF', () => {
       accessTokenFactory,
     ) => ({
       on: (eventName, handler) => {
-        expect(eventName).toBe('notificationFromServer')
+        expect(eventName).toBe('NotificationFromServer')
         onNotification = handler
       },
       onclose: () => undefined,

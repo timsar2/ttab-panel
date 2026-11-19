@@ -7,9 +7,9 @@ export const PLATFORM_API_URL = `${PLATFORM_BASE_URL}/api`
 export const PLATFORM_DEV_API_URL = `${PLATFORM_DEV_BASE_URL}/api`
 
 // Backward-compatible aliases.
-export const PLATFORM_API_BASE_URL = PLATFORM_BASE_URL
+// export const PLATFORM_API_BASE_URL = PLATFORM_BASE_URL
 
-export const sharedDevelopmentEnvironment = {
+export const developmentEnvironment = {
   production: false,
   baseUrl: PLATFORM_DEV_BASE_URL,
   apiUrl: PLATFORM_DEV_API_URL,
@@ -19,7 +19,7 @@ export const sharedDevelopmentEnvironment = {
   neshanMapApiKey: 'web.9d0587a11be14a61851377bd3e739fee',
 } as const
 
-export const sharedProductionEnvironment = {
+export const productionEnvironment = {
   production: true,
   baseUrl: PLATFORM_BASE_URL,
   apiUrl: PLATFORM_API_URL,
@@ -30,4 +30,4 @@ export const sharedProductionEnvironment = {
 } as const
 
 // Convenience alias for environments that don't need file-replacement selection in libs.
-export const environment = sharedDevelopmentEnvironment
+export const environment = developmentEnvironment

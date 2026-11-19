@@ -50,6 +50,7 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
             [apiKey]="neshanMapApiKey"
             [serviceApiKey]="neshanServiceApiKey"
             [points]="mapPoints()"
+            [routeGeoJson]="trip.routeGeoJson"
             [language]="config.language()"
           />
           <div class="trip-summary">

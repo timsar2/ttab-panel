@@ -1,0 +1,87 @@
+{
+  "name": "inspection",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/inspection/src",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/inspection",
+        "browser": "apps/inspection/src/main.ts",
+        "tsConfig": "apps/inspection/tsconfig.app.json",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/inspection/public"
+          }
+        ],
+        "styles": ["apps/inspection/src/styles.css"],
+        "server": "apps/inspection/src/main.server.ts",
+        "ssr": {
+          "entry": "apps/inspection/src/server.ts"
+        },
+        "outputMode": "server",
+        "security": {
+          "allowedHosts": []
+        }
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "readyWhen": {
+        "signal": true
+      },
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "configurations": {
+        "production": {
+          "buildTarget": "inspection:build:production"
+        },
+        "development": {
+          "buildTarget": "inspection:build:development"
+        }
+      }
+    },
+    "serve-static": {
+      "continuous": true,
+      "readyWhen": {
+        "signal": true
+      },
+      "dependsOn": ["build"],
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "inspection:build",
+        "port": 4200,
+        "staticFilePath": "dist/apps/inspection/browser",
+        "spa": true
+      }
+    }
+  }
+}

@@ -16,7 +16,7 @@ export const PASSENGER_FEATURE_CONFIG = new InjectionToken<PassengerFeatureConfi
 )
 
 export function hasPassengerAccess(roles: readonly string[]): boolean {
-  const staffRoles = ['Admin', 'Manager', 'Oprator', 'Operator']
+  const staffRoles = ['Admin', 'Manager', 'Operator']
   return (
     roles.includes('Client') &&
     !roles.includes('Driver') &&

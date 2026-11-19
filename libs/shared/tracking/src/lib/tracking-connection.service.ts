@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, computed, inject, signal } from '@angular/core'
+import { Injectable, OnDestroy, computed, inject, isDevMode, signal } from '@angular/core'
 import {
   LOCATION_NOTIFICATION,
   PASSENGER_NOTIFICATION,
@@ -88,8 +88,18 @@ export class TrackingConnectionService implements OnDestroy {
   }
 
   private handleLocation(payload: unknown): void {
+    if (isDevMode()) {
+      console.info('[Tracking] LocationNotification listener fired', payload)
+    }
+
     const location = normalizeLocation(payload)
-    if (!location) return
+    if (!location) {
+      if (isDevMode()) {
+        console.warn('[passenger-tracking] LocationNotification payload could not be normalized')
+      }
+      return
+    }
+
     this.lastLocation.set(location)
     if (location.driverId !== null && location.driverId !== undefined) {
       this.driverLocations.update(current => {
@@ -98,9 +108,18 @@ export class TrackingConnectionService implements OnDestroy {
         return next
       })
     }
+    if (isDevMode()) {
+      console.info('[Tracking] Driver location updated', {
+        tripId: location.tripId,
+        driverId: location.driverId,
+        latitude: location.lat,
+        longitude: location.lng,
+      })
+    }
   }
 
   private handlePassenger(payload: unknown): void {
+    if (isDevMode()) console.info('[Tracking] PassengerNotification listener fired', payload)
     const notification = normalizePassenger(payload)
     if (!notification) return
     this.lastPassengerNotification.set(notification)

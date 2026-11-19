@@ -1,8 +1,10 @@
 import type { NeshanMapPoint } from './neshan-map.component'
 import {
   decodeNeshanPolyline,
+  generateNeshanRouteGeoJson,
   neshanDirectionsUrl,
   neshanRouteCoordinates,
+  parseRouteGeoJson,
 } from './neshan-directions'
 
 const point = (
@@ -44,5 +46,51 @@ describe('Neshan directions', () => {
 
   it('does not request a route until two stations have valid coordinates', () => {
     expect(neshanDirectionsUrl([point(1, 1, 35, 51), point(2, 2, null, 52)])).toBeNull()
+  })
+
+  it('reads a LineString directly and normalizes legacy FeatureCollection geometry', () => {
+    const line = {
+      type: 'LineString' as const,
+      coordinates: [
+        [51, 35],
+        [52, 36],
+      ] as const,
+    }
+    expect(parseRouteGeoJson(JSON.stringify(line))).toEqual(line)
+    expect(
+      parseRouteGeoJson(
+        JSON.stringify({
+          type: 'FeatureCollection',
+          features: [{ type: 'Feature', geometry: line, properties: {} }],
+        }),
+      ),
+    ).toEqual(line)
+  })
+
+  it('generates route geometry as a direct LineString', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        routes: [{ overview_polyline: { points: '_p~iF~ps|U_ulLnnqC_mqNvxq`@' } }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      await expect(
+        generateNeshanRouteGeoJson([point(1, 1, 35.1, 51.1), point(2, 2, 35.2, 51.2)], 'test-key'),
+      ).resolves.toEqual({
+        type: 'LineString',
+        coordinates: [
+          [-120.2, 38.5],
+          [-120.95, 40.7],
+          [-126.453, 43.252],
+        ],
+      })
+      expect(fetchMock).toHaveBeenCalledWith(expect.any(String), {
+        headers: { 'Api-Key': 'test-key' },
+      })
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

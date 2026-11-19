@@ -33,9 +33,6 @@
   min-inline-size: 2.75rem;
   min-block-size: 2.75rem;
 }
-.theme-mobile-menu-icon {
-  display: none;
-}
 .theme-menu-heading {
   padding: 1rem 0.75rem 0.5rem;
   font-size: 0.75rem;
@@ -136,24 +133,6 @@ header {
     align-self: center;
     justify-content: center;
     padding: 0;
-  }
-  .theme-menu-trigger ng-icon {
-    display: none;
-  }
-  .theme-mobile-menu-icon {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 0.25rem;
-    inline-size: 1.25rem;
-    block-size: 1.25rem;
-  }
-  .theme-mobile-menu-icon span {
-    display: block;
-    inline-size: 100%;
-    block-size: 2px;
-    border-radius: 1px;
-    background: currentColor;
   }
   .theme-shell {
     flex-direction: column;

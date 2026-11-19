@@ -109,6 +109,9 @@ export function routeMapPoints(stations: readonly RouteStation[]): readonly Nesh
                 [serviceApiKey]="config.neshanServiceApiKey ?? null"
                 [language]="language()"
                 [points]="mapPoints()"
+                [routeGeoJson]="
+                  store.route()?.routeGeoJson ?? selectedRoute()?.routeGeoJson ?? null
+                "
               />
               <p class="text-muted-foreground mt-2 text-sm">{{ text('mapOrderNote') }}</p>
             </section>
@@ -164,6 +167,9 @@ export class RouteMapPage {
   protected readonly mapPoints = computed<readonly NeshanMapPoint[]>(() =>
     routeMapPoints(this.store.stations() ?? []),
   )
+  protected readonly selectedRoute = computed(
+    () => this.store.routes()?.find(route => String(route.id) === this.selectedId()) ?? null,
+  )
   protected readonly listErrorMessage = computed(() => {
     const error = this.store.listError()
     return error?.code === 'routes-access-denied' || error?.status === 401 || error?.status === 403
@@ -171,6 +177,7 @@ export class RouteMapPage {
       : this.text('failed')
   })
   private lastStationsKey = ''
+  private lastDetailKey = ''
 
   constructor() {
     effect(() => {
@@ -212,6 +219,14 @@ export class RouteMapPage {
       if (!selectedRoute || key === this.lastStationsKey) return
       this.lastStationsKey = key
       untracked(() => this.store.loadStations(selectedRoute.id))
+    })
+    effect(() => {
+      const selectedId = this.selectedId()
+      const selectedRoute = this.store.routes()?.find(route => String(route.id) === selectedId)
+      const key = `${this.api.companyId() ?? ''}:${this.session.version()}:${selectedId}`
+      if (!selectedRoute || key === this.lastDetailKey) return
+      this.lastDetailKey = key
+      untracked(() => this.store.loadDetail(selectedRoute.id))
     })
   }
 
