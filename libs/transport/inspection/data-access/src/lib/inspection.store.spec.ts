@@ -19,7 +19,7 @@ const visit: InspectionVisitRow = {
   driverName: 'Driver',
   vehicleId: 31,
   carPlate: 'AB123',
-  statusTypeId: 'Pending action',
+  statusTypeName: 'Pending action',
 }
 
 describe('InspectionStore', () => {
@@ -35,7 +35,6 @@ describe('InspectionStore', () => {
       createVisit: vi.fn(() => of(1)),
       addDefect: vi.fn(() => of(1)),
       addCorrectiveAction: vi.fn(() => of(1)),
-      setStatus: vi.fn(() => of(true)),
     }
     TestBed.configureTestingModule({
       providers: [
@@ -99,7 +98,6 @@ describe('InspectionStore', () => {
       createVisit: vi.fn(() => of(1)),
       addDefect: vi.fn(() => of(50)),
       addCorrectiveAction: vi.fn(() => of(51)),
-      setStatus: vi.fn(() => of(true)),
     }
     TestBed.configureTestingModule({
       providers: [
@@ -159,5 +157,36 @@ describe('InspectionStore', () => {
       ),
     ).rejects.toThrow('insert failed')
     expect(store.detail()?.defects).toHaveLength(1)
+  })
+
+  it('leaves loading when a detail observable completes without a response', () => {
+    const detailResponse = new Subject<never>()
+    const user = signal<{ id: string } | null>({ id: 'staff' })
+    const changes = new Subject<void>()
+    const api = {
+      search: vi.fn(() => of([])),
+      detail: vi.fn(() => detailResponse),
+      createVisit: vi.fn(() => of(1)),
+      addDefect: vi.fn(() => of(1)),
+      addCorrectiveAction: vi.fn(() => of(1)),
+    }
+    TestBed.configureTestingModule({
+      providers: [
+        InspectionStore,
+        { provide: InspectionApi, useValue: api },
+        {
+          provide: SessionStore,
+          useValue: { user: () => user(), version: () => 1, changes$: changes },
+        },
+      ],
+    })
+    const store = TestBed.inject(InspectionStore)
+    store.loadDetail(11 as InspectionId)
+    expect(store.detailStatus()).toBe('loading')
+
+    detailResponse.complete()
+
+    expect(store.detailStatus()).toBe('error')
+    expect(store.detailError()).not.toBeNull()
   })
 })

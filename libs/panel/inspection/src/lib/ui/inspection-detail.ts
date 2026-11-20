@@ -24,9 +24,12 @@ import {
   InspectionId,
   inspectionId,
   inspectionDate,
+  inspectionCheckAnswerLabel,
+  inspectionStatusLabel,
   InspectionStore,
 } from '@org/transport-inspection-data-access'
 import { HlmButton } from '@spartan-ng/helm/button'
+import { JalaliDatePicker } from '@org/ui-forms'
 import { firstValueFrom } from 'rxjs'
 import {
   INSPECTION_CAN_MANAGE,
@@ -54,7 +57,7 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
 @Component({
   selector: 'lib-inspection-detail-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, HlmButton, FormField],
+  imports: [RouterLink, HlmButton, FormField, JalaliDatePicker],
   host: { class: 'block min-w-0 p-4 md:p-8' },
   template: `
     <a
@@ -73,7 +76,12 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
     } @else if (store.detailStatus() === 'not-found') {
       <p role="alert">{{ t('missing') }}</p>
     } @else if (store.detailStatus() === 'error') {
-      <p role="alert">{{ t('detailFailed') }}</p>
+      <div role="alert" class="grid justify-items-start gap-3">
+        <p>{{ t('detailFailed') }}</p>
+        <button hlmBtn variant="outline" type="button" (click)="retryDetail()">
+          {{ t('retry') }}
+        </button>
+      </div>
     } @else if (store.detail(); as detail) {
       <header class="mb-6 rounded-xl border p-5">
         <h1 class="text-2xl font-semibold">{{ t('detail') }} #{{ detail.id }}</h1>
@@ -95,60 +103,19 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
             <dd>{{ detail.carPlate || '#' + detail.vehicleId }}</dd>
           </div>
         </dl>
-        @if (canManageActions()) {
-          <section
-            class="bg-muted/30 mt-5 rounded-lg p-4"
-            aria-labelledby="inspection-status-heading"
-          >
-            <h2 id="inspection-status-heading" class="font-medium">{{ t('status') }}</h2>
-            <p class="text-muted-foreground mt-1 text-sm">{{ t('statusContract') }}</p>
-            <p class="mt-2">{{ detail.statusTypeId || t('statusUnavailable') }}</p>
-            <form
-              id="inspection-status-form"
-              class="mt-4 grid max-w-lg gap-3"
-              novalidate
-              (submit)="saveStatus($event)"
+        <section
+          class="bg-muted/30 mt-5 rounded-lg p-4"
+          aria-labelledby="inspection-status-heading"
+        >
+          <h2 id="inspection-status-heading" class="font-medium">{{ t('status') }}</h2>
+          <p class="mt-2">
+            <span
+              class="bg-primary/10 text-primary inline-flex rounded-full px-3 py-1 text-sm font-semibold"
             >
-              <label class="grid gap-2 text-sm" for="inspection-status-select">{{
-                t('setStatus')
-              }}</label>
-              <select
-                id="inspection-status-select"
-                class="bg-background min-h-11 rounded-md border px-3"
-                [formField]="statusForm.statusTypeId"
-              >
-                <option value="">{{ t('setStatus') }}</option>
-                <option value="1">{{ t('statusPendingAction') }}</option>
-                <option value="2">{{ t('statusPendingApproval') }}</option>
-                <option value="3">{{ t('statusApproved') }}</option>
-              </select>
-              <label class="inline-flex min-h-11 items-center gap-2">
-                <input
-                  id="inspection-status-confirmed"
-                  type="checkbox"
-                  [formField]="statusForm.confirmed"
-                />{{ t('confirmStatus') }}
-              </label>
-              @if (statusForm().touched() && statusForm().invalid()) {
-                <p role="alert">{{ t('confirmStatus') }}</p>
-              }
-              @if (statusError()) {
-                <p role="alert">{{ statusError() }}</p>
-              }
-              @if (statusUpdated()) {
-                <p role="status">{{ t('statusUpdateSent') }}</p>
-              }
-              <button
-                hlmBtn
-                class="min-h-11 justify-self-start"
-                type="submit"
-                [disabled]="savingStatus()"
-              >
-                {{ savingStatus() ? t('saving') : t('setStatus') }}
-              </button>
-            </form>
-          </section>
-        }
+              {{ statusLabel(detail.statusTypeName ?? detail.statusTypeId) }}
+            </span>
+          </p>
+        </section>
       </header>
       <section class="mb-6 rounded-xl border p-5" aria-labelledby="inspection-checks-heading">
         <h2 id="inspection-checks-heading" class="text-lg font-semibold">{{ t('checks') }}</h2>
@@ -157,7 +124,7 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
             <div class="bg-muted/30 rounded-lg p-3">
               <dt class="text-sm">{{ t(label(check)) }}</dt>
               <dd class="mt-1 font-medium">
-                {{ detail[check] ? t('trueValue') : t('falseValue') }}
+                {{ t(inspectionCheckAnswerLabel(check, detail[check])) }}
               </dd>
             </div>
           }
@@ -165,121 +132,64 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
         <h3 class="mt-5 font-medium">{{ t('description') }}</h3>
         <p class="mt-2 whitespace-pre-wrap">{{ detail.description }}</p>
       </section>
-      <section class="grid gap-6 xl:grid-cols-2">
-        <div class="rounded-xl border p-5">
-          <h2 class="text-lg font-semibold">{{ t('defects') }}</h2>
-          @if (!detail.defects.length) {
-            <p class="text-muted-foreground mt-3">{{ t('noDefects') }}</p>
+      <section class="rounded-xl border p-5">
+        <h2 class="text-lg font-semibold">{{ t('correctiveActions') }}</h2>
+        @if (!detail.correctiveActions.length) {
+          <p class="text-muted-foreground mt-3">{{ t('noActions') }}</p>
+        }
+        <ul class="mt-3 grid gap-3">
+          @for (action of detail.correctiveActions; track action.id) {
+            <li class="bg-muted/30 rounded-lg p-4">
+              <p dir="ltr">{{ t('completedAt') }}: {{ action.completedAt }}</p>
+              <p class="mt-2 whitespace-pre-wrap">{{ action.description }}</p>
+            </li>
           }
-          <ul class="mt-3 grid gap-3">
-            @for (defect of detail.defects; track defect.id) {
-              <li class="bg-muted/30 rounded-lg p-4">
-                <p dir="ltr">{{ t('dueDate') }}: {{ defect.dueDate }}</p>
-                <p class="mt-2 whitespace-pre-wrap">{{ defect.description }}</p>
-              </li>
+        </ul>
+        @if (canManageActions()) {
+          <form
+            id="inspection-action-form"
+            class="mt-6 grid gap-3 border-t pt-5"
+            novalidate
+            (submit)="saveAction($event)"
+          >
+            <h3 class="font-medium">{{ t('addAction') }}</h3>
+            <label class="grid gap-2 text-sm" for="inspection-completed-at">{{
+              t('completedAt')
+            }}</label
+            ><lib-jalali-date-picker
+              inputId="inspection-completed-at"
+              [language]="language()"
+              [value]="actionModel().completedAt"
+              [disabled]="savingAction()"
+              (valueChange)="setCompletedAt($event)"
+            />
+            <label class="grid gap-2 text-sm" for="inspection-action-description">{{
+              t('text')
+            }}</label
+            ><textarea
+              id="inspection-action-description"
+              class="bg-background min-h-24 rounded-md border p-3"
+              [formField]="actionForm.description"
+            ></textarea>
+            @if (actionForm().touched() && actionForm().invalid()) {
+              <p role="alert">{{ t('dateRequired') }} {{ t('descriptionRequired') }}</p>
             }
-          </ul>
-          @if (canManageActions()) {
-            <form
-              id="inspection-defect-form"
-              class="mt-6 grid gap-3 border-t pt-5"
-              novalidate
-              (submit)="saveDefect($event)"
-            >
-              <h3 class="font-medium">{{ t('addDefect') }}</h3>
-              <label class="grid gap-2 text-sm" for="inspection-due-date">{{ t('dueDate') }}</label
-              ><input
-                id="inspection-due-date"
-                class="bg-background min-h-11 rounded-md border px-3"
-                type="date"
-                [formField]="defectForm.dueDate"
-              />
-              <label class="grid gap-2 text-sm" for="inspection-defect-description">{{
-                t('text')
-              }}</label
-              ><textarea
-                id="inspection-defect-description"
-                class="bg-background min-h-24 rounded-md border p-3"
-                [formField]="defectForm.description"
-              ></textarea>
-              @if (defectForm().touched() && defectForm().invalid()) {
-                <p role="alert">{{ t('dateRequired') }} {{ t('descriptionRequired') }}</p>
-              }
-              @if (defectError()) {
-                <p role="alert">{{ defectError() }}</p>
-              }
-              @if (defectSaved()) {
-                <p role="status">{{ t('saved') }}</p>
-              }
-              <button
-                hlmBtn
-                class="min-h-11 justify-self-start"
-                type="submit"
-                [disabled]="savingDefect()"
-              >
-                {{ savingDefect() ? t('saving') : t('submit') }}
-              </button>
-            </form>
-          }
-        </div>
-        <div class="rounded-xl border p-5">
-          <h2 class="text-lg font-semibold">{{ t('correctiveActions') }}</h2>
-          @if (!detail.correctiveActions.length) {
-            <p class="text-muted-foreground mt-3">{{ t('noActions') }}</p>
-          }
-          <ul class="mt-3 grid gap-3">
-            @for (action of detail.correctiveActions; track action.id) {
-              <li class="bg-muted/30 rounded-lg p-4">
-                <p dir="ltr">{{ t('completedAt') }}: {{ action.completedAt }}</p>
-                <p class="mt-2 whitespace-pre-wrap">{{ action.description }}</p>
-              </li>
+            @if (actionError()) {
+              <p role="alert">{{ actionError() }}</p>
             }
-          </ul>
-          @if (canManageActions()) {
-            <form
-              id="inspection-action-form"
-              class="mt-6 grid gap-3 border-t pt-5"
-              novalidate
-              (submit)="saveAction($event)"
+            @if (actionSaved()) {
+              <p role="status">{{ t('saved') }}</p>
+            }
+            <button
+              hlmBtn
+              class="min-h-11 justify-self-start"
+              type="submit"
+              [disabled]="savingAction()"
             >
-              <h3 class="font-medium">{{ t('addAction') }}</h3>
-              <label class="grid gap-2 text-sm" for="inspection-completed-at">{{
-                t('completedAt')
-              }}</label
-              ><input
-                id="inspection-completed-at"
-                class="bg-background min-h-11 rounded-md border px-3"
-                type="date"
-                [formField]="actionForm.completedAt"
-              />
-              <label class="grid gap-2 text-sm" for="inspection-action-description">{{
-                t('text')
-              }}</label
-              ><textarea
-                id="inspection-action-description"
-                class="bg-background min-h-24 rounded-md border p-3"
-                [formField]="actionForm.description"
-              ></textarea>
-              @if (actionForm().touched() && actionForm().invalid()) {
-                <p role="alert">{{ t('dateRequired') }} {{ t('descriptionRequired') }}</p>
-              }
-              @if (actionError()) {
-                <p role="alert">{{ actionError() }}</p>
-              }
-              @if (actionSaved()) {
-                <p role="status">{{ t('saved') }}</p>
-              }
-              <button
-                hlmBtn
-                class="min-h-11 justify-self-start"
-                type="submit"
-                [disabled]="savingAction()"
-              >
-                {{ savingAction() ? t('saving') : t('submit') }}
-              </button>
-            </form>
-          }
-        </div>
+              {{ savingAction() ? t('saving') : t('submit') }}
+            </button>
+          </form>
+        }
       </section>
     }
   `,
@@ -290,42 +200,11 @@ export class InspectionDetailPage {
   protected readonly scope = inject(INSPECTION_SCOPE)
   protected readonly canManageActions = inject(INSPECTION_CAN_MANAGE)
   protected readonly checks = INSPECTION_CHECKS
-  protected readonly savingDefect = signal(false)
-  protected readonly savingStatus = signal(false)
-  protected readonly statusModel = signal({ statusTypeId: '', confirmed: false })
-  protected readonly statusForm = form(this.statusModel, schema => {
-    validate(schema.statusTypeId, ({ value }) =>
-      ['1', '2', '3'].includes(value()) ? null : { kind: 'status', message: 'status' },
-    )
-    validate(schema.confirmed, ({ value }) =>
-      value() ? null : { kind: 'confirm', message: 'confirm' },
-    )
-    disabled(schema.statusTypeId, () => this.savingStatus())
-    disabled(schema.confirmed, () => this.savingStatus())
-  })
-  protected readonly statusError = signal<string | null>(null)
-  protected readonly statusUpdated = signal(false)
   private readonly route = inject(ActivatedRoute)
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   })
   protected readonly invalidId = signal(false)
-  protected readonly defectModel = signal({ dueDate: '', description: '' })
-  protected readonly defectForm = form(this.defectModel, schema => {
-    required(schema.dueDate)
-    validate(schema.dueDate, ({ value }) =>
-      isCalendarDate(value()) ? null : { kind: 'date', message: 'date' },
-    )
-    required(schema.description)
-    maxLength(schema.description, 300)
-    validate(schema.description, ({ value }) =>
-      value().trim() ? null : { kind: 'required', message: 'required' },
-    )
-    disabled(schema.dueDate, () => this.savingDefect())
-    disabled(schema.description, () => this.savingDefect())
-  })
-  protected readonly defectError = signal<string | null>(null)
-  protected readonly defectSaved = signal(false)
   protected readonly savingAction = signal(false)
   protected readonly actionModel = signal({ completedAt: '', description: '' })
   protected readonly actionForm = form(this.actionModel, schema => {
@@ -354,12 +233,6 @@ export class InspectionDetailPage {
       if (id === null || companyId === null) {
         untracked(() => this.store.clear())
         this.currentId = null
-        this.defectForm().reset()
-        this.defectModel.set({ dueDate: '', description: '' })
-        this.statusForm().reset()
-        this.statusModel.set({ statusTypeId: '', confirmed: false })
-        this.statusError.set(null)
-        this.statusUpdated.set(false)
         this.actionForm().reset()
         this.actionModel.set({ completedAt: '', description: '' })
         return
@@ -373,15 +246,8 @@ export class InspectionDetailPage {
       }
       this.currentId = selectedId
       untracked(() => {
-        this.defectForm().reset()
-        this.defectModel.set({ dueDate: '', description: '' })
-        this.statusForm().reset()
-        this.statusModel.set({ statusTypeId: '', confirmed: false })
-        this.statusError.set(null)
-        this.statusUpdated.set(false)
         this.actionForm().reset()
         this.actionModel.set({ completedAt: '', description: '' })
-        this.defectError.set(null)
         this.actionError.set(null)
         this.store.loadDetail(selectedId)
       })
@@ -394,70 +260,15 @@ export class InspectionDetailPage {
   protected label(check: InspectionCheck): InspectionTextKey {
     return checkLabels[check]
   }
-
-  protected saveStatus(event: Event) {
-    event.preventDefault()
-    if (!this.currentId || this.savingStatus()) return
-    this.statusError.set(null)
-    this.statusUpdated.set(false)
-    submit(this.statusForm, async () => {
-      const id = this.currentId
-      const statusTypeId = Number(this.statusModel().statusTypeId)
-      if (id === null || ![1, 2, 3].includes(statusTypeId) || !this.statusModel().confirmed) return
-      this.savingStatus.set(true)
-      this.changeDetector.detectChanges()
-      try {
-        await firstValueFrom(this.store.setStatus(id, statusTypeId))
-        this.statusUpdated.set(true)
-        this.store.loadDetail(id)
-        if (this.store.visits() !== null) {
-          this.store.load({
-            pageNumber: this.store.pageNumber(),
-            pageSize: this.store.pageSize(),
-            orderBy: this.store.orderBy(),
-          })
-        }
-      } catch {
-        this.statusError.set(this.t('statusUpdateFailed'))
-      } finally {
-        this.savingStatus.set(false)
-        this.changeDetector.detectChanges()
-      }
-    })
-    if (this.statusForm().invalid()) this.statusError.set(this.t('confirmStatus'))
+  protected inspectionCheckAnswerLabel = inspectionCheckAnswerLabel
+  protected statusLabel(value: string | number | null): string {
+    return inspectionStatusLabel(value, this.language())
   }
-
-  protected saveDefect(event: Event) {
-    event.preventDefault()
-    if (!this.currentId || this.savingDefect()) return
-    this.defectError.set(null)
-    this.defectSaved.set(false)
-    submit(this.defectForm, async () => {
-      const id = this.currentId
-      if (id === null) return
-      this.savingDefect.set(true)
-      this.changeDetector.detectChanges()
-      try {
-        await firstValueFrom(
-          this.store.addDefect({
-            id: 0,
-            inspectionVisitId: id,
-            dueDate: this.defectModel().dueDate,
-            description: this.defectModel().description.trim(),
-          }),
-        )
-        this.defectForm().reset()
-        this.defectModel.set({ dueDate: '', description: '' })
-        this.defectSaved.set(true)
-      } catch {
-        this.defectError.set(this.t('saveFailed'))
-      } finally {
-        this.savingDefect.set(false)
-        this.changeDetector.detectChanges()
-      }
-    })
-    if (this.defectForm().invalid())
-      this.defectError.set(this.t('dateRequired') + ' ' + this.t('descriptionRequired'))
+  protected setCompletedAt(completedAt: string | null) {
+    this.actionModel.update(model => ({ ...model, completedAt: completedAt ?? '' }))
+  }
+  protected retryDetail() {
+    if (this.currentId !== null) this.store.loadDetail(this.currentId)
   }
 
   protected saveAction(event: Event) {
@@ -479,6 +290,12 @@ export class InspectionDetailPage {
             description: this.actionModel().description.trim(),
           }),
         )
+        this.store.loadDetail(id)
+        this.store.load({
+          pageNumber: this.store.pageNumber(),
+          pageSize: this.store.pageSize(),
+          orderBy: this.store.orderBy(),
+        })
         this.actionForm().reset()
         this.actionModel.set({ completedAt: '', description: '' })
         this.actionSaved.set(true)

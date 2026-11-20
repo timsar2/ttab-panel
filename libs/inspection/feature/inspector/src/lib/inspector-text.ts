@@ -9,6 +9,7 @@ export type InspectorTextKey =
   | 'checksIntro'
   | 'back'
   | 'loading'
+  | 'retry'
   | 'denied'
   | 'selectCompany'
   | 'searchDrivers'
@@ -36,17 +37,25 @@ export type InspectorTextKey =
   | 'submit'
   | 'saving'
   | 'required'
+  | 'dateRequired'
+  | 'descriptionRequired'
   | 'descriptionLimit'
   | 'saveError'
   | 'uncertainSave'
   | 'detailTitle'
   | 'notFound'
   | 'detailError'
-  | 'statusUnavailable'
   | 'defects'
   | 'correctiveActions'
   | 'dueDate'
   | 'completedAt'
+  | 'requiredAction'
+  | 'recordRequiredAction'
+  | 'approve'
+  | 'approved'
+  | 'approvalError'
+  | 'actionError'
+  | 'actionSaved'
   | 'noItems'
   | InspectionCheck
 
@@ -59,6 +68,7 @@ const text = {
     checksIntro: 'Mark each item based on its condition or presence.',
     back: 'Inspection workspace',
     loading: 'Loading…',
+    retry: 'Retry',
     denied: 'Inspector role is required.',
     selectCompany: 'Your account must be assigned to a company before creating inspections.',
     searchDrivers: 'Find a driver',
@@ -86,17 +96,25 @@ const text = {
     submit: 'Register visit',
     saving: 'Registering…',
     required: 'Choose a driver and vehicle, enter a date and description, and answer every check.',
+    dateRequired: 'Enter a valid due date.',
+    descriptionRequired: 'Enter a description for the required action.',
     descriptionLimit: 'Description is limited to 1000 characters.',
     saveError: 'The visit could not be registered.',
     uncertainSave: 'The result was not confirmed. Check visit details before trying again.',
     detailTitle: 'Inspection result',
     notFound: 'This visit is not available to your Inspector account.',
     detailError: 'Could not load the inspection result.',
-    statusUnavailable: 'The current inspection detail API does not return review status yet.',
     defects: 'Required actions',
     correctiveActions: 'Completed corrective actions',
     dueDate: 'Due date',
     completedAt: 'Completed at',
+    requiredAction: 'Required action description',
+    recordRequiredAction: 'Record required action',
+    approve: 'Approve and close inspection',
+    approved: 'Inspection approved and closed.',
+    approvalError: 'The inspection could not be approved. Refresh and try again.',
+    actionError: 'The required action could not be saved.',
+    actionSaved: 'Required action saved.',
     noItems: 'None recorded.',
     tiresCondition: 'Tires condition',
     lightsCondition: 'Lights condition',
@@ -119,6 +137,7 @@ const text = {
     checksIntro: 'وضعیت یا وجود هر مورد را مشخص کنید.',
     back: 'فضای بازرسی',
     loading: 'در حال بارگذاری…',
+    retry: 'تلاش دوباره',
     denied: 'دسترسی به نقش بازرس نیاز دارد.',
     selectCompany: 'برای ثبت بازرسی، حساب شما باید به یک شرکت متصل باشد.',
     searchDrivers: 'یافتن راننده',
@@ -146,17 +165,25 @@ const text = {
     submit: 'ثبت بازدید',
     saving: 'در حال ثبت…',
     required: 'راننده، خودرو، تاریخ، توضیحات و پاسخ همه موارد را وارد کنید.',
+    dateRequired: 'مهلت معتبری وارد کنید.',
+    descriptionRequired: 'شرح اقدام لازم را وارد کنید.',
     descriptionLimit: 'توضیحات حداکثر ۱۰۰۰ نویسه است.',
     saveError: 'ثبت بازدید ناموفق بود.',
     uncertainSave: 'نتیجه ثبت تأیید نشد. پیش از تلاش دوباره، جزئیات بازدید را بررسی کنید.',
     detailTitle: 'نتیجه بازرسی',
     notFound: 'این بازدید برای حساب بازرس شما قابل مشاهده نیست.',
     detailError: 'بارگذاری نتیجه بازرسی ناموفق بود.',
-    statusUnavailable: 'وضعیت بررسی هنوز در پاسخ فعلی API جزئیات وجود ندارد.',
     defects: 'اقدامات موردنیاز',
     correctiveActions: 'اقدامات اصلاحی انجام‌شده',
     dueDate: 'مهلت انجام',
     completedAt: 'تاریخ انجام',
+    requiredAction: 'شرح اقدام لازم',
+    recordRequiredAction: 'ثبت اقدام لازم',
+    approve: 'تأیید و اختتام بازرسی',
+    approved: 'بازرسی تأیید و مختومه شد.',
+    approvalError: 'تأیید بازرسی ناموفق بود. صفحه را تازه‌سازی و دوباره تلاش کنید.',
+    actionError: 'ذخیره اقدام لازم ناموفق بود.',
+    actionSaved: 'اقدام لازم ثبت شد.',
     noItems: 'موردی ثبت نشده است.',
     tiresCondition: 'وضعیت لاستیک‌ها',
     lightsCondition: 'وضعیت چراغ‌ها',

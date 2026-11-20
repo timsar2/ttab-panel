@@ -10,8 +10,10 @@ export type {
 } from './lib/inspection-api'
 export { InspectionStore } from './lib/inspection.store'
 export type { InspectionLoadStatus } from './lib/inspection.store'
+export { inspectionStatusLabel } from './lib/inspection-status'
 export {
   INSPECTION_CHECKS,
+  INSPECTION_CHECK_ANSWER_LABELS,
   decodeInspectionDetail,
   decodeInspectionList,
   decodeInspectionVisit,
@@ -19,10 +21,12 @@ export {
   inspectionDate,
   inspectionDefectWrite,
   inspectionId,
+  inspectionCheckAnswerLabel,
   inspectionVisitWrite,
 } from './lib/inspection.models'
 export type {
   InspectionCheck,
+  InspectionCheckAnswerLabel,
   InspectionCorrectiveAction,
   InspectionCorrectiveActionDraft,
   InspectionDefect,

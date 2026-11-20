@@ -1,4 +1,5 @@
 import {
+  ChangeDetectorRef,
   ChangeDetectionStrategy,
   Component,
   effect,
@@ -6,15 +7,29 @@ import {
   signal,
   untracked,
 } from '@angular/core'
+import {
+  FormField,
+  disabled,
+  form,
+  maxLength,
+  required,
+  submit,
+  validate,
+} from '@angular/forms/signals'
 import { toSignal } from '@angular/core/rxjs-interop'
 import { ActivatedRoute, RouterLink } from '@angular/router'
 import { HlmButton } from '@spartan-ng/helm/button'
+import { JalaliDatePicker } from '@org/ui-forms'
+import { firstValueFrom } from 'rxjs'
 import {
   InspectionCheck,
   InspectionId,
   InspectionStore,
   INSPECTION_CHECKS,
+  inspectionCheckAnswerLabel,
+  inspectionDate,
   inspectionId,
+  inspectionStatusLabel,
 } from '@org/transport-inspection-data-access'
 import { INSPECTOR_COMPANY_ID, INSPECTOR_LANGUAGE } from '../inspector.routes'
 import { inspectorText, InspectorTextKey } from '../inspector-text'
@@ -48,7 +63,7 @@ function routeId(value: string | null): InspectionId | null {
 @Component({
   selector: 'lib-inspector-visit-detail',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, HlmButton],
+  imports: [RouterLink, HlmButton, FormField, JalaliDatePicker],
   host: { class: 'mx-auto block min-w-0 max-w-6xl p-4 md:p-8' },
   template: `
     <a hlmBtn variant="outline" class="mb-5 min-h-11" routerLink="/inspections/new">{{
@@ -65,12 +80,15 @@ function routeId(value: string | null): InspectionId | null {
     } @else if (store.detailStatus() === 'denied' || store.detailStatus() === 'not-found') {
       <p role="alert">{{ t('notFound') }}</p>
     } @else if (store.detailStatus() === 'error') {
-      <p
+      <div
         class="border-destructive/30 bg-destructive/5 text-destructive rounded-2xl border p-5"
         role="alert"
       >
-        {{ t('detailError') }}
-      </p>
+        <p>{{ t('detailError') }}</p>
+        <button hlmBtn variant="outline" class="mt-3" type="button" (click)="retryDetail()">
+          {{ t('retry') }}
+        </button>
+      </div>
     } @else if (store.detail(); as detail) {
       <div class="grid min-w-0 gap-5 md:gap-6">
         <header class="bg-card overflow-hidden rounded-2xl border shadow-sm">
@@ -115,7 +133,13 @@ function routeId(value: string | null): InspectionId | null {
               <span class="bg-primary mt-1 size-2 shrink-0 rounded-full" aria-hidden="true"></span>
               <div class="min-w-0">
                 <dt class="text-muted-foreground text-sm font-medium">{{ t('status') }}</dt>
-                <dd class="mt-1 leading-6">{{ detail.statusTypeId || t('statusUnavailable') }}</dd>
+                <dd class="mt-2 leading-6">
+                  <span
+                    class="bg-primary/10 text-primary inline-flex rounded-full px-3 py-1 text-sm font-semibold"
+                  >
+                    {{ statusLabel(detail.statusTypeName ?? detail.statusTypeId) }}
+                  </span>
+                </dd>
               </div>
             </div>
           </dl>
@@ -160,7 +184,7 @@ function routeId(value: string | null): InspectionId | null {
                   [class.text-amber-800]="!detail[check]"
                   [class.dark:text-amber-300]="!detail[check]"
                 >
-                  {{ detail[check] ? t('trueValue') : t('falseValue') }}
+                  {{ t(inspectionCheckAnswerLabel(check, detail[check])) }}
                 </dd>
               </div>
             }
@@ -176,10 +200,10 @@ function routeId(value: string | null): InspectionId | null {
         <div class="grid gap-5 xl:grid-cols-2">
           <section
             class="bg-card min-w-0 rounded-2xl border p-4 shadow-sm md:p-6"
-            aria-labelledby="inspector-defects-heading"
+            aria-labelledby="inspector-required-actions-heading"
           >
             <div class="border-b pb-4">
-              <h2 id="inspector-defects-heading" class="text-lg font-bold md:text-xl">
+              <h2 id="inspector-required-actions-heading" class="text-lg font-bold md:text-xl">
                 {{ t('defects') }}
               </h2>
             </div>
@@ -201,36 +225,76 @@ function routeId(value: string | null): InspectionId | null {
                 </li>
               }
             </ul>
-          </section>
-          <section
-            class="bg-card min-w-0 rounded-2xl border p-4 shadow-sm md:p-6"
-            aria-labelledby="inspector-actions-heading"
-          >
-            <div class="border-b pb-4">
-              <h2 id="inspector-actions-heading" class="text-lg font-bold md:text-xl">
-                {{ t('correctiveActions') }}
-              </h2>
-            </div>
-            @if (!detail.correctiveActions.length) {
-              <p class="text-muted-foreground mt-4 rounded-xl border border-dashed p-5 text-sm">
-                {{ t('noItems') }}
-              </p>
+            @if (
+              store.detailStatus() === 'ready' &&
+              !isApproved(detail.statusTypeName, detail.statusTypeId)
+            ) {
+              <form
+                id="inspection-required-action-form"
+                class="mt-5 grid gap-3 border-t pt-5"
+                novalidate
+                (submit)="saveRequiredAction($event, detail.id)"
+              >
+                <h3 class="font-semibold">{{ t('recordRequiredAction') }}</h3>
+                <label class="grid gap-2 text-sm" for="inspection-due-date">{{
+                  t('dueDate')
+                }}</label>
+                <lib-jalali-date-picker
+                  inputId="inspection-due-date"
+                  [language]="language()"
+                  [value]="requiredActionModel().dueDate"
+                  [disabled]="savingAction()"
+                  (valueChange)="setRequiredActionDate($event)"
+                />
+                <label class="grid gap-2 text-sm" for="inspection-required-action-description">{{
+                  t('requiredAction')
+                }}</label>
+                <textarea
+                  id="inspection-required-action-description"
+                  class="bg-background min-h-24 rounded-md border p-3"
+                  [formField]="requiredActionForm.description"
+                ></textarea>
+                @if (requiredActionForm().touched() && requiredActionForm().invalid()) {
+                  <p role="alert">{{ t('dateRequired') }} {{ t('descriptionRequired') }}</p>
+                }
+                @if (actionError()) {
+                  <p role="alert">{{ t('actionError') }}</p>
+                }
+                @if (actionSaved()) {
+                  <p role="status">{{ t('actionSaved') }}</p>
+                }
+                <button
+                  hlmBtn
+                  class="min-h-11 justify-self-start"
+                  type="submit"
+                  [disabled]="savingAction()"
+                >
+                  {{ savingAction() ? t('saving') : t('recordRequiredAction') }}
+                </button>
+              </form>
             }
-            <ul class="mt-4 grid gap-3">
-              @for (action of detail.correctiveActions; track action.id) {
-                <li class="bg-muted/30 min-w-0 rounded-xl p-4">
-                  <p class="text-muted-foreground text-xs font-medium">{{ t('completedAt') }}</p>
-                  <p class="mt-1 text-sm font-semibold tabular-nums" dir="ltr">
-                    {{ action.completedAt }}
-                  </p>
-                  <p class="mt-3 leading-6 break-words whitespace-pre-wrap">
-                    {{ action.description }}
-                  </p>
-                </li>
-              }
-            </ul>
           </section>
         </div>
+        @if (isPendingApproval(detail.statusTypeName, detail.statusTypeId)) {
+          <section class="bg-card rounded-2xl border p-4 shadow-sm md:p-6">
+            <button
+              id="inspection-approve"
+              hlmBtn
+              class="min-h-11"
+              type="button"
+              [disabled]="approving()"
+              (click)="approveVisit(detail.id)"
+            >
+              {{ approving() ? t('saving') : t('approve') }}
+            </button>
+            @if (approvalSaved()) {
+              <p class="mt-3" role="status">{{ t('approved') }}</p>
+            }
+            @if (approvalError()) {
+              <p class="text-destructive mt-3" role="alert">{{ t('approvalError') }}</p>
+            }
+          </section>
+        }
       </div>
     }
   `,
@@ -241,6 +305,27 @@ export class InspectorVisitDetailPage {
   protected readonly store = inject(InspectionStore)
   protected readonly checks = INSPECTION_CHECKS
   protected readonly invalidId = signal(false)
+  protected readonly savingAction = signal(false)
+  protected readonly actionError = signal(false)
+  protected readonly actionSaved = signal(false)
+  protected readonly approving = signal(false)
+  protected readonly approvalError = signal(false)
+  protected readonly approvalSaved = signal(false)
+  protected readonly requiredActionModel = signal({ dueDate: '', description: '' })
+  protected readonly requiredActionForm = form(this.requiredActionModel, schema => {
+    required(schema.dueDate)
+    validate(schema.dueDate, ({ value }) =>
+      isCalendarDate(value()) ? null : { kind: 'date', message: 'date' },
+    )
+    required(schema.description)
+    maxLength(schema.description, 300)
+    validate(schema.description, ({ value }) =>
+      value().trim() ? null : { kind: 'required', message: 'required' },
+    )
+    disabled(schema.dueDate, () => this.savingAction())
+    disabled(schema.description, () => this.savingAction())
+  })
+  private readonly changeDetector = inject(ChangeDetectorRef)
   private readonly route = inject(ActivatedRoute)
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
@@ -252,10 +337,18 @@ export class InspectorVisitDetailPage {
       const id = routeId(this.params().get('id'))
       this.invalidId.set(id === null)
       if (id === null || companyId === null) {
-        untracked(() => this.store.clear())
+        untracked(() => {
+          this.store.clear()
+          this.requiredActionForm().reset()
+          this.requiredActionModel.set({ dueDate: '', description: '' })
+        })
         return
       }
-      untracked(() => this.store.loadDetail(id))
+      untracked(() => {
+        this.store.loadDetail(id)
+        this.requiredActionForm().reset()
+        this.requiredActionModel.set({ dueDate: '', description: '' })
+      })
     })
   }
 
@@ -264,5 +357,91 @@ export class InspectorVisitDetailPage {
   }
   protected label(check: InspectionCheck): InspectorTextKey {
     return checkLabels[check]
+  }
+  protected inspectionCheckAnswerLabel = inspectionCheckAnswerLabel
+  protected isApproved(value: string | null, id: number | null): boolean {
+    return value?.trim().toLowerCase() === 'approved' || (value === null && id === 3)
+  }
+  protected isPendingApproval(value: string | null, id: number | null): boolean {
+    return value?.trim().toLowerCase() === 'pending approval' || (value === null && id === 2)
+  }
+  protected setRequiredActionDate(dueDate: string | null) {
+    this.requiredActionModel.update(model => ({ ...model, dueDate: dueDate ?? '' }))
+  }
+  protected statusLabel(value: string | number | null): string {
+    return inspectionStatusLabel(value, this.language())
+  }
+  protected retryDetail() {
+    const id = routeId(this.params().get('id'))
+    if (id !== null && this.companyId() !== null) this.store.loadDetail(id)
+  }
+
+  protected saveRequiredAction(event: Event, id: InspectionId) {
+    event.preventDefault()
+    if (this.savingAction()) return
+    this.actionError.set(false)
+    this.actionSaved.set(false)
+    submit(this.requiredActionForm, async () => {
+      this.savingAction.set(true)
+      this.changeDetector.detectChanges()
+      try {
+        const model = this.requiredActionModel()
+        await firstValueFrom(
+          this.store.addDefect({
+            id: 0,
+            inspectionVisitId: id,
+            dueDate: model.dueDate,
+            description: model.description.trim(),
+          }),
+        )
+        this.refreshList()
+        this.store.loadDetail(id)
+        this.requiredActionForm().reset()
+        this.requiredActionModel.set({ dueDate: '', description: '' })
+        this.actionSaved.set(true)
+      } catch {
+        this.actionError.set(true)
+      } finally {
+        this.savingAction.set(false)
+        this.changeDetector.detectChanges()
+      }
+    })
+    if (this.requiredActionForm().invalid()) this.actionError.set(true)
+  }
+
+  protected async approveVisit(id: InspectionId) {
+    if (this.approving() || !globalThis.confirm(this.t('approve'))) return
+    this.approving.set(true)
+    this.approvalError.set(false)
+    this.approvalSaved.set(false)
+    this.changeDetector.detectChanges()
+    try {
+      await firstValueFrom(this.store.approveVisit(id))
+      this.refreshList()
+      this.store.loadDetail(id)
+      this.approvalSaved.set(true)
+    } catch {
+      this.approvalError.set(true)
+    } finally {
+      this.approving.set(false)
+      this.changeDetector.detectChanges()
+    }
+  }
+
+  private refreshList() {
+    this.store.load({
+      pageNumber: this.store.pageNumber(),
+      pageSize: this.store.pageSize(),
+      orderBy: this.store.orderBy(),
+    })
+  }
+}
+
+function isCalendarDate(value: string): boolean {
+  try {
+    inspectionDate(value)
+    return true
+  } catch {
+    return false
   }
 }

@@ -164,6 +164,21 @@ export const InspectionStore = signalStore(
             const normalized = normalizeTransportError(error)
             patchState(store, { _detailError: normalized, _detailStatus: status(normalized, true) })
           },
+          complete: () => {
+            if (epoch !== detailEpoch || store._detailStatus() !== 'loading') return
+            if (!matches()) {
+              clear()
+              return
+            }
+            patchState(store, {
+              _detailError: new TransportError(
+                'contract',
+                0,
+                'Inspection detail returned no response.',
+              ),
+              _detailStatus: 'error',
+            })
+          },
         })
       },
       createVisit: (draft: Parameters<InspectionApi['createVisit']>[0]) =>
@@ -222,7 +237,7 @@ export const InspectionStore = signalStore(
             })
           }),
         ),
-      setStatus: (id: InspectionId, statusTypeId: number) => store._api.setStatus(id, statusTypeId),
+      approveVisit: (id: InspectionId) => store._api.approveVisit(id),
     }
   }),
 )

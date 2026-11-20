@@ -23,6 +23,7 @@ import {
   InspectionStore,
   InspectionVisitDraft,
   INSPECTION_CHECKS,
+  inspectionCheckAnswerLabel,
   inspectionId,
   inspectionDate,
 } from '@org/transport-inspection-data-access'
@@ -205,9 +206,6 @@ function validDate(value: string): boolean {
         </section>
         <section class="rounded-xl border p-5" aria-labelledby="inspection-new-checks">
           <h2 id="inspection-new-checks" class="text-lg font-semibold">{{ t('checks') }}</h2>
-          <p class="text-muted-foreground mt-1 text-sm">
-            {{ t('trueValue') }} / {{ t('falseValue') }}
-          </p>
           <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             @for (check of checks; track check) {
               <fieldset class="bg-muted/30 grid gap-2 rounded-lg p-3">
@@ -215,12 +213,12 @@ function validDate(value: string): boolean {
                 <div class="flex flex-wrap gap-x-5 gap-y-2">
                   <label class="inline-flex min-h-11 items-center gap-2"
                     ><input type="radio" value="true" [formField]="visitForm[check]" />{{
-                      t('trueValue')
+                      t(inspectionCheckAnswerLabel(check, true))
                     }}</label
                   >
                   <label class="inline-flex min-h-11 items-center gap-2"
                     ><input type="radio" value="false" [formField]="visitForm[check]" />{{
-                      t('falseValue')
+                      t(inspectionCheckAnswerLabel(check, false))
                     }}</label
                   >
                 </div>
@@ -315,6 +313,7 @@ export class InspectionCreatePage {
   protected label(check: InspectionCheck): InspectionTextKey {
     return checkLabels[check]
   }
+  protected inspectionCheckAnswerLabel = inspectionCheckAnswerLabel
   protected searchDrivers() {
     const epoch = ++this.driverEpoch
     this.driverSubscription?.unsubscribe()

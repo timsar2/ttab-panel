@@ -10,7 +10,7 @@ const config = {
     search: 'v1/inspections/search',
     defects: 'v1/inspections/defects',
     correctiveActions: 'v1/inspections/corrective-actions',
-    status: 'v1/inspections/status',
+    approved: 'v1/inspections/approved',
   },
   access: () => () => of(true),
   language: () => signal<'en' | 'fa'>('en'),

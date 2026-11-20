@@ -62,7 +62,7 @@ describe('InspectorInspectionListPage', () => {
         driverName: 'Driver',
         vehicleId: 12,
         carPlate: '12A345',
-        statusTypeId: 'Pending approval',
+        statusTypeName: 'Pending approval',
       },
     ])
     fixture.detectChanges()

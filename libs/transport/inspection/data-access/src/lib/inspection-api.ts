@@ -26,6 +26,7 @@ import {
   map,
   switchMap,
   take,
+  timeout,
   throwError,
 } from 'rxjs'
 import {
@@ -43,7 +44,7 @@ import {
 } from './inspection.models'
 
 export interface InspectionAccessRequest {
-  readonly action: 'search' | 'detail' | 'create' | 'defect' | 'corrective-action' | 'status'
+  readonly action: 'search' | 'detail' | 'create' | 'defect' | 'corrective-action' | 'approve'
   readonly id?: InspectionId
 }
 export type InspectionAuthorize = (request: InspectionAccessRequest) => Observable<boolean>
@@ -54,7 +55,7 @@ export interface InspectionDataConfig {
     readonly search: string
     readonly defects: string
     readonly correctiveActions: string
-    readonly status: string
+    readonly approved: string
   }
   /** Must resolve true only for the backend-supported Admin/Manager staff roles. */
   readonly access: () => InspectionAuthorize
@@ -138,18 +139,20 @@ export class InspectionApi {
 
   detail(id: InspectionId) {
     return this.run('detail', id, () =>
-      this.http.request('GET', `${this.config.endpoints.collection}/${id}`, value =>
-        unwrapTransport(value, result => {
-          const detail = decodeInspectionDetail(result)
-          if (detail.id !== id)
-            throw new TransportError(
-              'contract',
-              0,
-              'Inspection ID does not match the requested record.',
-            )
-          return detail
-        }),
-      ),
+      this.http
+        .request('GET', `${this.config.endpoints.collection}/${id}`, value =>
+          unwrapTransport(value, result => {
+            const detail = decodeInspectionDetail(result)
+            if (detail.id !== id)
+              throw new TransportError(
+                'contract',
+                0,
+                'Inspection ID does not match the requested record.',
+              )
+            return detail
+          }),
+        )
+        .pipe(timeout({ first: 15_000 })),
     )
   }
 
@@ -186,22 +189,20 @@ export class InspectionApi {
     )
   }
 
-  setStatus(id: InspectionId, statusTypeId: number) {
-    return this.run('status', id, () => {
-      if (![1, 2, 3].includes(statusTypeId))
-        throw new TransportError('validation', 0, 'Choose a supported inspection status.')
-      return this.http.request(
+  approveVisit(id: InspectionId) {
+    return this.run('approve', id, () =>
+      this.http.request(
         'POST',
-        this.config.endpoints.status,
+        this.config.endpoints.approved,
         value =>
           unwrapTransport(value, result => {
             if (result !== true)
-              throw new TransportError('contract', 0, 'The inspection status was not confirmed.')
+              throw new TransportError('contract', 0, 'Approval was not confirmed.')
             return true
           }),
-        { id, statusTypeId },
-      )
-    })
+        { id },
+      ),
+    )
   }
 
   private run<T>(

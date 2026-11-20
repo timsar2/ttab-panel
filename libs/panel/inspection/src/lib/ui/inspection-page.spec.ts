@@ -10,9 +10,10 @@ describe('InspectionPage', () => {
   it('loads the authorized global list on route entry and uses bounded allowlisted query state', async () => {
     const queryParams = new BehaviorSubject(convertToParamMap({}))
     const load = vi.fn()
+    const visits = signal([] as Array<Record<string, unknown>>)
     const store = {
       listStatus: signal('ready'),
-      visits: signal([]),
+      visits,
       pageNumber: signal(1),
       pageSize: signal(25),
       orderBy: signal('InspectionDate DESC'),
@@ -44,6 +45,22 @@ describe('InspectionPage', () => {
       orderBy: 'InspectionDate DESC',
     })
     expect(fixture.nativeElement.textContent).toContain('not filtered by the selected company')
+
+    visits.set([
+      {
+        id: 12,
+        inspectorId: 5,
+        inspectorName: 'Inspector',
+        inspectionDate: '2026-11-14',
+        driverId: 20,
+        driverName: 'Driver',
+        vehicleId: 30,
+        carPlate: 'AB123',
+        statusTypeName: 'Pending approval',
+      },
+    ])
+    fixture.detectChanges()
+    expect(fixture.nativeElement.textContent).toContain('Pending approval')
 
     queryParams.next(convertToParamMap({ page: '7', orderBy: 'DriverName DESC' }))
     fixture.detectChanges()

@@ -34,11 +34,10 @@ const listRow = {
   driverName: 'Driver',
   vehicleId: 32000,
   carPlate: 'AB12345',
-  statusTypeId: 'Pending approval',
+  statusTypeName: 'Pending approval',
 }
 const detail = {
   ...listRow,
-  statusTypeId: undefined,
   ...Object.fromEntries(checkKeys.map(key => [key, true])),
   description: 'Initial inspection',
   defects: [
@@ -61,7 +60,7 @@ const config = {
     search: 'v1/inspections/search',
     defects: 'v1/inspections/defects',
     correctiveActions: 'v1/inspections/corrective-actions',
-    status: 'v1/inspections/status',
+    approved: 'v1/inspections/approved',
   },
   access: () =>
     vi.fn(
@@ -126,7 +125,7 @@ describe('InspectionApi', () => {
     })
     request.flush(envelope([listRow]))
     expect(await result).toMatchObject([
-      { id: 12, driverId: 60000, vehicleId: 32000, statusTypeId: 'Pending approval' },
+      { id: 12, driverId: 60000, vehicleId: 32000, statusTypeName: 'Pending approval' },
     ])
     expect(allowed).toHaveBeenCalledWith({ action: 'search' })
   })
@@ -137,10 +136,30 @@ describe('InspectionApi', () => {
     request.flush(envelope(detail))
     expect(await result).toMatchObject({
       id: 12,
+      statusTypeName: 'Pending approval',
       inspectionDate: '2026-11-14',
       defects: [{ id: 40, dueDate: '2026-11-20' }],
       correctiveActions: [{ id: 41, completedAt: '2026-11-21' }],
     })
+  })
+
+  it('times out when an inspection detail request never responds', async () => {
+    vi.useFakeTimers()
+    let failure: unknown
+    try {
+      const result = firstValueFrom(api.detail(12 as never)).catch(error => {
+        failure = error
+      })
+      const request = http.expectOne('/api/v1/inspections/12')
+
+      await vi.advanceTimersByTimeAsync(15_000)
+      await result
+
+      expect(request.cancelled).toBe(true)
+      expect(failure).toBeDefined()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('posts visit data with insert-only ID and all required check values', async () => {
@@ -208,14 +227,14 @@ describe('InspectionApi', () => {
     expect(await actionResult).toBe(92)
   })
 
-  it('uses exact status fields and refuses unsupported IDs', async () => {
-    const result = firstValueFrom(api.setStatus(12 as never, 2))
-    const request = http.expectOne('/api/v1/inspections/status')
-    expect(request.request.body).toEqual({ id: 12, statusTypeId: 2 })
+  it('posts inspector approval using only the visit ID', async () => {
+    const result = firstValueFrom(api.approveVisit(12 as never))
+    const request = http.expectOne('/api/v1/inspections/approved')
+    expect(request.request.method).toBe('POST')
+    expect(request.request.body).toEqual({ id: 12 })
+    expect(allowed).toHaveBeenCalledWith({ action: 'approve', id: 12 })
     request.flush(envelope(true))
     expect(await result).toBe(true)
-    await expect(firstValueFrom(api.setStatus(12 as never, 4))).rejects.toBeDefined()
-    http.expectNone('/api/v1/inspections/status')
   })
 
   it('fails closed before HTTP when the role policy denies access', async () => {

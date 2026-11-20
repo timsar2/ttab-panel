@@ -12,6 +12,7 @@ import {
   InspectionSearch,
   InspectionStore,
   InspectionVisitRow,
+  inspectionStatusLabel,
 } from '@org/transport-inspection-data-access'
 import { PreferencesStore } from '@org/platform'
 import { HlmButton } from '@spartan-ng/helm/button'
@@ -91,7 +92,11 @@ import { HlmButton } from '@spartan-ng/helm/button'
                 <td class="px-4 py-3">{{ visit.driverName || '#' + visit.driverId }}</td>
                 <td class="px-4 py-3">{{ visit.carPlate || '#' + visit.vehicleId }}</td>
                 <td class="px-4 py-3">
-                  {{ visit.statusTypeId || (isRtl() ? 'نامشخص' : 'Unknown') }}
+                  <span
+                    class="bg-muted text-muted-foreground inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                  >
+                    {{ statusLabel(visit.statusTypeName ?? visit.statusTypeId) }}
+                  </span>
                 </td>
                 <td class="px-4 py-3">
                   <a
@@ -158,6 +163,10 @@ export class InspectorInspectionListPage {
 
   protected reload() {
     this.store.load(this.search())
+  }
+
+  protected statusLabel(value: string | number | null): string {
+    return inspectionStatusLabel(value, this.isRtl() ? 'fa' : 'en')
   }
 
   protected changePage(pageNumber: number) {

@@ -15,6 +15,7 @@ import {
   InspectionSort,
   InspectionStore,
   InspectionVisitRow,
+  inspectionStatusLabel,
 } from '@org/transport-inspection-data-access'
 import { DataTable, DataTableColumn, DataTablePage } from '@org/ui-data-table'
 import { HlmButton } from '@spartan-ng/helm/button'
@@ -122,7 +123,15 @@ export class InspectionPage {
     },
     { accessorKey: 'driverName', header: this.t('driver'), cell: info => info.getValue() ?? '-' },
     { accessorKey: 'carPlate', header: this.t('vehicle'), cell: info => info.getValue() ?? '-' },
-    { accessorKey: 'statusTypeId', header: this.t('status'), cell: info => info.getValue() ?? '-' },
+    {
+      accessorKey: 'statusTypeName',
+      header: this.t('status'),
+      cell: info =>
+        inspectionStatusLabel(
+          info.row.original.statusTypeName ?? info.row.original.statusTypeId,
+          this.language(),
+        ),
+    },
   ])
   protected readonly rowId = (row: InspectionVisitRow) => String(row.id)
   protected readonly rowLabel = (row: InspectionVisitRow) => `${row.inspectionDate} #${row.id}`

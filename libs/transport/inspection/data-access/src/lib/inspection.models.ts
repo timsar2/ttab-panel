@@ -20,6 +20,35 @@ export const INSPECTION_CHECKS = [
   'hasSafetyVestAndWarningTriangle',
 ] as const
 export type InspectionCheck = (typeof INSPECTION_CHECKS)[number]
+export type InspectionCheckAnswerLabel =
+  'satisfactoryValue' | 'needsAttentionValue' | 'yesValue' | 'noValue'
+
+export const INSPECTION_CHECK_ANSWER_LABELS: Readonly<
+  Record<
+    InspectionCheck,
+    Readonly<{ true: InspectionCheckAnswerLabel; false: InspectionCheckAnswerLabel }>
+  >
+> = {
+  tiresCondition: { true: 'satisfactoryValue', false: 'needsAttentionValue' },
+  lightsCondition: { true: 'satisfactoryValue', false: 'needsAttentionValue' },
+  seatsCondition: { true: 'satisfactoryValue', false: 'needsAttentionValue' },
+  hasSeatBelt: { true: 'yesValue', false: 'noValue' },
+  heaterCondition: { true: 'satisfactoryValue', false: 'needsAttentionValue' },
+  airConditionerCondition: { true: 'satisfactoryValue', false: 'needsAttentionValue' },
+  hasFirstAidKit: { true: 'yesValue', false: 'noValue' },
+  hasFireExtinguisher: { true: 'yesValue', false: 'noValue' },
+  hasTurnSignals: { true: 'satisfactoryValue', false: 'needsAttentionValue' },
+  wipersCondition: { true: 'satisfactoryValue', false: 'needsAttentionValue' },
+  windowsCondition: { true: 'satisfactoryValue', false: 'needsAttentionValue' },
+  hasSafetyVestAndWarningTriangle: { true: 'yesValue', false: 'noValue' },
+}
+
+export function inspectionCheckAnswerLabel(
+  check: InspectionCheck,
+  value: boolean,
+): InspectionCheckAnswerLabel {
+  return INSPECTION_CHECK_ANSWER_LABELS[check][String(value) as 'true' | 'false']
+}
 
 export interface InspectionSearch {
   readonly pageNumber: number
@@ -45,8 +74,8 @@ export interface InspectionVisitRow {
   readonly driverName: string | null
   readonly vehicleId: number
   readonly carPlate: string | null
-  /** The procedure aliases the status display name as StatusTypeId. */
-  readonly statusTypeId: string | null
+  readonly statusTypeId: number | null
+  readonly statusTypeName: string | null
 }
 
 export interface InspectionDefect {
@@ -146,6 +175,21 @@ function bool(value: unknown): boolean {
   if (typeof value === 'boolean') return value
   return fail('The inspection response contains an invalid check value.')
 }
+function statusFields(
+  row: Record<string, unknown>,
+): Pick<InspectionVisitRow, 'statusTypeId' | 'statusTypeName'> {
+  const rawId = row['statusTypeId']
+  const numericId =
+    typeof rawId === 'number'
+      ? transportInteger(rawId, 1, 255)
+      : typeof rawId === 'string' && /^[1-9]\d*$/.test(rawId)
+        ? transportInteger(Number(rawId), 1, 255)
+        : null
+  const statusTypeName =
+    (row['statusTypeName'] == null ? null : nullableText(row['statusTypeName'])) ??
+    (typeof rawId === 'string' && !/^[1-9]\d*$/.test(rawId) ? rawId : null)
+  return { statusTypeId: numericId, statusTypeName }
+}
 function visitFields(row: Record<string, unknown>): InspectionVisitRow {
   const vehicleId = transportInteger(row['vehicleId'], 1, 32767)
   return {
@@ -157,7 +201,7 @@ function visitFields(row: Record<string, unknown>): InspectionVisitRow {
     driverName: nullableText(row['driverName']),
     vehicleId,
     carPlate: nullableText(row['carPlate']),
-    statusTypeId: row['statusTypeId'] == null ? null : nullableText(row['statusTypeId']),
+    ...statusFields(row),
   }
 }
 function decodeDefect(value: unknown): InspectionDefect {

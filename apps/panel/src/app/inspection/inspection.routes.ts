@@ -34,11 +34,16 @@ export function createPanelInspectionRoutes() {
       search: 'v1/inspections/search',
       defects: 'v1/inspections/defects',
       correctiveActions: 'v1/inspections/corrective-actions',
-      status: 'v1/inspections/status',
+      approved: 'v1/inspections/approved',
     },
     access: () => {
       const session = inject(SessionStore)
-      return () => of(isInspectionStaff(session.user()?.roles))
+      return request =>
+        of(
+          isInspectionStaff(session.user()?.roles) &&
+            request.action !== 'defect' &&
+            request.action !== 'approve',
+        )
     },
     lookupProviders: [
       providePeopleData({

@@ -23,7 +23,7 @@ function createInspectorRoutes(): Route[] {
       search: 'v1/inspections/search',
       defects: 'v1/inspections/defects',
       correctiveActions: 'v1/inspections/corrective-actions',
-      status: 'v1/inspections/status',
+      approved: 'v1/inspections/approved',
     },
     access: () => {
       const session = inject(SessionStore)
@@ -31,6 +31,8 @@ function createInspectorRoutes(): Route[] {
         of(
           hasInspectorRole(session.user()?.roles) &&
             (request.action === 'create' ||
+              request.action === 'defect' ||
+              request.action === 'approve' ||
               request.action === 'detail' ||
               request.action === 'search'),
         )

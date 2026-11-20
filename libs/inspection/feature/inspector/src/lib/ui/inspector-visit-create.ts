@@ -19,12 +19,14 @@ import {
 } from '@angular/forms/signals'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import { HlmButton } from '@spartan-ng/helm/button'
-import { AutocompleteSearch, type BilingualText } from '@org/ui-forms'
+import { AutocompleteSearch, JalaliDatePicker, type BilingualText } from '@org/ui-forms'
 import {
   InspectionCheck,
+  InspectionId,
   InspectionStore,
   InspectionVisitDraft,
   INSPECTION_CHECKS,
+  inspectionCheckAnswerLabel,
   inspectionDate,
   inspectionId,
 } from '@org/transport-inspection-data-access'
@@ -58,7 +60,9 @@ type VisitFormModel = {
   readonly driverId: string
   readonly vehicleId: string
   readonly inspectionDate: string
+  readonly dueDate: string
   readonly description: string
+  readonly requiredActionDescription: string
 } & Readonly<Record<InspectionCheck, CheckAnswer>>
 
 function emptyVisit(): VisitFormModel {
@@ -66,7 +70,9 @@ function emptyVisit(): VisitFormModel {
     driverId: '',
     vehicleId: '',
     inspectionDate: '',
+    dueDate: '',
     description: '',
+    requiredActionDescription: '',
     ...Object.fromEntries(INSPECTION_CHECKS.map(check => [check, ''])),
   } as VisitFormModel
 }
@@ -104,7 +110,7 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
 @Component({
   selector: 'lib-inspector-visit-create-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, HlmButton, FormField, AutocompleteSearch],
+  imports: [RouterLink, HlmButton, FormField, AutocompleteSearch, JalaliDatePicker],
   host: { class: 'mx-auto block min-w-0 max-w-6xl p-4 md:p-8' },
   template: `
     @if (companyId() === null) {
@@ -209,6 +215,28 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
                 type="date"
                 [formField]="visitForm.inspectionDate"
               />
+            </div>
+            <div class="grid min-w-0 content-start gap-2">
+              <label class="text-sm font-semibold" for="inspection-due-date">{{
+                t('dueDate')
+              }}</label>
+              <lib-jalali-date-picker
+                inputId="inspection-due-date"
+                [language]="language()"
+                [value]="model().dueDate"
+                [disabled]="saving()"
+                (valueChange)="setDueDate($event)"
+              />
+            </div>
+            <div class="grid min-w-0 content-start gap-2 sm:col-span-2">
+              <label class="text-sm font-semibold" for="required-action-description">{{
+                t('requiredAction')
+              }}</label>
+              <textarea
+                id="required-action-description"
+                class="bg-background min-h-24 rounded-md border p-3"
+                [formField]="visitForm.requiredActionDescription"
+              ></textarea>
             </div>
             <div class="grid min-w-0 content-start gap-2">
               <label class="text-sm font-semibold" for="inspector-description">{{
@@ -331,15 +359,26 @@ export class InspectorVisitCreatePage {
     validate(schema.inspectionDate, ({ value }) =>
       validDate(value()) ? null : { kind: 'date', message: 'date' },
     )
+    required(schema.dueDate)
+    validate(schema.dueDate, ({ value }) =>
+      validDate(value()) ? null : { kind: 'date', message: 'date' },
+    )
     required(schema.description)
     maxLength(schema.description, 1000)
     validate(schema.description, ({ value }) =>
       value().trim() ? null : { kind: 'required', message: 'required' },
     )
+    required(schema.requiredActionDescription)
+    maxLength(schema.requiredActionDescription, 300)
+    validate(schema.requiredActionDescription, ({ value }) =>
+      value().trim() ? null : { kind: 'required', message: 'required' },
+    )
     disabled(schema.driverId, () => this.saving())
     disabled(schema.vehicleId, () => this.saving())
     disabled(schema.inspectionDate, () => this.saving())
+    disabled(schema.dueDate, () => this.saving())
     disabled(schema.description, () => this.saving())
+    disabled(schema.requiredActionDescription, () => this.saving())
     for (const check of INSPECTION_CHECKS) {
       validate(schema[check], ({ value }) =>
         value() === 'true' || value() === 'false' ? null : { kind: 'check', message: 'check' },
@@ -357,10 +396,17 @@ export class InspectorVisitCreatePage {
   private vehicleRequest?: Subscription
   private driverEpoch = 0
   private vehicleEpoch = 0
+  private currentCompanyId: number | null = null
+  private createdVisitId: InspectionId | null = null
 
   constructor() {
     effect(() => {
-      if (this.companyId() === null) {
+      const companyId = this.companyId()
+      if (companyId !== this.currentCompanyId) {
+        this.currentCompanyId = companyId
+        this.createdVisitId = null
+      }
+      if (companyId === null) {
         this.clearLookups()
         this.visitForm().reset()
         this.model.set(emptyVisit())
@@ -382,21 +428,13 @@ export class InspectorVisitCreatePage {
     return checkLabels[check]
   }
   protected positiveAnswer(check: InspectionCheck): InspectorTextKey {
-    return [
-      'tiresCondition',
-      'lightsCondition',
-      'seatsCondition',
-      'heaterCondition',
-      'airConditionerCondition',
-      'hasTurnSignals',
-      'wipersCondition',
-      'windowsCondition',
-    ].includes(check)
-      ? 'satisfactoryValue'
-      : 'yesValue'
+    return inspectionCheckAnswerLabel(check, true)
   }
   protected negativeAnswer(check: InspectionCheck): InspectorTextKey {
-    return this.positiveAnswer(check) === 'satisfactoryValue' ? 'needsAttentionValue' : 'noValue'
+    return inspectionCheckAnswerLabel(check, false)
+  }
+  protected setDueDate(dueDate: string | null) {
+    this.model.update(value => ({ ...value, dueDate: dueDate ?? '' }))
   }
 
   protected readonly driverOptionId = (option: InspectorLookupOption) => String(option.id)
@@ -478,8 +516,11 @@ export class InspectorVisitCreatePage {
     if (
       companyId === null ||
       !validDate(value.inspectionDate) ||
+      !validDate(value.dueDate) ||
       !value.description.trim() ||
       value.description.length > 1000 ||
+      !value.requiredActionDescription.trim() ||
+      value.requiredActionDescription.length > 300 ||
       driverId === null ||
       vehicleId === null ||
       !hasAllChecks ||
@@ -512,8 +553,24 @@ export class InspectorVisitCreatePage {
       this.saving.set(true)
       this.changeDetector.detectChanges()
       try {
-        const id = await firstValueFrom(this.store.createVisit(draft))
-        await this.router.navigate(['../', inspectionId(id)], { relativeTo: this.route })
+        const id =
+          this.createdVisitId ?? inspectionId(await firstValueFrom(this.store.createVisit(draft)))
+        this.createdVisitId = id
+        await firstValueFrom(
+          this.store.addDefect({
+            id: 0,
+            inspectionVisitId: id,
+            dueDate: current.dueDate,
+            description: current.requiredActionDescription.trim(),
+          }),
+        )
+        this.store.load({
+          pageNumber: this.store.pageNumber(),
+          pageSize: this.store.pageSize(),
+          orderBy: this.store.orderBy(),
+        })
+        await this.router.navigate(['../', id], { relativeTo: this.route })
+        this.createdVisitId = null
       } catch {
         this.formError.set('uncertainSave')
         this.changeDetector.detectChanges()
