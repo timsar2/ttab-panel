@@ -58,11 +58,11 @@ these are source evidence, not deployed-backend acceptance.
 - `SupportsController.cs:197-205` requires an authenticated identity, positive
   integer SID/person claim and positive short company claim even for global staff.
   `ClaimsPrincipalExtensions.cs:44-54` checks actual role claims. Admin/Manager
-  are global staff; Oprator may access its company; other identities may access
+  are global staff; Operator may access its company; other identities may access
   only their own person in their company. These checks are server rules, not a
   frontend role matrix inferred from menu visibility or the public Identity ID.
 - `SupportsController.cs:110-117` overwrites search company for non-global users
-  and person for non-Oprator users. The selected-company API always sends company
+  and person for non-Operator users. The selected-company API always sends company
   scope and rejects returned rows from another company rather than displaying a
   rewritten search silently. A consumer-supplied access adapter must verify
   approved selected-company/entity access and claim mapping before requests.

@@ -29,6 +29,16 @@ export default [
               ],
             },
             {
+              sourceTag: 'scope:inspection',
+              onlyDependOnLibsWithTags: [
+                'scope:inspection',
+                'scope:ui',
+                'scope:shared',
+                'scope:transport',
+                'scope:platform',
+              ],
+            },
+            {
               sourceTag: 'scope:driver',
               onlyDependOnLibsWithTags: [
                 'scope:driver',

@@ -17,6 +17,7 @@ export interface AuthConfig {
   afterLoginUrl?: string
   withCredentials?: boolean
   mode?: 'bearer' | 'cookie'
+  loginField?: 'username' | 'email'
 }
 
 export interface NormalizedAuthConfig extends Required<AuthConfig> {
@@ -123,6 +124,7 @@ function normalize(config?: AuthConfig): NormalizedAuthConfig {
     afterLoginUrl: safeReturnUrl(config?.afterLoginUrl, '/', config?.loginUrl),
     withCredentials: config?.withCredentials === true,
     mode: config?.mode === 'cookie' ? 'cookie' : 'bearer',
+    loginField: config?.loginField === 'email' ? 'email' : 'username',
   })
 }
 

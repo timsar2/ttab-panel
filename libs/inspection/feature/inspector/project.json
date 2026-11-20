@@ -1,0 +1,10 @@
+{
+  "name": "inspection-feature-inspector",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/inspection/feature/inspector/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:inspection", "type:feature"],
+  "// targets": "to see all targets run: nx show project inspection-feature-inspector --web",
+  "targets": {}
+}

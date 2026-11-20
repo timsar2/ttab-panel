@@ -51,10 +51,10 @@ describe('panel navigation', () => {
   })
 
   it('mounts Support only within the selected company context', () => {
-    const support = navigationFor(5, false, ['Oprator']).find(item => item.id === 'support')
+    const support = navigationFor(5, false, ['Operator']).find(item => item.id === 'support')
     expect(support?.commands).toEqual(['/client', 5, 'support'])
     expect(support?.hint).toBeUndefined()
-    const unavailable = navigationFor(null, false, ['Oprator']).find(item => item.id === 'support')
+    const unavailable = navigationFor(null, false, ['Operator']).find(item => item.id === 'support')
     expect(unavailable?.commands).toBeUndefined()
     expect(unavailable?.hint).toBe('Choose a company first')
     expect(navigationFor(5, false, ['Driver']).some(item => item.id === 'support')).toBe(false)
@@ -64,7 +64,7 @@ describe('panel navigation', () => {
     expect(
       navigationFor(5, false, ['Admin']).find(item => item.id === 'inspections')?.commands,
     ).toEqual(['/client', 5, 'inspections'])
-    expect(navigationFor(null, false, ['Oprator']).some(item => item.id === 'inspections')).toBe(
+    expect(navigationFor(null, false, ['Operator']).some(item => item.id === 'inspections')).toBe(
       false,
     )
   })

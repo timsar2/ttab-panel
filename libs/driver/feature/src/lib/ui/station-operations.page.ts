@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, Router } from '@angular/router'
 import { ActiveTrip, DriverApi, Station, Passenger } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
+import { DriverLocationPublisherService } from '@org/shared-tracking'
 import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
 import {
@@ -422,6 +423,7 @@ export class StationOperationsPage {
   private readonly router = inject(Router)
   private readonly route = inject(ActivatedRoute)
   private readonly config = inject(DRIVER_FEATURE_CONFIG)
+  private readonly publisher = inject(DriverLocationPublisherService)
   protected readonly fa = computed(() => this.config.language() === 'fa')
 
   protected readonly loading = signal(true)
@@ -508,6 +510,7 @@ export class StationOperationsPage {
     try {
       if (this.isLastStation()) {
         await this.api.endTrip({ tripId: trip.id, directionId: trip.directionId })
+        this.publisher.stop()
         await this.router.navigateByUrl('/driver/route-selection')
         return
       }

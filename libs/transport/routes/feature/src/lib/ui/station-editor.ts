@@ -610,7 +610,7 @@ export class StationEditor {
         } satisfies NeshanMapPoint
       })
       const validPoints = stations.filter(point => point.lat !== null && point.lng !== null)
-      const routeGeoJson =
+      const routeGeometry =
         validPoints.length >= 2
           ? await generateNeshanRouteGeoJson(
               validPoints,
@@ -628,7 +628,7 @@ export class StationEditor {
           companyId,
           name: route.name,
           departureTime: route.departureTime,
-          routeGeoJson,
+          routeGeometry,
         }),
       )
       this.store.loadStations(directionId)

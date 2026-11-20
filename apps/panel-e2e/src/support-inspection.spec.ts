@@ -165,6 +165,11 @@ test('Support panel loads selected-company request, exposes replies only, and re
   await expect(openRequest).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(page.getByRole('heading', { name: 'Cannot open the app' })).toBeVisible()
+  for (const width of [320, 375, 768, 1280]) {
+    await page.setViewportSize({ width, height: 812 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+  await page.setViewportSize({ width: 1280, height: 812 })
   await expect(page.getByText('The app closes after sign in.', { exact: true })).toBeVisible()
   await expect(page.getByText(/زمان و ترتیب پیام‌ها|timestamps and ordering/)).toBeVisible()
   await expect(page.getByRole('link', { name: /حذف|Delete/ })).toHaveCount(0)
@@ -185,7 +190,7 @@ test('Support panel loads selected-company request, exposes replies only, and re
 test('Support operator cannot search a company outside its authenticated scope', async ({
   page,
 }) => {
-  await mockAuthentication(page, ['Oprator', 'Client'])
+  await mockAuthentication(page, ['Operator', 'Client'])
   let supportReads = 0
   await page.route('**/api/v1/companys/2', route => route.fulfill({ json: envelope(company) }))
   await page.route('**/api/v1/support/search', route => {
@@ -214,12 +219,11 @@ test('Support operator cannot search a company outside its authenticated scope',
   expect(supportReads).toBe(0)
 })
 
-test('Support distinguishes an empty company list from a missing request detail', async ({
+test('Support distinguishes an empty company list from an empty successful result', async ({
   page,
 }) => {
   await signIn(page)
   let searchCalls = 0
-  let detailCalls = 0
   await page.route('**/api/v1/companys/2', route => route.fulfill({ json: envelope(company) }))
   await page.route('**/api/v1/support**', route => {
     const path = new URL(route.request().url()).pathname
@@ -239,15 +243,26 @@ test('Support distinguishes an empty company list from a missing request detail'
         }),
       })
     }
-    if (path.endsWith('/404')) {
-      detailCalls++
-      return route.fulfill({ status: 404, json: { messages: ['Not found'] } })
-    }
     return route.fulfill({ status: 404, json: { messages: ['Not found'] } })
   })
   await page.goto('/client/2/support')
   await expect(page.getByRole('status')).toContainText(/درخواستی با این فیلترها|No requests match/)
   expect(searchCalls).toBe(1)
+})
+
+test('Support renders a missing request as not found and does not offer a reply', async ({
+  page,
+}) => {
+  await signIn(page)
+  let detailCalls = 0
+  await page.route('**/api/v1/companys/2', route => route.fulfill({ json: envelope(company) }))
+  await page.route('**/api/v1/support/404', route => {
+    detailCalls++
+    return route.fulfill({ status: 404, json: { messages: ['Not found'] } })
+  })
+  await page.route('**/api/v1/support/404/messages', route =>
+    route.fulfill({ status: 404, json: { messages: ['Not found'] } }),
+  )
   await page.goto('/client/2/support/404')
   await expect(page.getByRole('alert')).toContainText(/درخواست یافت نشد|request was not found/i)
   expect(detailCalls).toBe(1)
@@ -255,7 +270,7 @@ test('Support distinguishes an empty company list from a missing request detail'
 })
 
 test('Inspection access is denied to non-Admin/Manager roles before requests', async ({ page }) => {
-  await mockAuthentication(page, ['Oprator', 'Client'])
+  await mockAuthentication(page, ['Operator', 'Client'])
   let inspectionCalls = 0
   await page.route('**/api/v1/companys/2', route => route.fulfill({ json: envelope(company) }))
   await page.route('**/api/v1/inspections**', async route => {
@@ -285,6 +300,7 @@ test('Inspection list, visit insert and append-only maintenance forms use the ba
   const drivers: unknown[] = []
   const vehicles: unknown[] = []
   const visits: unknown[] = []
+  const statusWrites: unknown[] = []
   const defects: { dueDate: string; description: string }[] = []
   const actions: { completedAt: string; description: string }[] = []
   let releaseDefect!: () => void
@@ -340,7 +356,7 @@ test('Inspection list, visit insert and append-only maintenance forms use the ba
             driverName: 'Driver One',
             vehicleId: 7,
             carPlate: '12345678',
-            statusTypeId: 'Pending approval',
+            statusTypeId: statusWrites.length ? 'Approved' : 'Pending approval',
           },
         ]),
       })
@@ -354,6 +370,10 @@ test('Inspection list, visit insert and append-only maintenance forms use the ba
     if (path.endsWith('/corrective-actions')) {
       actions.push(route.request().postDataJSON())
       return route.fulfill({ json: envelope(52) })
+    }
+    if (path.endsWith('/status')) {
+      statusWrites.push(route.request().postDataJSON())
+      return route.fulfill({ json: envelope(true) })
     }
     if (path === '/api/v1/inspections' && route.request().method() === 'POST') {
       const body = route.request().postDataJSON()
@@ -476,21 +496,28 @@ test('Inspection list, visit insert and append-only maintenance forms use the ba
       key => key.endsWith('Condition') || key.startsWith('has'),
     ).length,
   ).toBe(12)
-  await page.locator('form').nth(0).locator('input[type=date]').fill('2026-11-20')
-  await page.locator('form').nth(0).locator('textarea').fill('Replace tire')
-  const saveDefect = page.locator('form').nth(0).getByRole('button', { name: 'ذخیره', exact: true })
+  const statusForm = page.locator('#inspection-status-form')
+  await statusForm.locator('select').selectOption('3')
+  await statusForm.locator('#inspection-status-confirmed').check()
+  await statusForm.getByRole('button', { name: 'ثبت وضعیت', exact: true }).click()
+  await expect(page.getByRole('status')).toContainText(/درخواست وضعیت پذیرفته شد/)
+  expect(statusWrites).toEqual([{ id: 13, statusTypeId: 3 }])
+  await expect.poll(() => searches.length).toBe(2)
+
+  const defectForm = page.locator('#inspection-defect-form')
+  await defectForm.locator('input[type=date]').fill('2026-11-20')
+  await defectForm.locator('textarea').fill('Replace tire')
+  const saveDefect = defectForm.getByRole('button', { name: 'ذخیره', exact: true })
   await saveDefect.click()
   await defectStarted
-  await expect(page.locator('form').nth(0).locator('button[type=submit]')).toHaveAttribute(
-    'disabled',
-    'true',
-  )
-  await expect(page.locator('form').nth(0).locator('textarea')).toBeDisabled()
+  await expect(defectForm.locator('button[type=submit]')).toHaveAttribute('disabled', 'true')
+  await expect(defectForm.locator('textarea')).toBeDisabled()
   releaseDefect()
   await expect(page.getByText('Replace tire', { exact: true })).toBeVisible()
-  await page.locator('form').nth(1).locator('input[type=date]').fill('2026-11-21')
-  await page.locator('form').nth(1).locator('textarea').fill('Tire replaced')
-  await page.locator('form').nth(1).getByRole('button', { name: 'ذخیره', exact: true }).click()
+  const actionForm = page.locator('#inspection-action-form')
+  await actionForm.locator('input[type=date]').fill('2026-11-21')
+  await actionForm.locator('textarea').fill('Tire replaced')
+  await actionForm.getByRole('button', { name: 'ذخیره', exact: true }).click()
   await expect(page.getByText('Tire replaced', { exact: true })).toBeVisible()
   expect(defects).toEqual([
     { id: 0, inspectionVisitId: 13, dueDate: '2026-11-20', description: 'Replace tire' },

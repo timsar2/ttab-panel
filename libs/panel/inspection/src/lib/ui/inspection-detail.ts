@@ -28,7 +28,12 @@ import {
 } from '@org/transport-inspection-data-access'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { firstValueFrom } from 'rxjs'
-import { INSPECTION_LANGUAGE, INSPECTION_SCOPE, parseInspectionRouteId } from '../inspection.routes'
+import {
+  INSPECTION_CAN_MANAGE,
+  INSPECTION_LANGUAGE,
+  INSPECTION_SCOPE,
+  parseInspectionRouteId,
+} from '../inspection.routes'
 import { inspectionText, type InspectionTextKey } from '../inspection-text'
 
 const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
@@ -90,6 +95,60 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
             <dd>{{ detail.carPlate || '#' + detail.vehicleId }}</dd>
           </div>
         </dl>
+        @if (canManageActions()) {
+          <section
+            class="bg-muted/30 mt-5 rounded-lg p-4"
+            aria-labelledby="inspection-status-heading"
+          >
+            <h2 id="inspection-status-heading" class="font-medium">{{ t('status') }}</h2>
+            <p class="text-muted-foreground mt-1 text-sm">{{ t('statusContract') }}</p>
+            <p class="mt-2">{{ detail.statusTypeId || t('statusUnavailable') }}</p>
+            <form
+              id="inspection-status-form"
+              class="mt-4 grid max-w-lg gap-3"
+              novalidate
+              (submit)="saveStatus($event)"
+            >
+              <label class="grid gap-2 text-sm" for="inspection-status-select">{{
+                t('setStatus')
+              }}</label>
+              <select
+                id="inspection-status-select"
+                class="bg-background min-h-11 rounded-md border px-3"
+                [formField]="statusForm.statusTypeId"
+              >
+                <option value="">{{ t('setStatus') }}</option>
+                <option value="1">{{ t('statusPendingAction') }}</option>
+                <option value="2">{{ t('statusPendingApproval') }}</option>
+                <option value="3">{{ t('statusApproved') }}</option>
+              </select>
+              <label class="inline-flex min-h-11 items-center gap-2">
+                <input
+                  id="inspection-status-confirmed"
+                  type="checkbox"
+                  [formField]="statusForm.confirmed"
+                />{{ t('confirmStatus') }}
+              </label>
+              @if (statusForm().touched() && statusForm().invalid()) {
+                <p role="alert">{{ t('confirmStatus') }}</p>
+              }
+              @if (statusError()) {
+                <p role="alert">{{ statusError() }}</p>
+              }
+              @if (statusUpdated()) {
+                <p role="status">{{ t('statusUpdateSent') }}</p>
+              }
+              <button
+                hlmBtn
+                class="min-h-11 justify-self-start"
+                type="submit"
+                [disabled]="savingStatus()"
+              >
+                {{ savingStatus() ? t('saving') : t('setStatus') }}
+              </button>
+            </form>
+          </section>
+        }
       </header>
       <section class="mb-6 rounded-xl border p-5" aria-labelledby="inspection-checks-heading">
         <h2 id="inspection-checks-heading" class="text-lg font-semibold">{{ t('checks') }}</h2>
@@ -120,41 +179,48 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
               </li>
             }
           </ul>
-          <form class="mt-6 grid gap-3 border-t pt-5" (submit)="saveDefect($event)">
-            <h3 class="font-medium">{{ t('addDefect') }}</h3>
-            <label class="grid gap-2 text-sm" for="inspection-due-date">{{ t('dueDate') }}</label
-            ><input
-              id="inspection-due-date"
-              class="bg-background min-h-11 rounded-md border px-3"
-              type="date"
-              [formField]="defectForm.dueDate"
-            />
-            <label class="grid gap-2 text-sm" for="inspection-defect-description">{{
-              t('text')
-            }}</label
-            ><textarea
-              id="inspection-defect-description"
-              class="bg-background min-h-24 rounded-md border p-3"
-              [formField]="defectForm.description"
-            ></textarea>
-            @if (defectForm().touched() && defectForm().invalid()) {
-              <p role="alert">{{ t('dateRequired') }} {{ t('descriptionRequired') }}</p>
-            }
-            @if (defectError()) {
-              <p role="alert">{{ defectError() }}</p>
-            }
-            @if (defectSaved()) {
-              <p role="status">{{ t('saved') }}</p>
-            }
-            <button
-              hlmBtn
-              class="min-h-11 justify-self-start"
-              type="submit"
-              [disabled]="savingDefect()"
+          @if (canManageActions()) {
+            <form
+              id="inspection-defect-form"
+              class="mt-6 grid gap-3 border-t pt-5"
+              novalidate
+              (submit)="saveDefect($event)"
             >
-              {{ savingDefect() ? t('saving') : t('submit') }}
-            </button>
-          </form>
+              <h3 class="font-medium">{{ t('addDefect') }}</h3>
+              <label class="grid gap-2 text-sm" for="inspection-due-date">{{ t('dueDate') }}</label
+              ><input
+                id="inspection-due-date"
+                class="bg-background min-h-11 rounded-md border px-3"
+                type="date"
+                [formField]="defectForm.dueDate"
+              />
+              <label class="grid gap-2 text-sm" for="inspection-defect-description">{{
+                t('text')
+              }}</label
+              ><textarea
+                id="inspection-defect-description"
+                class="bg-background min-h-24 rounded-md border p-3"
+                [formField]="defectForm.description"
+              ></textarea>
+              @if (defectForm().touched() && defectForm().invalid()) {
+                <p role="alert">{{ t('dateRequired') }} {{ t('descriptionRequired') }}</p>
+              }
+              @if (defectError()) {
+                <p role="alert">{{ defectError() }}</p>
+              }
+              @if (defectSaved()) {
+                <p role="status">{{ t('saved') }}</p>
+              }
+              <button
+                hlmBtn
+                class="min-h-11 justify-self-start"
+                type="submit"
+                [disabled]="savingDefect()"
+              >
+                {{ savingDefect() ? t('saving') : t('submit') }}
+              </button>
+            </form>
+          }
         </div>
         <div class="rounded-xl border p-5">
           <h2 class="text-lg font-semibold">{{ t('correctiveActions') }}</h2>
@@ -169,43 +235,50 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
               </li>
             }
           </ul>
-          <form class="mt-6 grid gap-3 border-t pt-5" (submit)="saveAction($event)">
-            <h3 class="font-medium">{{ t('addAction') }}</h3>
-            <label class="grid gap-2 text-sm" for="inspection-completed-at">{{
-              t('completedAt')
-            }}</label
-            ><input
-              id="inspection-completed-at"
-              class="bg-background min-h-11 rounded-md border px-3"
-              type="date"
-              [formField]="actionForm.completedAt"
-            />
-            <label class="grid gap-2 text-sm" for="inspection-action-description">{{
-              t('text')
-            }}</label
-            ><textarea
-              id="inspection-action-description"
-              class="bg-background min-h-24 rounded-md border p-3"
-              [formField]="actionForm.description"
-            ></textarea>
-            @if (actionForm().touched() && actionForm().invalid()) {
-              <p role="alert">{{ t('dateRequired') }} {{ t('descriptionRequired') }}</p>
-            }
-            @if (actionError()) {
-              <p role="alert">{{ actionError() }}</p>
-            }
-            @if (actionSaved()) {
-              <p role="status">{{ t('saved') }}</p>
-            }
-            <button
-              hlmBtn
-              class="min-h-11 justify-self-start"
-              type="submit"
-              [disabled]="savingAction()"
+          @if (canManageActions()) {
+            <form
+              id="inspection-action-form"
+              class="mt-6 grid gap-3 border-t pt-5"
+              novalidate
+              (submit)="saveAction($event)"
             >
-              {{ savingAction() ? t('saving') : t('submit') }}
-            </button>
-          </form>
+              <h3 class="font-medium">{{ t('addAction') }}</h3>
+              <label class="grid gap-2 text-sm" for="inspection-completed-at">{{
+                t('completedAt')
+              }}</label
+              ><input
+                id="inspection-completed-at"
+                class="bg-background min-h-11 rounded-md border px-3"
+                type="date"
+                [formField]="actionForm.completedAt"
+              />
+              <label class="grid gap-2 text-sm" for="inspection-action-description">{{
+                t('text')
+              }}</label
+              ><textarea
+                id="inspection-action-description"
+                class="bg-background min-h-24 rounded-md border p-3"
+                [formField]="actionForm.description"
+              ></textarea>
+              @if (actionForm().touched() && actionForm().invalid()) {
+                <p role="alert">{{ t('dateRequired') }} {{ t('descriptionRequired') }}</p>
+              }
+              @if (actionError()) {
+                <p role="alert">{{ actionError() }}</p>
+              }
+              @if (actionSaved()) {
+                <p role="status">{{ t('saved') }}</p>
+              }
+              <button
+                hlmBtn
+                class="min-h-11 justify-self-start"
+                type="submit"
+                [disabled]="savingAction()"
+              >
+                {{ savingAction() ? t('saving') : t('submit') }}
+              </button>
+            </form>
+          }
         </div>
       </section>
     }
@@ -215,8 +288,23 @@ export class InspectionDetailPage {
   protected readonly language = inject(INSPECTION_LANGUAGE)
   protected readonly store = inject(InspectionStore)
   protected readonly scope = inject(INSPECTION_SCOPE)
+  protected readonly canManageActions = inject(INSPECTION_CAN_MANAGE)
   protected readonly checks = INSPECTION_CHECKS
   protected readonly savingDefect = signal(false)
+  protected readonly savingStatus = signal(false)
+  protected readonly statusModel = signal({ statusTypeId: '', confirmed: false })
+  protected readonly statusForm = form(this.statusModel, schema => {
+    validate(schema.statusTypeId, ({ value }) =>
+      ['1', '2', '3'].includes(value()) ? null : { kind: 'status', message: 'status' },
+    )
+    validate(schema.confirmed, ({ value }) =>
+      value() ? null : { kind: 'confirm', message: 'confirm' },
+    )
+    disabled(schema.statusTypeId, () => this.savingStatus())
+    disabled(schema.confirmed, () => this.savingStatus())
+  })
+  protected readonly statusError = signal<string | null>(null)
+  protected readonly statusUpdated = signal(false)
   private readonly route = inject(ActivatedRoute)
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
@@ -268,6 +356,10 @@ export class InspectionDetailPage {
         this.currentId = null
         this.defectForm().reset()
         this.defectModel.set({ dueDate: '', description: '' })
+        this.statusForm().reset()
+        this.statusModel.set({ statusTypeId: '', confirmed: false })
+        this.statusError.set(null)
+        this.statusUpdated.set(false)
         this.actionForm().reset()
         this.actionModel.set({ completedAt: '', description: '' })
         return
@@ -283,6 +375,10 @@ export class InspectionDetailPage {
       untracked(() => {
         this.defectForm().reset()
         this.defectModel.set({ dueDate: '', description: '' })
+        this.statusForm().reset()
+        this.statusModel.set({ statusTypeId: '', confirmed: false })
+        this.statusError.set(null)
+        this.statusUpdated.set(false)
         this.actionForm().reset()
         this.actionModel.set({ completedAt: '', description: '' })
         this.defectError.set(null)
@@ -297,6 +393,38 @@ export class InspectionDetailPage {
   }
   protected label(check: InspectionCheck): InspectionTextKey {
     return checkLabels[check]
+  }
+
+  protected saveStatus(event: Event) {
+    event.preventDefault()
+    if (!this.currentId || this.savingStatus()) return
+    this.statusError.set(null)
+    this.statusUpdated.set(false)
+    submit(this.statusForm, async () => {
+      const id = this.currentId
+      const statusTypeId = Number(this.statusModel().statusTypeId)
+      if (id === null || ![1, 2, 3].includes(statusTypeId) || !this.statusModel().confirmed) return
+      this.savingStatus.set(true)
+      this.changeDetector.detectChanges()
+      try {
+        await firstValueFrom(this.store.setStatus(id, statusTypeId))
+        this.statusUpdated.set(true)
+        this.store.loadDetail(id)
+        if (this.store.visits() !== null) {
+          this.store.load({
+            pageNumber: this.store.pageNumber(),
+            pageSize: this.store.pageSize(),
+            orderBy: this.store.orderBy(),
+          })
+        }
+      } catch {
+        this.statusError.set(this.t('statusUpdateFailed'))
+      } finally {
+        this.savingStatus.set(false)
+        this.changeDetector.detectChanges()
+      }
+    })
+    if (this.statusForm().invalid()) this.statusError.set(this.t('confirmStatus'))
   }
 
   protected saveDefect(event: Event) {

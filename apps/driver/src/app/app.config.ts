@@ -11,7 +11,7 @@ export const appConfig: ApplicationConfig = {
     ...providePlatformApp({
       id: 'driver',
       brandName: 'Driver',
-      auth: { mode: 'cookie', apiUrl: '/api', afterLoginUrl: '/driver/route-selection' },
+      auth: { afterLoginUrl: '/driver/route-selection' },
       routes: appRoutes,
     }),
     { provide: AuthBackend, useFactory: driverAuthBackend },

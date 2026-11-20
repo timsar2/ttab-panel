@@ -30,7 +30,10 @@ export class LoginPage {
   private readonly route = inject(ActivatedRoute)
   private readonly submitting = signal(false)
   private readonly unconfiguredSubmission = signal(false)
-  readonly copy = computed(() => AUTH_COPY[this.appearance.direction() === 'rtl' ? 'fa' : 'en'])
+  readonly copy = computed(() => ({
+    ...AUTH_COPY[this.appearance.direction() === 'rtl' ? 'fa' : 'en'],
+    panel: this.config.brandName,
+  }))
   readonly busy = computed(
     () =>
       this.submitting() ||

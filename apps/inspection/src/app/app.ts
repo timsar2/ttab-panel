@@ -1,13 +1,14 @@
-import { Component } from '@angular/core'
-import { RouterModule } from '@angular/router'
-import { NxWelcome } from './nx-welcome'
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core'
+import { RouterOutlet } from '@angular/router'
+import { PreferencesStore, ThemePanel } from '@org/platform'
 
 @Component({
-  imports: [NxWelcome, RouterModule],
+  imports: [RouterOutlet, ThemePanel],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App {
-  protected title = 'inspection'
+  protected readonly preferences = inject(PreferencesStore)
 }

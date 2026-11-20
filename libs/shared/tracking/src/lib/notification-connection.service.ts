@@ -83,7 +83,7 @@ export class NotificationConnectionService implements OnDestroy {
       .build()
 
     connection.on(NOTIFICATION_FROM_SERVER, (typeName: unknown, payload: unknown) => {
-      console.log('NOTIFICATION_FROM_SERVER recived')
+      this.log('NotificationFromServer fired', { typeName, payload })
       this.dispatch(typeName, payload, 'signalr')
     })
     connection.onreconnecting(error => {

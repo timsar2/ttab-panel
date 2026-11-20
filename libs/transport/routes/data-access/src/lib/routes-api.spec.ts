@@ -56,13 +56,13 @@ describe('RoutesApi', () => {
       code: '2000',
       massage: 'Success',
       result: [
-        { id: 42, name: 'االا', departureTime: '17:51:00', routeGeoJson: null },
-        { id: 2, name: 'ابهر بیمارستان امید', departureTime: '07:30:00', routeGeoJson: null },
+        { id: 42, name: 'االا', departureTime: '17:51:00', encodedPolyline: null },
+        { id: 2, name: 'ابهر بیمارستان امید', departureTime: '07:30:00', encodedPolyline: null },
       ],
     })
     await expect(result).resolves.toEqual([
-      { id: 42, name: 'االا', departureTime: '17:51:00', routeGeoJson: null },
-      { id: 2, name: 'ابهر بیمارستان امید', departureTime: '07:30:00', routeGeoJson: null },
+      { id: 42, name: 'االا', departureTime: '17:51:00', routeGeometry: null },
+      { id: 2, name: 'ابهر بیمارستان امید', departureTime: '07:30:00', routeGeometry: null },
     ])
   })
 
@@ -73,13 +73,13 @@ describe('RoutesApi', () => {
     routeRequest.flush({
       code: '2000',
       massage: 'Success',
-      result: { id: 42, name: 'Route', departureTime: '07:30:00', routeGeoJson: null },
+      result: { id: 42, name: 'Route', departureTime: '07:30:00', encodedPolyline: null },
     })
     await expect(detail).resolves.toEqual({
       id: 42,
       name: 'Route',
       departureTime: '07:30:00',
-      routeGeoJson: null,
+      routeGeometry: null,
     })
 
     const stations = firstValueFrom(api.stations(routeId(42)))
@@ -147,13 +147,13 @@ describe('RoutesApi', () => {
     await expect(save).resolves.toBeUndefined()
   })
 
-  it('sends a serialized LineString geometry when saving a Direction', async () => {
+  it('sends an encoded polyline when saving a Direction', async () => {
     const save = firstValueFrom(
       api.save(routeId(42), {
         companyId: 12,
         name: 'Route',
         departureTime: '07:30',
-        routeGeoJson: {
+        routeGeometry: {
           type: 'LineString',
           coordinates: [
             [51.4, 35.7],
@@ -169,7 +169,7 @@ describe('RoutesApi', () => {
       companyId: 12,
       name: 'Route',
       departureTime: '07:30',
-      routeGeoJson: '{"type":"LineString","coordinates":[[51.4,35.7],[51.5,35.8]]}',
+      encodedPolyline: '_t{xE_avxH_pR_pR',
     })
     request.flush({ code: '2000', massage: 'Success', result: { id: 42 } })
     await expect(save).resolves.toBe(42)

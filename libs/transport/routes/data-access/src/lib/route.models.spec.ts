@@ -13,7 +13,7 @@ describe('Direction adapters', () => {
       id: 42,
       name: 'االا',
       departureTime: '17:51:00',
-      routeGeoJson: null,
+      routeGeometry: null,
     })
     expect(
       decodeStation({
@@ -68,7 +68,7 @@ describe('Direction adapters', () => {
         id: routeId(42),
         name: ' Route ',
         departureTime: '17:51',
-        routeGeoJson: {
+        routeGeometry: {
           type: 'LineString',
           coordinates: [
             [51.4, 35.7],
@@ -81,11 +81,11 @@ describe('Direction adapters', () => {
       id: 42,
       name: 'Route',
       departureTime: '17:51',
-      routeGeoJson: '{"type":"LineString","coordinates":[[51.4,35.7],[51.5,35.8]]}',
+      encodedPolyline: '_t{xE_avxH_pR_pR',
     })
   })
 
-  it('normalizes server route geometry to a LineString, including old FeatureCollections', () => {
+  it('decodes encoded polylines and legacy GeoJSON responses to LineString geometry', () => {
     const line = {
       type: 'LineString',
       coordinates: [
@@ -99,7 +99,15 @@ describe('Direction adapters', () => {
         name: 'Route',
         departureTime: '08:00:00',
         routeGeoJson: JSON.stringify(line),
-      }).routeGeoJson,
+      }).routeGeometry,
+    ).toEqual(line)
+    expect(
+      decodeRoute({
+        id: 2,
+        name: 'Route',
+        departureTime: '08:00:00',
+        encodedPolyline: '_t{xE_avxH_pR_pR',
+      }).routeGeometry,
     ).toEqual(line)
     expect(
       decodeRoute({
@@ -110,7 +118,7 @@ describe('Direction adapters', () => {
           type: 'FeatureCollection',
           features: [{ type: 'Feature', geometry: line, properties: {} }],
         }),
-      }).routeGeoJson,
+      }).routeGeometry,
     ).toEqual(line)
   })
 })

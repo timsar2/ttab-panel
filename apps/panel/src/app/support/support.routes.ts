@@ -11,7 +11,7 @@ function globalStaff(roles: readonly string[] | undefined): boolean {
 }
 
 function companyOperator(roles: readonly string[] | undefined): boolean {
-  return roles?.includes('Oprator') ?? false
+  return roles?.includes('Operator') ?? false
 }
 
 /** Adapt the selected company and authenticated staff policy to the reusable Support feature. */

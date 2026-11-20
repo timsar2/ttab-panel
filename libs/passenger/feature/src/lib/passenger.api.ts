@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http'
 import { inject, Injectable, InjectionToken } from '@angular/core'
 import { firstValueFrom } from 'rxjs'
+import { decodeRouteGeometry, type GeoJsonLineString } from '@org/shared-route-geometry'
 
 export interface PassengerIdentity {
   readonly passengerId: number | null
@@ -30,7 +31,7 @@ export interface Choice {
   address?: string
   lat?: number
   lng?: number
-  routeGeoJson?: string | null
+  routeGeoJson?: GeoJsonLineString | null
 }
 
 export interface ActiveTrip {
@@ -45,7 +46,7 @@ export interface ActiveTrip {
   passengerStationId?: number | null
   nextStationId?: number | null
   stations: Array<{ id: number; name: string; address?: string; lat?: number; lng?: number }>
-  routeGeoJson: string | null
+  routeGeoJson: GeoJsonLineString | null
 }
 
 export interface PassengerDriverLocation {
@@ -177,7 +178,9 @@ export class PassengerApi {
           id: Number(item['id']),
           name: String(item['name'] ?? ''),
           detail: typeof item['departureTime'] === 'string' ? item['departureTime'] : undefined,
-          routeGeoJson: optionalString(field(item, 'routeGeoJson')),
+          routeGeoJson: decodeRouteGeometry(
+            field(item, 'encodedPolyline') ?? field(item, 'routeGeoJson'),
+          ),
         }
       })
       .filter(item => Number.isSafeInteger(item.id) && item.name)
@@ -283,7 +286,9 @@ export class PassengerApi {
       nextStationId:
         Number.isSafeInteger(nextStationId) && nextStationId > 0 ? nextStationId : null,
       stations,
-      routeGeoJson: optionalString(field(value, 'routeGeoJson')),
+      routeGeoJson: decodeRouteGeometry(
+        field(value, 'encodedPolyline') ?? field(value, 'routeGeoJson'),
+      ),
     }
   }
 

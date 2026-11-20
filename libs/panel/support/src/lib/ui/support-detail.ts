@@ -108,7 +108,7 @@ import { supportText, type SupportTextKey } from '../support-text'
           }
         }
         @if (canReply()) {
-          <form class="mt-6 grid gap-3" (submit)="send($event)">
+          <form class="mt-6 grid gap-3" novalidate (submit)="send($event)">
             <label class="grid gap-2 text-sm" for="support-reply">{{ t('message') }}</label>
             <textarea
               id="support-reply"

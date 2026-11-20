@@ -36,7 +36,7 @@ export function createPanelShiftRoutes() {
       return request => {
         const user = session.user()
         const manager = isManager(user?.roles)
-        const operator = user?.roles.includes('Oprator') ?? false
+        const operator = user?.roles.includes('Operator') ?? false
         const companyMatches =
           context.status() === 'ready' && context.company()?.id === request.companyId
         const actionAllowed =

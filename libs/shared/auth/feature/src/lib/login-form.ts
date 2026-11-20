@@ -47,13 +47,14 @@ import { SignalInput } from '@org/ui-forms'
 export class LoginForm {
   readonly appearance = inject(AUTH_APPEARANCE)
   readonly busy = input(false)
+  readonly brandName = input<string>()
   readonly error = input<string | null>(null)
   readonly notice = input<string | null>(null)
   readonly credentialsSubmit = output<Credentials>()
   protected readonly ready = signal(false)
   private readonly model = signal<Credentials>({
-    username: 'admin@root.com',
-    password: '@tLine!402*',
+    username: 'inspector@root.com',
+    password: 'Tetra123$',
   })
   readonly credentials = this.model.asReadonly()
   readonly loginForm = form(this.model, path => {
@@ -63,7 +64,18 @@ export class LoginForm {
   })
   readonly passwordVisible = signal(false)
   readonly invalidSubmission = signal(false)
-  readonly copy = computed(() => AUTH_COPY[this.appearance.direction() === 'rtl' ? 'fa' : 'en'])
+  readonly copy = computed(() => {
+    const language = this.appearance.direction() === 'rtl' ? 'fa' : 'en'
+    const copy = AUTH_COPY[language]
+    const brandName = this.brandName()
+    if (!brandName) return copy
+    return {
+      ...copy,
+      panel: brandName,
+      title: language === 'fa' ? `ورود به ${brandName}` : `Sign in to ${brandName}`,
+      submit: language === 'fa' ? `ورود به ${brandName}` : `Sign in to ${brandName}`,
+    }
+  })
   private readonly usernameInput = viewChild.required<ElementRef<HTMLInputElement>>('usernameInput')
   private readonly passwordInput = viewChild.required<ElementRef<HTMLInputElement>>('passwordInput')
 

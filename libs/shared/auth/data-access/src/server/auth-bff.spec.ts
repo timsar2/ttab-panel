@@ -262,6 +262,20 @@ describe('Node cookie authentication BFF', () => {
     expect(session.headers['cache-control']).toBe('no-store')
   })
 
+  it('accepts email/password login payloads and forwards only email/password upstream', async () => {
+    const { app, fetcher } = fixture()
+    await request(app)
+      .post('/api/auth/login')
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .send({ email: 'admin@Root.com', password: 'password-secret' })
+      .expect(200)
+
+    expect(fetcher.mock.calls[0][1]).toMatchObject({
+      body: JSON.stringify({ email: 'admin@Root.com', password: 'password-secret' }),
+    })
+  })
+
   it('requires an authenticated same-origin session before opening the tracking stream', async () => {
     const createTrackingConnection = vi.fn() as unknown as NonNullable<
       AuthBffOptions['createTrackingConnection']

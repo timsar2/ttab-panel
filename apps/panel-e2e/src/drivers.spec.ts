@@ -231,7 +231,7 @@ test('driver list, detail and editor load under authorized company management', 
 test('company operators can search only their claimed company and cannot open driver records', async ({
   page,
 }) => {
-  await mockAuthentication(page, ['Oprator', 'Client'])
+  await mockAuthentication(page, ['Operator', 'Client'])
   const searches: unknown[] = []
   let detailRequests = 0
   await page.route('**/api/v1/companys/1', route =>

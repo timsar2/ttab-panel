@@ -11,7 +11,7 @@ export const appConfig: ApplicationConfig = {
     ...providePlatformApp({
       id: 'passenger',
       brandName: 'Passenger',
-      auth: { mode: 'cookie', apiUrl: '/api', afterLoginUrl: '/passenger/home' },
+      auth: { afterLoginUrl: '/passenger/home' },
       routes: appRoutes,
     }),
     { provide: AuthBackend, useFactory: passengerAuthBackend },

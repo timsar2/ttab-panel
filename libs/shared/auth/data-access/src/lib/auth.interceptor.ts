@@ -11,6 +11,9 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   if (!config.configured) return next(request)
   const path = apiRequestPath(request.url, config)
   if (path === null) return next(request)
+  if (config.mode === 'cookie' && !request.headers.has('tenant')) {
+    request = request.clone({ setHeaders: { tenant: config.tenant } })
+  }
   if (config.mode === 'cookie' && isPlatformServer(inject(PLATFORM_ID))) {
     const context = inject(REQUEST_CONTEXT, { optional: true }) as AuthRequestContext | null
     const incoming = inject(REQUEST, { optional: true })
@@ -54,10 +57,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     const send = () =>
       next(
         request.clone({
-          headers: request.headers
-            .delete('Authorization')
-            .delete('tenant')
-            .set('X-Auth-Request', '1'),
+          headers: request.headers.delete('Authorization').set('X-Auth-Request', '1'),
           credentials: 'same-origin',
           transferCache: false,
           redirect: 'error',

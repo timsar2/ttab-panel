@@ -51,6 +51,7 @@
     >
   </aside>
   <lib-login-form
+    [brandName]="config.brandName"
     [busy]="busy()"
     [error]="error()"
     [notice]="session.configured() ? null : copy().notice"

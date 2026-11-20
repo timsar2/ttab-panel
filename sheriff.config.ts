@@ -24,6 +24,7 @@ const dataDependencies = ['type:data', 'type:models', 'type:util'] as const
 export const config = {
   entryPoints: {
     'apps/panel/src': './apps/panel/src/main.ts',
+    'apps/inspection/src': './apps/inspection/src/main.ts',
     'apps/driver/src': './apps/driver/src/main.ts',
     'apps/passenger/src': './apps/passenger/src/main.ts',
     'apps/shop/src': './apps/shop/src/main.ts',
@@ -36,6 +37,7 @@ export const config = {
     'apps/<app>/src': ['scope:<app>', 'type:app'],
 
     'apps/panel-e2e': ['scope:panel', 'type:e2e'],
+    'apps/inspection-e2e': ['scope:inspection', 'type:e2e'],
     'apps/shop-e2e': ['scope:shop', 'type:e2e'],
 
     'libs/shared/auth/data-access/src': ['scope:shared', 'type:data'],
@@ -45,6 +47,7 @@ export const config = {
     'libs/shared/layout/src': ['scope:shared', 'type:ui'],
     'libs/shared/ui/<component>/src': ['scope:shared', 'type:ui'],
     'libs/shared/maps/src': ['scope:shared', 'type:ui'],
+    'libs/shared/route-geometry/src': ['scope:shared', 'type:util'],
     'libs/shared/tracking/src': ['scope:shared', 'type:util'],
 
     'libs/shared/theme/data-access/src': ['scope:shared', 'type:data'],
@@ -60,6 +63,7 @@ export const config = {
 
     'libs/panel/<domain>/src': ['scope:panel', 'type:feature'],
     'libs/panel/feature/<domain>/src': ['scope:panel', 'type:feature'],
+    'libs/inspection/feature/<feature>/src': ['scope:inspection', 'type:feature'],
     'libs/passenger/feature/src': ['scope:passenger', 'type:feature'],
     'libs/driver/feature/src': ['scope:driver', 'type:feature'],
 
@@ -80,6 +84,7 @@ export const config = {
     root: '*',
 
     'scope:panel': [...applicationScopes],
+    'scope:inspection': [...applicationScopes],
     'scope:driver': [...applicationScopes],
     'scope:passenger': [...applicationScopes],
 

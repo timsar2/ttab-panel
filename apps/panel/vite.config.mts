@@ -1,6 +1,7 @@
 /// <reference types='vitest' />
-import { defineConfig } from 'vite';
-import angular from '@analogjs/vite-plugin-angular';
+import { defineConfig } from 'vite'
+import angular from '@analogjs/vite-plugin-angular'
+import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(() => ({
   root: import.meta.dirname,
@@ -8,7 +9,7 @@ export default defineConfig(() => ({
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [angular()],
+  plugins: [angular(), tailwindcss()],
   // Uncomment this if you are using workers.
   // worker: {
   //  plugins: [],
@@ -26,4 +27,4 @@ export default defineConfig(() => ({
       provider: 'v8' as const,
     },
   },
-}));
+}))

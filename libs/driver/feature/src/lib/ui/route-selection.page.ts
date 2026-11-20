@@ -4,6 +4,7 @@ import { DriverApi, RouteCard, ActiveTrip } from '../driver-pwa-feature/driver.a
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
 import { NeshanMapComponent, NeshanMapPoint } from '@org/shared-maps'
 import { environment } from '@org/platform/config'
+import { DriverLocationPublisherService } from '@org/shared-tracking'
 import { DriverRouteCard } from './driver-route-card'
 import { HlmAlert, HlmAlertDescription, HlmAlertTitle } from '@spartan-ng/helm/alert'
 import { HlmButton } from '@spartan-ng/helm/button'
@@ -67,6 +68,9 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
               </button>
             </div>
           </div>
+          @if (publishError()) {
+            <p class="publish-error" role="status">{{ publishError() }}</p>
+          }
           <ol class="active-stations" [attr.aria-label]="fa() ? 'مراحل سفر' : 'Trip steps'">
             @for (station of trip.stations; track station.id; let i = $index) {
               <li
@@ -325,6 +329,11 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
         color: var(--muted-foreground);
         font-size: 1.25rem;
       }
+      .publish-error {
+        margin: 0 0 0.75rem;
+        color: var(--destructive);
+        font-size: 0.875rem;
+      }
       @media (max-width: 600px) {
         .page-container {
           padding: 1rem;
@@ -369,12 +378,14 @@ export class RouteSelectionPage {
   private readonly api = inject(DriverApi)
   private readonly router = inject(Router)
   private readonly config = inject(DRIVER_FEATURE_CONFIG)
+  private readonly publisher = inject(DriverLocationPublisherService)
   protected readonly fa = computed(() => this.config.language() === 'fa')
   protected readonly neshanMapApiKey = environment.neshanMapApiKey ?? null
   protected readonly neshanServiceApiKey = environment.neshanServiceApiKey ?? null
 
   protected readonly loading = signal(true)
   protected readonly error = signal<string | null>(null)
+  protected readonly publishError = signal<string | null>(null)
   protected readonly routes = signal<RouteCard[]>([])
   protected readonly activeTrip = signal<ActiveTrip | null>(null)
   protected readonly showRoutes = signal(false)
@@ -405,7 +416,14 @@ export class RouteSelectionPage {
       this.routes.set(routes)
       this.activeTrip.set(activeTrip)
       this.showRoutes.set(!activeTrip)
+      if (activeTrip) {
+        if (typeof navigator !== 'undefined') void this.startLocationPublishing()
+      } else {
+        this.publisher.stop()
+        this.publishError.set(null)
+      }
     } catch {
+      this.publisher.stop()
       this.error.set(
         this.fa()
           ? 'بارگذاری مسیرها ناموفق بود. لطفاً دوباره تلاش کنید.'
@@ -440,6 +458,49 @@ export class RouteSelectionPage {
 
   protected goToLiveMap(): void {
     this.router.navigateByUrl('/driver/live-map')
+  }
+
+  private async startLocationPublishing(): Promise<void> {
+    this.publishError.set(null)
+    const driverId = this.config.identity().driverId ?? null
+    const started = await this.publisher.start({
+      distanceFilterMeters: 10,
+      minIntervalMs: 5000,
+      periodicIntervalMs: 15_000,
+      getContext: () => {
+        const trip = this.api.cachedActiveTrip()
+        if (!trip) return null
+        return {
+          tripId: trip.id,
+          driverId,
+          directionId: trip.directionId,
+          driverLineId: trip.driverLineId,
+          lineId: trip.lineId ?? null,
+          nextStationId: trip.nextStationId ?? null,
+        }
+      },
+      send: payload => this.api.sendDriverLocation(payload),
+      onError: error => {
+        this.publishError.set(
+          error instanceof Error
+            ? error.message
+            : this.fa()
+              ? 'ارسال موقعیت راننده با خطا مواجه شد.'
+              : 'Driver location could not be sent.',
+        )
+      },
+    })
+    if (!started) {
+      this.publishError.set(
+        this.publisher.permissionDenied()
+          ? this.fa()
+            ? 'دسترسی مکان رد شده است. تنظیمات مرورگر را بررسی کنید.'
+            : 'Location permission was denied. Check your browser settings.'
+          : this.fa()
+            ? 'موقعیت مکانی در این دستگاه در دسترس نیست.'
+            : 'Location is unavailable on this device.',
+      )
+    }
   }
 
   protected openStation(stationId: number): void {

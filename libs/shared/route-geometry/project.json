@@ -1,0 +1,9 @@
+{
+  "name": "shared-route-geometry",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/route-geometry/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:data", "type:util"],
+  "// targets": "to see all targets run: nx show project shared-route-geometry --web",
+  "targets": {}
+}

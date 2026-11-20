@@ -1,11 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
 import { nxE2EPreset } from '@nx/playwright/preset'
 import { getReadyUrl, workspaceRoot } from '@nx/devkit'
+import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const isCI = !!process.env['CI']
-// For CI, you may want to set BASE_URL to the deployed application.
-// getReadyUrl moves the address to the port the dev server task reported.
-const baseURL = process.env['BASE_URL'] || getReadyUrl('http://localhost:4200')
+const externalBaseURL = process.env['BASE_URL']
+const inspectionServerURL = 'http://localhost:4200'
+const chromiumChannel = process.env['PLAYWRIGHT_CHROMIUM_CHANNEL']
+const baseURL = externalBaseURL || getReadyUrl(inspectionServerURL)
 
 /**
  * Read environment variables from file.
@@ -24,23 +27,28 @@ const baseURL = process.env['BASE_URL'] || getReadyUrl('http://localhost:4200')
  * (.ts/.js/.mts/.mjs/.cts/.cjs).
  */
 export default defineConfig({
-  ...nxE2EPreset(import.meta.dirname, { testDir: './src' }),
+  ...nxE2EPreset(dirname(fileURLToPath(import.meta.url)), { testDir: './src' }),
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
-  webServer: {
-    command: isCI ? 'bun nx run inspection:serve-static' : 'bun nx run inspection:serve',
-    url: getReadyUrl('http://localhost:4200'),
-    reuseExistingServer: true,
-    cwd: workspaceRoot,
-  },
+  webServer: externalBaseURL
+    ? undefined
+    : {
+        command: isCI ? 'bun nx run inspection:serve-static' : 'bun nx run inspection:serve',
+        url: getReadyUrl(inspectionServerURL),
+        reuseExistingServer: true,
+        cwd: workspaceRoot,
+      },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(chromiumChannel ? { channel: chromiumChannel } : {}),
+      },
     },
 
     {

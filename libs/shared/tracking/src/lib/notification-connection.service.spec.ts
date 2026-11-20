@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing'
 import { NotificationConnectionService } from './notification-connection.service'
 import { TrackingConnectionService } from './tracking-connection.service'
+import { LOCATION_NOTIFICATION, PASSENGER_NOTIFICATION } from './tracking.models'
 
 class FakeEventSource {
   static readonly CONNECTING = 0
@@ -53,7 +54,7 @@ describe('NotificationConnectionService', () => {
 
   it('connects with credentials and dispatches namespaced notifications by channel', async () => {
     const locationListener = vi.fn()
-    notifications.on('LocationNotification', locationListener)
+    notifications.on(LOCATION_NOTIFICATION, locationListener)
     await notifications.connectCookieStream()
 
     const source = FakeEventSource.instances[0]
@@ -75,8 +76,8 @@ describe('NotificationConnectionService', () => {
   it('supports independent notification channels and idempotent unsubscribe', async () => {
     const firstListener = vi.fn()
     const secondListener = vi.fn()
-    const removeFirst = notifications.on('LocationNotification', firstListener)
-    const removeSecond = notifications.on('PassengerNotification', secondListener)
+    const removeFirst = notifications.on(LOCATION_NOTIFICATION, firstListener)
+    const removeSecond = notifications.on(PASSENGER_NOTIFICATION, secondListener)
     await notifications.connectCookieStream()
     const source = FakeEventSource.instances[0]
 
@@ -89,7 +90,7 @@ describe('NotificationConnectionService', () => {
     removeFirst()
     removeFirst()
     const laterListener = vi.fn()
-    notifications.on('LocationNotification', laterListener)
+    notifications.on(LOCATION_NOTIFICATION, laterListener)
     source.message(
       JSON.stringify({ typeName: 'LocationNotification', payload: { lat: 3, lng: 4 } }),
     )
@@ -131,6 +132,8 @@ describe('TrackingConnectionService notification channels', () => {
   })
 
   it('updates trip locations and clears them when a passenger notification ends the trip', async () => {
+    expect(LOCATION_NOTIFICATION).toBe('LocationNotification')
+    expect(PASSENGER_NOTIFICATION).toBe('PassengerNotification')
     await tracking.connectCookieStream()
     const source = FakeEventSource.instances[0]
     source.message(
@@ -142,8 +145,8 @@ describe('TrackingConnectionService notification channels', () => {
           directionId: 22,
           driverLineId: 64,
           nextStationId: 89,
-          Lat: 35.7862,
-          Lng: 51.3924,
+          lat: 35.7862,
+          lng: 51.3924,
         },
       }),
     )

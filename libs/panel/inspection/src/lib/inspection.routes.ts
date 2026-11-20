@@ -3,6 +3,7 @@ import {
   InjectionToken,
   Signal,
   makeEnvironmentProviders,
+  signal,
 } from '@angular/core'
 import { Routes } from '@angular/router'
 import { authGuard } from '@org/auth-data-access'
@@ -34,6 +35,8 @@ export interface InspectionFeatureConfig extends InspectionDataConfig {
   readonly scope: () => Signal<number | null>
   readonly lookups: InspectionLookups
   readonly lookupProviders: readonly EnvironmentProviders[]
+  readonly homeRoute?: 'list' | 'create'
+  readonly canManageActions?: () => Signal<boolean>
 }
 export const INSPECTION_FEATURE = new InjectionToken<InspectionFeatureConfig>('INSPECTION_FEATURE')
 export const INSPECTION_LANGUAGE = new InjectionToken<Signal<AutocompleteLanguage>>(
@@ -41,6 +44,7 @@ export const INSPECTION_LANGUAGE = new InjectionToken<Signal<AutocompleteLanguag
 )
 export const INSPECTION_SCOPE = new InjectionToken<Signal<number | null>>('INSPECTION_SCOPE')
 export const INSPECTION_LOOKUPS = new InjectionToken<InspectionLookups>('INSPECTION_LOOKUPS')
+export const INSPECTION_CAN_MANAGE = new InjectionToken<Signal<boolean>>('INSPECTION_CAN_MANAGE')
 
 export function provideInspectionFeature(config: InspectionFeatureConfig) {
   return makeEnvironmentProviders([
@@ -50,6 +54,10 @@ export function provideInspectionFeature(config: InspectionFeatureConfig) {
     { provide: INSPECTION_LANGUAGE, useFactory: config.language },
     { provide: INSPECTION_SCOPE, useFactory: config.scope },
     { provide: INSPECTION_LOOKUPS, useValue: config.lookups },
+    {
+      provide: INSPECTION_CAN_MANAGE,
+      useFactory: config.canManageActions ?? (() => signal(false)),
+    },
   ])
 }
 
@@ -68,11 +76,14 @@ export function createInspectionRoutes(config: InspectionFeatureConfig): Routes 
       runGuardsAndResolvers: 'pathParamsChange',
       data: { breadcrumb: 'Inspections' },
       children: [
-        {
-          path: '',
-          pathMatch: 'full',
-          loadComponent: () => import('./ui/inspection-page').then(module => module.InspectionPage),
-        },
+        config.homeRoute === 'create'
+          ? { path: '', pathMatch: 'full', redirectTo: 'new' }
+          : {
+              path: '',
+              pathMatch: 'full',
+              loadComponent: () =>
+                import('./ui/inspection-page').then(module => module.InspectionPage),
+            },
         {
           path: 'new',
           pathMatch: 'full',

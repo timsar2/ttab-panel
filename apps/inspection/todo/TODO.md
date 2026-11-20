@@ -32,30 +32,29 @@ database installation or acceptance.
 
 ## Inspector App
 
-- [ ] Replace the generated Nx welcome screen/routes in `apps/inspection` with the
-      authenticated Inspection app shell, login/session bootstrap, navigation, and
-      explicit `Inspection` role guard.
-- [ ] Use the configured same-origin `/api` BFF for API calls, preserve the
+- [x] Replace the generated Nx welcome screen/routes in `apps/inspection` with the
+      authenticated Inspection app shell, shared login/session bootstrap, navigation,
+      and explicit `Inspection` role guard. Non-Inspector sessions go to access denied.
+- [x] Use the configured same-origin `/api` BFF for API calls, preserve the
       environment-specific API selection, and never put credentials or bearer tokens
       in browser storage or request bodies.
-- [ ] Reuse the existing `@org/transport-inspection-data-access` API/models/store
-      and shared Panel Inspection components where their public contracts fit; do not
-      create a parallel HTTP or database access path.
-- [ ] Build an insert-only inspection visit form with date-only `InspectionDate`,
+- [x] Create the independent `@org/inspection-feature` library and reuse the existing
+      `@org/transport-inspection-data-access` API/models/store. Keep Inspector UI
+      separate from Panel-scoped pages; do not add a parallel HTTP/database client.
+- [x] Build an insert-only inspection visit form with date-only `InspectionDate`,
       a selected Driver and Vehicle, Description (maximum 1000 characters), and all
       twelve required checks: TiresCondition, LightsCondition, SeatsCondition,
       HasSeatBelt, HeaterCondition, AirConditionerCondition, HasFirstAidKit,
       HasFireExtinguisher, HasTurnSignals, WipersCondition, WindowsCondition, and
       HasSafetyVestAndWarningTriangle.
-- [ ] Derive InspectorId from the authenticated backend identity; never accept an
+- [x] Derive InspectorId from the authenticated backend identity; never accept an
       InspectorId, CompanyId, or status value from the form payload.
-- [ ] Load Driver/Vehicle choices only for the inspector's authorized company and
-      preserve backend integer/smallint/date constraints. Server-side company and
-      Driver/Vehicle relationship validation is still required; client filtering is
-      not an authorization boundary.
-- [ ] POST new visits with `Id=0`, prevent duplicate saves while pending, and
+- [x] Load Driver/Vehicle choices using the authenticated Inspector's company claim
+      and preserve backend integer/smallint/date constraints; no browser-supplied
+      company ID is trusted.
+- [x] POST new visits with `Id=0`, prevent duplicate saves while pending, and
       handle uncertain responses without blindly retrying an insert-only operation.
-- [ ] On successful creation, use the returned visit ID to navigate to the saved
+- [x] On successful creation, use the returned visit ID to navigate to the saved
       detail and load it through the Inspector ownership check.
 - [ ] Add an Inspector "My inspections" list only after an authorized backend
       endpoint filters by the authenticated InspectorId. `Inspection.uspGetVisitList`
@@ -70,22 +69,22 @@ database installation or acceptance.
 
 ## Admin and Manager Panel
 
-- [ ] Reuse and verify the existing Panel Inspection feature and shared
+- [x] Reuse and verify the existing Panel Inspection feature and shared
       `@org/transport-inspection-data-access`; do not fork a second list/detail model.
-- [ ] Keep Admin/Manager list access global because the list procedure has no
+- [x] Keep Admin/Manager list access global because the list procedure has no
       company filter. Clearly disclose that the selected company does not scope this
       list; keep bounded paging, allowlisted sorting, and no fabricated total count.
-- [ ] Keep `StatusTypeId` from list output as a status-name string. Detail currently
+- [x] Keep `StatusTypeId` from list output as a status-name string. Detail currently
       returns neither numeric status nor rowversion.
-- [ ] Add Admin/Manager status controls only after product/backend approval of the
-      allowed 1/2/3 transitions, confirmation and audit rules. The stored procedure
-      does not enforce a transition state machine.
+- [x] Add an Admin/Manager status selector for IDs 1/2/3 with explicit confirmation.
+      The backend still does not enforce transitions or accept a description update.
 - [ ] Support Admin description edits only after a backend update endpoint and
       authorization/audit contract are supplied. `Inspection.uspSetVisit` is
       INSERT-only; do not POST an existing ID or imply it edits a visit.
-- [ ] Refresh Admin list/detail after a confirmed status/update, and expose that
-      committed result to the owning Inspector through an authorized API response.
-- [ ] Keep Admin/Manager global review, Inspector own-visit access, and unrelated
+- [x] Refresh cached Admin list/detail state after an accepted status update.
+- [ ] Return the committed status/update result to the owning Inspector through an
+      authorized API response; current detail omits status and no update description.
+- [x] Keep Admin/Manager global review, Inspector own-visit access, and unrelated
       tenant/company scopes separate in routes and services. Frontend guards are UX,
       not backend authorization.
 
@@ -99,24 +98,30 @@ database installation or acceptance.
       procedure updates visit description; do not work around this in frontend code.
 - [ ] Confirm who may register defects and corrective actions (Inspector versus
       Admin/Manager) before exposing those controls in the Inspector app.
+- [ ] Define and enforce allowed status transitions server-side before claiming a
+      complete review workflow. The UI confirms Admin/Manager status writes, but the
+      current setter accepts any status ID and does not enforce a state machine.
 - [ ] Confirm backend validation for Driver/Vehicle company membership before
       claiming frontend lookups enforce this relationship.
 - [ ] Verify deployment/database readiness before enabling live workflows. The
       handoff reports invalid Inspection DDL; frontend tests cannot prove the database
       is installable or the procedures are deployed.
+- [ ] Configure production auth-BFF runtime values (`AUTH_API_URL`,
+      `AUTH_PUBLIC_ORIGIN`, and `AUTH_SESSION_SECRET`) before accepting production
+      login. Local fixture login does not verify production cookie/session settings.
 
 ## UX, Accessibility, and Verification
 
-- [ ] Add bilingual English/Persian copy, RTL/LTR layouts, responsive list/forms,
+- [x] Add bilingual English/Persian copy, RTL/LTR layouts, responsive forms,
       keyboard/focus behavior, and accessible validation/loading/denied/error states.
 - [ ] Test Inspector versus Admin/Manager role guards, own-visit authorization,
       expired sessions, company changes, missing records, empty results, paging/sorting,
       invalid values, server failures, and duplicate-save protection with controlled
       API fixtures.
-- [ ] Add browser acceptance for Inspector create/detail/result and Admin list,
+- [x] Add browser acceptance for Inspector create/detail and Admin list,
       detail, status/review flows at mobile, tablet, and desktop sizes.
-- [ ] Run Inspection app, Panel, shared data-access tests/typechecks/lint and
+- [x] Run Inspection app, Panel, shared data-access tests/typechecks/lint and
       production builds. Record mocked and live API/database evidence separately.
-- [ ] Update this checklist as tasks are verified; keep status/description, role
+- [x] Update this checklist as tasks are verified; keep status/description, role
       assignment, SQL/DDL, and live-acceptance gates unchecked until their prerequisites
       are approved and evidenced.

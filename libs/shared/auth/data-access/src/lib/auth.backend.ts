@@ -133,7 +133,14 @@ export function createDefaultAuthBackend(): AuthBackend {
       login: credentials =>
         request(() =>
           http
-            .post<unknown>(`${base}/auth/login`, credentials, cookieOptions())
+            .post<unknown>(
+              `${base}/auth/login`,
+              {
+                [config.loginField]: credentials.username,
+                password: credentials.password,
+              },
+              cookieOptions(),
+            )
             .pipe(map(validateAuthSession)),
         ),
       refresh: () =>

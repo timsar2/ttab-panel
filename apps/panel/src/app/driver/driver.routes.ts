@@ -39,7 +39,7 @@ export function createPanelDriverRoutes() {
         const roleAllowed =
           !!user &&
           (request.action === 'search'
-            ? user.roles.some(role => ['Admin', 'Manager', 'Oprator'].includes(role))
+            ? user.roles.some(role => ['Admin', 'Manager', 'Operator'].includes(role))
             : canManageDrivers(user.roles))
         const companyAllowed = Boolean(
           context.status() === 'ready' &&

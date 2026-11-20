@@ -175,7 +175,7 @@ export function navigationFor(
   return items.filter(item => {
     if (item.id === 'inspections') return roles.some(role => role === 'Admin' || role === 'Manager')
     if (item.id === 'support')
-      return roles.some(role => ['Admin', 'Manager', 'Oprator'].includes(role))
+      return roles.some(role => ['Admin', 'Manager', 'Operator'].includes(role))
     return true
   })
 }

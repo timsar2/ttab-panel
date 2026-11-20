@@ -1,4 +1,10 @@
 import { TransportError, transportInteger, transportRecord } from '@org/transport-http'
+import {
+  decodeRouteGeometry,
+  decodeRoutePolyline,
+  encodeRoutePolyline,
+  type GeoJsonLineString,
+} from '@org/shared-route-geometry'
 
 export type RouteId = number & { readonly __routeId: unique symbol }
 
@@ -11,24 +17,21 @@ export interface DirectionRoute {
   readonly name: string
   /** Wire value is commonly HH:mm:ss; do not treat it as a Shift time. */
   readonly departureTime: string
-  readonly routeGeoJson: DirectionLineString | null
+  readonly routeGeometry: DirectionLineString | null
 }
 
-export interface DirectionLineString {
-  readonly type: 'LineString'
-  readonly coordinates: readonly (readonly [longitude: number, latitude: number])[]
-}
+export type DirectionLineString = GeoJsonLineString
 
 export interface DirectionRouteDraft {
   readonly companyId: number
   readonly name: string
   readonly departureTime: string
-  readonly routeGeoJson: DirectionLineString | null
+  readonly routeGeometry: DirectionLineString | null
   readonly id?: RouteId
 }
 
-export type DirectionRouteWrite = Omit<DirectionRouteDraft, 'routeGeoJson'> & {
-  readonly routeGeoJson: string | null
+export type DirectionRouteWrite = Omit<DirectionRouteDraft, 'routeGeometry'> & {
+  readonly encodedPolyline: string | null
 }
 
 export interface DirectionPrice {
@@ -96,64 +99,27 @@ export function decodeRoute(value: unknown): DirectionRoute {
   const row = transportRecord(value)
   if (typeof row['name'] !== 'string' || typeof row['departureTime'] !== 'string')
     throw new TransportError('contract', 0, 'The route response is missing name or departure time.')
-  const routeGeoJson = decodeRouteGeoJson(row['routeGeoJson'] ?? row['RouteGeoJson'] ?? null)
+  const encodedPolyline = row['encodedPolyline'] ?? row['EncodedPolyline']
+  const routeGeometry =
+    encodedPolyline === undefined
+      ? decodeRouteGeometry(row['routeGeoJson'] ?? row['RouteGeoJson'] ?? null)
+      : decodeRoutePolyline(encodedPolyline)
+  if (
+    encodedPolyline != null &&
+    encodedPolyline !== '' &&
+    (typeof encodedPolyline !== 'string' || !routeGeometry)
+  )
+    throw new TransportError(
+      'contract',
+      0,
+      'The route response contains an invalid encoded polyline.',
+    )
   return {
     id: routeId(row['id']),
     name: row['name'],
     departureTime: row['departureTime'],
-    routeGeoJson,
+    routeGeometry,
   }
-}
-
-function decodeRouteGeoJson(value: unknown): DirectionLineString | null {
-  if (value == null || value === '') return null
-  let parsed: unknown = value
-  if (typeof parsed === 'string') {
-    try {
-      parsed = JSON.parse(parsed) as unknown
-    } catch {
-      throw new TransportError('contract', 0, 'The route response contains invalid GeoJSON.')
-    }
-  }
-  if (!parsed || typeof parsed !== 'object')
-    throw new TransportError('contract', 0, 'The route response contains invalid GeoJSON.')
-  const geoJson = parsed as { type?: unknown; coordinates?: unknown; features?: unknown }
-  if (geoJson.type === 'FeatureCollection' && Array.isArray(geoJson.features)) {
-    const feature = geoJson.features.find(
-      item =>
-        !!item &&
-        typeof item === 'object' &&
-        (item as { geometry?: { type?: unknown } }).geometry?.type === 'LineString',
-    ) as { geometry?: unknown } | undefined
-    if (!feature) return null
-    parsed = feature.geometry
-  }
-  if (!parsed || typeof parsed !== 'object')
-    throw new TransportError('contract', 0, 'The route response contains invalid GeoJSON.')
-  const line = parsed as { type?: unknown; coordinates?: unknown }
-  if (line.type !== 'LineString' || !Array.isArray(line.coordinates))
-    throw new TransportError('contract', 0, 'The route response must be a GeoJSON LineString.')
-  const coordinates = line.coordinates.map(coordinate => {
-    if (
-      !Array.isArray(coordinate) ||
-      coordinate.length < 2 ||
-      !Number.isFinite(coordinate[0]) ||
-      !Number.isFinite(coordinate[1]) ||
-      coordinate[0] < -180 ||
-      coordinate[0] > 180 ||
-      coordinate[1] < -90 ||
-      coordinate[1] > 90
-    )
-      throw new TransportError('contract', 0, 'The route LineString contains invalid coordinates.')
-    return [coordinate[0], coordinate[1]] as const
-  })
-  if (coordinates.length < 2)
-    throw new TransportError(
-      'contract',
-      0,
-      'A route LineString must contain at least two coordinates.',
-    )
-  return { type: 'LineString', coordinates }
 }
 
 function nullableText(value: unknown, field: string): string | null {
@@ -201,8 +167,7 @@ export function routeWrite(draft: DirectionRouteDraft): DirectionRouteWrite {
     companyId: draft.companyId,
     name: draft.name.trim(),
     departureTime: draft.departureTime,
-    routeGeoJson:
-      draft.routeGeoJson === null ? null : JSON.stringify(decodeRouteGeoJson(draft.routeGeoJson)),
+    encodedPolyline: encodeRoutePolyline(draft.routeGeometry),
     ...(draft.id === undefined ? {} : { id: routeId(draft.id) }),
   }
 }

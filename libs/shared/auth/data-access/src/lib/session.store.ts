@@ -62,6 +62,7 @@ export const SessionStore = signalStore(
   withState({
     status: 'anonymous' as AuthStatus,
     user: null as AuthUser | null,
+    companyId: null as number | null,
     error: null as string | null,
     errorCode: null as AuthErrorCode | null,
     version: 0,
@@ -103,6 +104,7 @@ export const SessionStore = signalStore(
       patchState(store, {
         status: 'anonymous',
         user: null,
+        companyId: null,
         error: null,
         errorCode: null,
         version: store.version() + 1,
@@ -120,6 +122,7 @@ export const SessionStore = signalStore(
         expiresAt = session.expiresAt
         patchState(store, {
           user: session.user,
+          companyId: session.user.companyId,
           status: 'authenticated',
           error: null,
           errorCode: null,
@@ -143,6 +146,7 @@ export const SessionStore = signalStore(
       expiresAt = decoded.expiresAt
       patchState(store, {
         user: decoded.user,
+        companyId: decoded.user.companyId,
         status: 'authenticated',
         error: null,
         errorCode: null,

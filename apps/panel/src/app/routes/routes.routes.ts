@@ -7,7 +7,7 @@ import { CompanyContextStore } from '@org/transport-company-data-access'
 import { panelConfig } from '../panel.config'
 import { of } from 'rxjs'
 
-const routeManagementRoles = ['Admin', 'Manager', 'Operator', 'Oprator'] as const
+const routeManagementRoles = ['Admin', 'Manager', 'Operator', 'Operator'] as const
 const allowedRouteActions = new Set<RouteAccessRequest['action']>([
   'search',
   'detail',

@@ -91,11 +91,12 @@ include `/api`; confirm the exact deployment configuration before choosing paths
 The backend exposes `POST /inspections`, `POST /inspections/search`,
 `GET /inspections/{id}`, `POST /inspections/defects`,
 `POST /inspections/corrective-actions`, and `POST /inspections/status`.
-All Inspection routes are restricted to Admin/Manager by the current backend.
+Inspector can create visits and view only their own detail. Admin/Manager can view
+the global list/detail and perform status, defect, and corrective-action writes.
 
-- [ ] PANEL-BE-18 Obtain product-owner confirmation of the Inspection audience and
-      roles. Current backend permits only Admin/Manager, so the Panel gates navigation
-      and API access to those roles without treating that source rule as product sign-off.
+- [x] PANEL-BE-18 Confirm the audiences from product scope: the standalone Inspection
+      app is Inspector-only; the Panel review list/details remain Admin/Manager-only.
+      Routes and server adapters preserve those distinct roles.
 - [x] PANEL-BE-19 Create reusable Inspection API/model/store and lazy panel feature
       entry following the Support and existing feature-library boundaries; scope
       sensitive state to the authenticated session and prevent stale details crossing
@@ -119,11 +120,11 @@ All Inspection routes are restricted to Admin/Manager by the current backend.
       and description, plus a distinct completed corrective-action form using
       CompletedAt (date only) and description. Do not conflate required remediation
       with work actually completed; these APIs are insert-only and are not edits.
-- [ ] PANEL-BE-24 Implement status actions only after explicit approval of actor,
-      allowed transitions, and confirmation semantics. Backend status IDs are 1 pending
-      action, 2 pending approval, 3 approved, but the setter does not enforce a state
-      machine or approver authorization. Do not present approval as secure based on
-      frontend role checks alone.
+- [x] PANEL-BE-24 Add an Admin/Manager status selector for IDs 1 pending action,
+      2 pending approval, and 3 approved, with explicit confirmation. The user requested
+      this workflow; the backend enforces the Admin/Manager role but does not enforce a
+      transition state machine. The UI discloses that limitation and does not claim the
+      endpoint updates a description.
 - [x] PANEL-BE-25 Add stable allowlisted sorting and bounded page controls for
       Inspection list, respecting the fixed fields supported by the backend. Do not
       send arbitrary sort expressions or exceed short/int paging constraints.

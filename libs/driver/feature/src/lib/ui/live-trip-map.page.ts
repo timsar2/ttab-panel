@@ -362,9 +362,9 @@ export class LiveTripMapPage {
     const started = await this.publisher.start({
       distanceFilterMeters: 10,
       minIntervalMs: 5000,
-      periodicIntervalMs: environment.production ? 30_000 : 15_000,
+      periodicIntervalMs: 15_000,
       getContext: () => {
-        const currentTrip = this.trip()
+        const currentTrip = this.api.cachedActiveTrip()
         if (!currentTrip) return null
         return {
           tripId: currentTrip.id,

@@ -7,7 +7,7 @@ export const appConfig: ApplicationConfig = {
   providers: providePlatformApp({
     id: 'panel',
     brandName: panelConfig.brandName,
-    auth: panelConfig,
+    auth: { afterLoginUrl: panelConfig.afterLoginUrl },
     routes: appRoutes,
   }),
 }

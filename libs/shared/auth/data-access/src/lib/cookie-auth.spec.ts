@@ -40,12 +40,12 @@ const metadata = (): AuthSession => ({
 const route = { queryParamMap: convertToParamMap({}) } as ActivatedRouteSnapshot
 const state = { url: '/workspace' } as RouterStateSnapshot
 
-function setup(serverSession?: AuthSession | null) {
+function setup(serverSession?: AuthSession | null, loginField: 'username' | 'email' = 'username') {
   TestBed.configureTestingModule({
     providers: [
       provideZonelessChangeDetection(),
       provideRouter([]),
-      provideAuth({ apiUrl: '/api', mode: 'cookie', afterLoginUrl: '/workspace' }),
+      provideAuth({ apiUrl: '/api', mode: 'cookie', loginField, afterLoginUrl: '/workspace' }),
       provideHttpClientTesting(),
       ...(serverSession !== undefined
         ? [
@@ -79,6 +79,15 @@ describe('cookie authentication', () => {
     expect(session.user()).toEqual(value.user)
     expect(session.accessToken()).toBeNull()
     expect(JSON.stringify(session.user())).not.toContain('must-not-be-stored')
+  })
+
+  it('sends the configured email field for cookie login without a username field', async () => {
+    const { session, controller } = setup(undefined, 'email')
+    const login = session.login({ username: 'admin@root.com', password: 'secret' })
+    const request = controller.expectOne('/api/auth/login')
+    expect(request.request.body).toEqual({ email: 'admin@root.com', password: 'secret' })
+    request.flush(metadata())
+    expect(await login).toBe(true)
   })
 
   it('restores once for concurrent guards before authorizing navigation', async () => {
@@ -133,11 +142,14 @@ describe('cookie authentication', () => {
     const restoration = firstValueFrom(session.restore())
     controller.expectOne('/api/auth/session').flush(metadata())
     await restoration
-    const a = firstValueFrom(http.get('/api/one', { headers: { Authorization: 'Bearer unsafe' } }))
+    const a = firstValueFrom(
+      http.get('/api/one', { headers: { Authorization: 'Bearer unsafe', tenant: 'custom' } }),
+    )
     const b = firstValueFrom(http.get('/api/two'))
     for (const path of ['one', 'two']) {
       const request = controller.expectOne(`/api/${path}`)
       expect(request.request.headers.has('Authorization')).toBe(false)
+      expect(request.request.headers.get('tenant')).toBe(path === 'one' ? 'custom' : 'root')
       expect(request.request.headers.get('X-Auth-Request')).toBe('1')
       expect(request.request.transferCache).toBe(false)
       request.flush({}, { status: 401, statusText: 'Unauthorized' })

@@ -25,7 +25,6 @@ export interface TrackingHubConfig {
   accessTokenFactory?: () => string | Promise<string | null | undefined> | null | undefined
 }
 
-// Must match NotificationConstants.NotificationFromServer (nameof => PascalCase).
 export const NOTIFICATION_FROM_SERVER = 'NotificationFromServer'
 export const LOCATION_NOTIFICATION = 'LocationNotification'
 export const PASSENGER_NOTIFICATION = 'PassengerNotification'

@@ -4,6 +4,7 @@ import { SessionStore } from '@org/platform'
 import { AppLayout, LayoutNavItem } from '@org/layout'
 import { DriverApi, DriverHomeDetails } from '../driver-pwa-feature/driver.api'
 import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
+import { DriverLocationPublisherService } from '@org/shared-tracking'
 import { HlmButtonImports } from '@spartan-ng/helm/button'
 import {
   lucideRoute,
@@ -54,6 +55,7 @@ export class DriverShell {
   private readonly session = inject(SessionStore)
   private readonly router = inject(Router)
   private readonly config = inject(DRIVER_FEATURE_CONFIG)
+  private readonly publisher = inject(DriverLocationPublisherService)
   protected readonly fa = computed(() => this.config.language() === 'fa')
   private readonly profile = signal<Record<string, unknown> | null>(null)
   protected readonly driverName = computed(() => {
@@ -115,6 +117,7 @@ export class DriverShell {
   }
 
   protected async logout(): Promise<void> {
+    this.publisher.stop()
     await this.session.logout()
     await this.router.navigateByUrl('/login')
   }

@@ -65,6 +65,14 @@ describe('LoginForm', () => {
     }
   })
 
+  it('does not prefill credentials and uses the consumer brand when supplied', async () => {
+    expect(fixture.componentInstance.credentials()).toEqual({ username: '', password: '' })
+    fixture.componentRef.setInput('brandName', 'Inspection')
+    await fixture.whenStable()
+    expect(element.querySelector('h1')?.textContent).toContain('ورود به Inspection')
+    expect(element.querySelector('[type="submit"]')?.textContent).toContain('ورود به Inspection')
+  })
+
   it('marks empty fields touched, describes errors and focuses the first invalid input', async () => {
     const emit = vi.fn()
     fixture.componentInstance.credentialsSubmit.subscribe(emit)

@@ -1,10 +1,8 @@
 import type { NeshanMapPoint } from './neshan-map.component'
+import { decodeRouteGeometry, type GeoJsonLineString } from '@org/shared-route-geometry'
 
-export type MapCoordinate = readonly [longitude: number, latitude: number]
-export interface NeshanLineString {
-  readonly type: 'LineString'
-  readonly coordinates: readonly MapCoordinate[]
-}
+export type MapCoordinate = GeoJsonLineString['coordinates'][number]
+export type NeshanLineString = GeoJsonLineString
 
 export function decodeNeshanPolyline(value: unknown): readonly MapCoordinate[] {
   if (typeof value !== 'string' || value.length === 0)
@@ -99,42 +97,5 @@ export async function generateNeshanRouteGeoJson(
 export function parseRouteGeoJson(
   value: string | NeshanLineString | null | undefined,
 ): NeshanLineString | null {
-  if (!value) return null
-  let parsed: unknown = value
-  try {
-    if (typeof parsed === 'string') parsed = JSON.parse(parsed) as unknown
-  } catch {
-    return null
-  }
-  if (!parsed || typeof parsed !== 'object') return null
-  const candidate = parsed as { type?: unknown; coordinates?: unknown; features?: unknown }
-  let line: unknown = candidate
-  if (candidate.type === 'FeatureCollection' && Array.isArray(candidate.features)) {
-    const feature = candidate.features.find(item => {
-      if (!item || typeof item !== 'object') return false
-      const geometry = (item as { geometry?: unknown }).geometry
-      return (
-        !!geometry &&
-        typeof geometry === 'object' &&
-        (geometry as { type?: unknown }).type === 'LineString'
-      )
-    }) as { geometry?: unknown } | undefined
-    line = feature?.geometry
-  }
-  if (!line || typeof line !== 'object') return null
-  const geometry = line as { type?: unknown; coordinates?: unknown }
-  if (geometry.type !== 'LineString' || !Array.isArray(geometry.coordinates)) return null
-  const coordinates = geometry.coordinates
-  if (
-    coordinates.length < 2 ||
-    coordinates.some(
-      point =>
-        !Array.isArray(point) ||
-        point.length < 2 ||
-        !Number.isFinite(point[0]) ||
-        !Number.isFinite(point[1]),
-    )
-  )
-    return null
-  return { type: 'LineString', coordinates: coordinates as MapCoordinate[] }
+  return decodeRouteGeometry(value)
 }

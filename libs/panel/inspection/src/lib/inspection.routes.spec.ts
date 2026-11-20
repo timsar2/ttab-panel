@@ -20,6 +20,7 @@ const config = {
     vehicles: () => () => of({ items: [], pageNumber: 1, hasNext: false }),
   },
   lookupProviders: [],
+  canManageActions: () => signal(false),
 }
 
 describe('Inspection route factory', () => {

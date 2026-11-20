@@ -93,6 +93,7 @@ describe('PassengerApi', () => {
       driverId: 315,
       stationId: 0,
       nextStationId: 89,
+      encodedPolyline: '_t{xE_avxH_pR_pR',
       fullName: 'کیوان نصیری',
       carTypeName: 'مینی بوس',
       carPlate: '65ع18987',
@@ -127,6 +128,13 @@ describe('PassengerApi', () => {
       carImage: 'https://api.ttabline.com/Files/Images/Vehicle/vehicle.jpg',
       passengerStationId: null,
       nextStationId: 89,
+      routeGeoJson: {
+        type: 'LineString',
+        coordinates: [
+          [51.4, 35.7],
+          [51.5, 35.8],
+        ],
+      },
       stations: [
         { id: 87, name: 'شهرک الهیه', lat: 36.69054927885622, lng: 48.4571260213852 },
         { id: 89, name: 'ابتدای گلشهر', lat: 36.67062155695412, lng: 48.53678226470948 },

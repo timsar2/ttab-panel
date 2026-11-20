@@ -76,6 +76,32 @@ describe('DriverApi route scoping and joins', () => {
     await expect(result).resolves.toMatchObject({ id: 27, fullName: 'Driver' })
   })
 
+  it('publishes the driver location and trip context to the routing endpoint', async () => {
+    const result = api.sendDriverLocation({
+      tripId: 91,
+      driverId: 27,
+      directionId: 7,
+      driverLineId: 44,
+      lineId: 55,
+      nextStationId: 12,
+      lat: 36.69,
+      lng: 48.45,
+    })
+    const request = http.expectOne('/api/v1/routings/location')
+    expect(request.request.method).toBe('POST')
+    expect(request.request.body).toEqual({
+      tripId: 91,
+      driverId: 27,
+      directionId: 7,
+      driverLineId: 44,
+      lineId: 55,
+      nextStationId: 12,
+      coordinate: { lat: 36.69, lng: 48.45 },
+    })
+    request.flush({ code: '2000', result: true })
+    await expect(result).resolves.toBeUndefined()
+  })
+
   it('loads the home driver and assigned vehicle by their specific IDs', async () => {
     const result = api.driverHomeDetails()
     const profileResult = api.profile()
@@ -130,6 +156,7 @@ describe('DriverApi route scoping and joins', () => {
       driverLineId: 44,
       driverId: 27,
       nextStationId: 12,
+      encodedPolyline: '_t{xE_avxH_pR_pR',
       fullName: 'Driver Name',
       stations: [
         {
@@ -155,6 +182,13 @@ describe('DriverApi route scoping and joins', () => {
     const trip = await result
     expect(trip).toMatchObject({
       nextStationId: 13,
+      routeGeoJson: {
+        type: 'LineString',
+        coordinates: [
+          [51.4, 35.7],
+          [51.5, 35.8],
+        ],
+      },
       stations: [
         {
           id: 12,

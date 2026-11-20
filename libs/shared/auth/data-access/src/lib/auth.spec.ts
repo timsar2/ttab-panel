@@ -199,6 +199,7 @@ describe('auth data access', () => {
       lastName: 'Last',
       roles: ['Client', 'Admin'],
     })
+    expect(session.companyId()).toBe(29)
     expect(session.isAuthenticated()).toBe(true)
     expect(session.status()).toBe('authenticated')
     expect(session.error()).toBeNull()
@@ -608,6 +609,7 @@ describe('session concurrency and guards', () => {
     await signIn(session, controller, value)
     const logout = session.logout()
     expect(session.user()).toBeNull()
+    expect(session.companyId()).toBeNull()
     expect(session.status()).toBe('anonymous')
     const request = controller.expectOne(`${api}/personal/logout`)
     expect(request.request.method).toBe('GET')

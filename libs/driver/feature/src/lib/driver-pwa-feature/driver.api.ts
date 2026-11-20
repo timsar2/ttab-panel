@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http'
 import { inject, Injectable, InjectionToken } from '@angular/core'
 import { ShiftTimesStore } from '@org/transport-scheduling-data-access'
 import { firstValueFrom } from 'rxjs'
+import { decodeRouteGeometry, type GeoJsonLineString } from '@org/shared-route-geometry'
 
 export interface DriverIdentity {
   readonly driverId: number | null
@@ -87,7 +88,7 @@ export interface ActiveTrip {
   nextStationId?: number | null
   passengerStationId?: number | null
   lineId?: number | null
-  routeGeoJson: string | null
+  routeGeoJson: GeoJsonLineString | null
 }
 
 export interface DriverSupportViolationType {
@@ -194,6 +195,10 @@ export class DriverApi {
 
   async activeTripForStation(): Promise<ActiveTrip | null> {
     return this.activeTripCache === undefined ? this.activeTrip() : this.activeTripCache
+  }
+
+  cachedActiveTrip(): ActiveTrip | null {
+    return this.activeTripCache ?? null
   }
 
   private tripProgressKey(driverId: number): string {
@@ -605,10 +610,9 @@ export class DriverApi {
       tripTypeName: String(property(value, 'tripTypeName') ?? ''),
       shiftTime: String(property(value, 'shiftTime') ?? ''),
       departureTime: String(property(value, 'departureTime') ?? ''),
-      routeGeoJson:
-        typeof property(value, 'routeGeoJson') === 'string'
-          ? (property(value, 'routeGeoJson') as string)
-          : null,
+      routeGeoJson: decodeRouteGeometry(
+        property(value, 'encodedPolyline') ?? property(value, 'routeGeoJson'),
+      ),
       nextStationId:
         typeof property(value, 'nextStationId') === 'number'
           ? (property(value, 'nextStationId') as number)

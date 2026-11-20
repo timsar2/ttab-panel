@@ -25,6 +25,10 @@ export function createPanelInspectionRoutes() {
         return context.status() === 'ready' && company ? company.id : null
       })
     },
+    canManageActions: () => {
+      const session = inject(SessionStore)
+      return computed(() => isInspectionStaff(session.user()?.roles))
+    },
     endpoints: {
       collection: 'v1/inspections',
       search: 'v1/inspections/search',
@@ -114,16 +118,14 @@ export function createPanelInspectionRoutes() {
       drivers: () => {
         const api = inject(DriversApi)
         return query =>
-          api
-            .search({ pageIndex: 0, pageSize: 50, fullName: query, nationalId: '' })
-            .pipe(
-              map(page =>
-                page.items.map(driver => ({
-                  id: driver.id,
-                  label: driver.fullName || `#${driver.id}`,
-                })),
-              ),
-            )
+          api.search({ pageIndex: 0, pageSize: 50, fullName: query, nationalId: '' }).pipe(
+            map(page =>
+              page.items.map(driver => ({
+                id: driver.id,
+                label: driver.fullName || `#${driver.id}`,
+              })),
+            ),
+          )
       },
       vehicles: () => {
         const api = inject(VehiclesApi)

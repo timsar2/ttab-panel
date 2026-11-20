@@ -2,6 +2,7 @@ import { DestroyRef, Injectable, inject, signal } from '@angular/core'
 
 export interface DriverPublishPayload {
   tripId?: number | null
+  driverId?: number | null
   directionId?: number | null
   driverLineId?: number | null
   lineId?: number | null

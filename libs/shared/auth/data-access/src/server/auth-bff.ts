@@ -599,23 +599,25 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         throw new Failure(404)
       if (req.method === 'POST' && rawPath === '/auth/login') {
         if (!req.is('application/json')) throw new Failure(415)
-        let body: { username?: unknown; password?: unknown }
+        let body: { username?: unknown; email?: unknown; password?: unknown }
         try {
           body = JSON.parse(req.body.toString('utf8'))
         } catch {
           throw new Failure(400)
         }
+        const loginIdentifier = body?.email ?? body?.username
         if (
-          typeof body?.username !== 'string' ||
-          !body.username.trim() ||
-          body.username.length > 320 ||
+          typeof loginIdentifier !== 'string' ||
+          (typeof body.email === 'string' && typeof body.username === 'string') ||
+          !loginIdentifier.trim() ||
+          loginIdentifier.length > 320 ||
           typeof body.password !== 'string' ||
           !body.password ||
           body.password.length > 4096
         ) {
           throw new Failure(400)
         }
-        const email = body.username.trim()
+        const email = loginIdentifier.trim()
         let tenant: string
         try {
           tenant = tenantFromEmail(email)
