@@ -139,7 +139,8 @@
       "@org/passenger-pwa-feature": ["./libs/passenger/feature/src/index.ts"],
       "@org/driver-pwa-feature": ["./libs/driver/feature/src/index.ts"],
       "@org/shared-route-geometry": ["./libs/shared/route-geometry/src/index.ts"],
-      "@org/inspection-feature": ["./libs/inspection/feature/inspector/src/index.ts"]
+      "@org/inspection-feature": ["./libs/inspection/feature/inspector/src/index.ts"],
+      "@org/inspection-feature-list": ["./libs/inspection/feature/list/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

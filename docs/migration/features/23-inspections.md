@@ -17,10 +17,12 @@ installation, Inspector status readback, or cross-entity company validation is c
   `libs/panel/inspection` library.
 - Inspection DTO validation, API, and session-scoped SignalStore live in
   `libs/transport/inspection/data-access`.
-- The Inspection list intentionally uses the backend's global Admin/Manager search
-  because the procedure has no company filter. The UI states that records are not
-  filtered by the selected company. Selected-company context is used only for
-  driver/vehicle lookup choices on visit creation.
+- The Panel Inspection list uses global Admin/Manager search because the procedure has
+  no company filter; the UI states that records are not filtered by selected company.
+  The Inspector app uses the same endpoint, but its MediatR handler scans procedure
+  pages and returns only rows whose InspectorId matches the authenticated SID.
+  InspectorId is never accepted from the client. Selected-company context is used only
+  for driver/vehicle lookup choices on visit creation.
 
 ## Tasks
 
@@ -32,8 +34,8 @@ envelopes; do not model list `StatusTypeId` as a number.
 [X] INSPECT-03 Implement a session-aware route-scoped SignalStore with independent
 list/detail state, superseded reads, session cancellation and no invented totals.
 [X] INSPECT-04 Mount lazy Inspector-role routes in `apps/inspection` and separate
-Admin/Manager routes in the Panel. Keep Inspector detail behind server-enforced
-ownership; keep Panel affordances separate.
+Admin/Manager routes in the Panel. Keep Inspector list filtering and detail ownership
+server-enforced; keep Panel affordances separate.
 [X] INSPECT-05 Implement the Admin/Manager paged list/detail and the Inspector
 company-scoped Driver/Vehicle visit form with all twelve required true/false checks.
 Inspector identity comes from the backend session.
@@ -55,8 +57,11 @@ acceptance. The frontend must not modify schema or claim these checks exist.
 
 ## Known Backend Limits
 
-- Inspection list paging is one-based and has no total count, company, inspector,
-  driver or status filters. The Panel uses a next-page heuristic from page length.
+- The stored procedure's list paging is one-based and has no total count or filters.
+  Panel results remain global. The Inspector endpoint scans the procedure's bounded,
+  stable pages in the backend and filters by authenticated InspectorId before returning
+  results; it never sends other inspectors' rows to the browser. The UI uses a
+  next-page heuristic from page length.
 - `StatusTypeId` is a status display name string in list output; detail has no
   numeric status or rowversion.
 - Visit creator identity is server-derived. The backend validates positive driver
@@ -80,8 +85,10 @@ acceptance. The frontend must not modify schema or claim these checks exist.
 - Panel tests (11) cover lazy route shape, ID parsing, initial list load, global-list
   disclosure, company lookup activation, all 24 explicit check radios, insert-only
   maintenance bodies and confirmed Admin status writes.
-- Inspector app tests cover portal `/login`, environment selection, role-gated routes
-  and the independent feature route factory. Two Chromium E2E scenarios mock the
+- Inspector app tests cover portal `/login`, environment selection, role-gated routes,
+  Inspector list loading and empty state, and the independent feature route factory.
+  A backend contract test verifies server-side SID filtering across stored-procedure
+  pages. Two Chromium E2E scenarios mock the
   cookie-login response, scope, lookups and create/detail; six Panel Chromium scenarios
   cover lists, Admin status, replies, scoped denial, RTL/mobile and empty/missing states.
 - Production builds passed with existing initial-bundle budget warnings. The local

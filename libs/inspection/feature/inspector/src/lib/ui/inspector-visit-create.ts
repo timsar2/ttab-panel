@@ -19,6 +19,7 @@ import {
 } from '@angular/forms/signals'
 import { ActivatedRoute, Router, RouterLink } from '@angular/router'
 import { HlmButton } from '@spartan-ng/helm/button'
+import { AutocompleteSearch, type BilingualText } from '@org/ui-forms'
 import {
   InspectionCheck,
   InspectionStore,
@@ -37,6 +38,22 @@ import {
 import { inspectorText, InspectorTextKey } from '../inspector-text'
 
 type CheckAnswer = '' | 'true' | 'false'
+const driverSearchCopy: Readonly<{
+  label: BilingualText
+  placeholder: BilingualText
+  clear: BilingualText
+  loading: BilingualText
+  minimumQuery: BilingualText
+  empty: BilingualText
+}> = {
+  label: { en: 'Find a driver', fa: 'یافتن راننده' },
+  placeholder: { en: 'Search by driver name', fa: 'جستجو بر اساس نام راننده' },
+  clear: { en: 'Clear driver search', fa: 'پاک کردن جستجوی راننده' },
+  loading: { en: 'Searching drivers…', fa: 'در حال جستجوی رانندگان…' },
+  minimumQuery: { en: 'Type at least 2 characters', fa: 'حداقل ۲ نویسه وارد کنید' },
+  empty: { en: 'No drivers found.', fa: 'راننده‌ای پیدا نشد.' },
+}
+
 type VisitFormModel = {
   readonly driverId: string
   readonly vehicleId: string
@@ -87,79 +104,83 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
 @Component({
   selector: 'lib-inspector-visit-create-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, HlmButton, FormField],
-  host: { class: 'block min-w-0 p-4 md:p-8' },
+  imports: [RouterLink, HlmButton, FormField, AutocompleteSearch],
+  host: { class: 'mx-auto block min-w-0 max-w-6xl p-4 md:p-8' },
   template: `
-    <a hlmBtn variant="outline" class="mb-6 min-h-11" [routerLink]="['/workspace']">{{
-      t('back')
-    }}</a>
     @if (companyId() === null) {
       <p class="border-destructive/40 bg-destructive/5 rounded-lg border p-4 text-sm" role="alert">
         {{ t('selectCompany') }}
       </p>
     } @else {
-      <header class="mb-6 max-w-3xl">
-        <p class="text-primary mb-2 text-sm font-medium">{{ t('checks') }}</p>
-        <h1 class="text-2xl font-semibold tracking-tight md:text-3xl">{{ t('title') }}</h1>
-        <p class="text-muted-foreground mt-2 text-sm leading-6">{{ t('createIntro') }}</p>
+      <header class="bg-card mb-6 rounded-2xl border p-5 shadow-sm md:mb-8 md:p-7">
+        <a hlmBtn variant="outline" class="mb-5 min-h-11" [routerLink]="['/workspace']">{{
+          t('back')
+        }}</a>
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div class="max-w-2xl">
+            <p class="text-primary mb-2 text-sm font-semibold">{{ t('checks') }}</p>
+            <h1 class="text-2xl font-bold tracking-tight md:text-3xl">{{ t('title') }}</h1>
+            <p class="text-muted-foreground mt-2 text-sm leading-6 md:text-base">
+              {{ t('createIntro') }}
+            </p>
+          </div>
+          <div class="bg-muted/50 flex shrink-0 items-center gap-3 rounded-xl px-4 py-3">
+            <span class="bg-primary h-2.5 w-2.5 rounded-full" aria-hidden="true"></span>
+            <span class="text-sm font-medium">{{ checks.length }} {{ t('checks') }}</span>
+          </div>
+        </div>
       </header>
-      <form id="inspection-create-form" class="grid gap-5" novalidate (submit)="save($event)">
+      <form
+        id="inspection-create-form"
+        class="grid gap-5 md:gap-6"
+        novalidate
+        (submit)="save($event)"
+      >
         <section
-          class="bg-card rounded-xl border p-4 shadow-sm md:p-6"
+          class="bg-card overflow-hidden rounded-2xl border shadow-sm"
           aria-labelledby="inspector-details-heading"
         >
-          <div class="mb-5 border-b pb-4">
-            <h2 id="inspector-details-heading" class="text-lg font-semibold">
-              {{ t('visitDetails') }}
-            </h2>
-            <p class="text-muted-foreground mt-1 text-sm">{{ t('visitDetailsIntro') }}</p>
-          </div>
-          <div class="grid gap-x-5 gap-y-4 md:grid-cols-2">
-            <div class="grid min-w-0 content-start gap-2">
-              <label for="inspector-driver-search" class="text-sm font-medium">{{
-                t('searchDrivers')
-              }}</label>
-              <div class="flex min-w-0 gap-2">
-                <input
-                  id="inspector-driver-search"
-                  class="bg-background focus-visible:ring-ring min-h-11 min-w-0 flex-1 rounded-md border px-3 text-sm transition outline-none focus-visible:ring-2"
-                  [value]="driverQuery()"
-                  (input)="driverQuery.set($any($event.target).value)"
-                  (keydown.enter)="$event.preventDefault(); searchDrivers()"
-                />
-                <button
-                  hlmBtn
-                  variant="outline"
-                  class="min-h-11 shrink-0"
-                  type="button"
-                  [disabled]="searchingDrivers()"
-                  (click)="searchDrivers()"
-                >
-                  {{ t('find') }}
-                </button>
-              </div>
-              @if (searchingDrivers()) {
-                <p class="text-muted-foreground text-sm" role="status">{{ t('loading') }}</p>
-              }
-              <label for="inspector-driver" class="mt-2 text-sm font-medium">{{
-                t('driver')
-              }}</label>
-              <select
-                id="inspector-driver"
-                class="bg-background focus-visible:ring-ring min-h-11 w-full rounded-md border px-3 text-sm transition outline-none focus-visible:ring-2"
-                [formField]="visitForm.driverId"
+          <div class="bg-muted/20 border-b px-4 py-4 md:px-6">
+            <div class="flex items-start gap-3">
+              <span
+                class="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
+                aria-hidden="true"
+                >1</span
               >
-                <option value="">{{ t('driverPlaceholder') }}</option>
-                @for (driver of drivers(); track driver.id) {
-                  <option [value]="driver.id">{{ driver.label }}</option>
-                }
-              </select>
-              @if (!searchingDrivers() && !drivers().length) {
-                <p class="text-muted-foreground text-sm">{{ t('noDrivers') }}</p>
-              }
+              <div>
+                <h2 id="inspector-details-heading" class="text-lg font-semibold">
+                  {{ t('visitDetails') }}
+                </h2>
+                <p class="text-muted-foreground mt-1 text-sm leading-5">
+                  {{ t('visitDetailsIntro') }}
+                </p>
+              </div>
             </div>
+          </div>
+          <div class="grid items-start gap-x-6 gap-y-6 p-4 md:grid-cols-2 md:p-6">
+            <lib-autocomplete-search
+              class="block w-full !max-w-none"
+              id="inspector-driver"
+              [(query)]="driverQuery"
+              [selectedOption]="selectedDriver()"
+              [language]="language()"
+              [label]="driverSearchCopy.label"
+              [placeholder]="driverSearchCopy.placeholder"
+              [clearLabel]="driverSearchCopy.clear"
+              [loadingLabel]="driverSearchCopy.loading"
+              [minimumQueryLabel]="driverSearchCopy.minimumQuery"
+              [emptyLabel]="driverSearchCopy.empty"
+              [options]="drivers()"
+              [loading]="searchingDrivers()"
+              [optionId]="driverOptionId"
+              [optionLabel]="driverOptionLabel"
+              (queryRequested)="searchDrivers($event)"
+              (optionSelected)="selectDriver($event)"
+            />
             <div class="grid min-w-0 content-start gap-2">
-              <label for="inspector-vehicle" class="text-sm font-medium">{{ t('vehicle') }}</label>
+              <label for="inspector-vehicle" class="text-sm font-semibold">{{
+                t('vehicle')
+              }}</label>
               <select
                 id="inspector-vehicle"
                 class="bg-background focus-visible:ring-ring min-h-11 w-full rounded-md border px-3 text-sm transition outline-none focus-visible:ring-2"
@@ -170,55 +191,38 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
                   <option [value]="vehicle.id">{{ vehicle.label }}</option>
                 }
               </select>
-              @if (loadingVehicles()) {
-                <p class="text-muted-foreground text-sm" role="status">{{ t('loading') }}</p>
-              }
-              @if (!loadingVehicles() && !vehicles().length) {
-                <p class="text-muted-foreground text-sm">{{ t('noVehicles') }}</p>
-              }
-              <nav class="mt-1 flex gap-2" [attr.aria-label]="t('vehiclePages')">
-                <button
-                  hlmBtn
-                  variant="outline"
-                  type="button"
-                  class="min-h-11"
-                  [disabled]="loadingVehicles() || vehiclePage() <= 1"
-                  (click)="loadVehiclePage(vehiclePage() - 1)"
-                >
-                  {{ t('previousPage') }}
-                </button>
-                <button
-                  hlmBtn
-                  variant="outline"
-                  type="button"
-                  class="min-h-11"
-                  [disabled]="loadingVehicles() || !vehicleHasNext()"
-                  (click)="loadVehiclePage(vehiclePage() + 1)"
-                >
-                  {{ t('nextPage') }}
-                </button>
-              </nav>
+              <p class="text-muted-foreground min-h-5 text-sm" role="status">
+                @if (loadingVehicles()) {
+                  {{ t('loading') }}
+                } @else if (!vehicles().length) {
+                  {{ t('noVehicles') }}
+                }
+              </p>
             </div>
-            <label class="grid content-start gap-2 text-sm font-medium" for="inspector-date"
-              >{{ t('inspectionDate')
-              }}<input
+            <div class="grid min-w-0 content-start gap-2">
+              <label class="text-sm font-semibold" for="inspector-date">{{
+                t('inspectionDate')
+              }}</label>
+              <input
                 id="inspector-date"
-                class="bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-sm font-normal transition outline-none focus-visible:ring-2"
+                class="bg-background focus-visible:ring-ring min-h-11 w-full rounded-md border px-3 text-sm font-normal transition outline-none focus-visible:ring-2"
                 type="date"
                 [formField]="visitForm.inspectionDate"
-            /></label>
-            <label class="grid content-start gap-2 text-sm font-medium" for="inspector-description"
-              >{{ t('description')
-              }}<textarea
+              />
+            </div>
+            <div class="grid min-w-0 content-start gap-2">
+              <label class="text-sm font-semibold" for="inspector-description">{{
+                t('description')
+              }}</label>
+              <textarea
                 id="inspector-description"
-                class="bg-background focus-visible:ring-ring min-h-28 rounded-md border p-3 text-sm font-normal transition outline-none focus-visible:ring-2"
+                class="bg-background focus-visible:ring-ring min-h-28 w-full rounded-md border p-3 text-sm font-normal transition outline-none focus-visible:ring-2"
                 [formField]="visitForm.description"
-                [attr.maxlength]="1000"
-              ></textarea
-              ><span class="text-muted-foreground text-xs font-normal" aria-hidden="true"
+              ></textarea>
+              <span class="text-muted-foreground text-xs" aria-hidden="true"
                 >{{ model().description.length }}/1000</span
-              ></label
-            >
+              >
+            </div>
           </div>
           @if (lookupError()) {
             <p
@@ -230,17 +234,28 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
           }
         </section>
         <section
-          class="bg-card rounded-xl border p-4 shadow-sm md:p-6"
+          class="bg-card overflow-hidden rounded-2xl border shadow-sm"
           aria-labelledby="inspector-checks-heading"
         >
-          <div class="mb-5 border-b pb-4">
-            <h2 id="inspector-checks-heading" class="text-lg font-semibold">{{ t('checks') }}</h2>
-            <p class="text-muted-foreground mt-1 text-sm">{{ t('checksIntro') }}</p>
+          <div class="bg-muted/20 border-b px-4 py-4 md:px-6">
+            <div class="flex items-start gap-3">
+              <span
+                class="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold"
+                aria-hidden="true"
+                >2</span
+              >
+              <div>
+                <h2 id="inspector-checks-heading" class="text-lg font-semibold">
+                  {{ t('checks') }}
+                </h2>
+                <p class="text-muted-foreground mt-1 text-sm leading-5">{{ t('checksIntro') }}</p>
+              </div>
+            </div>
           </div>
-          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div class="grid gap-3 p-4 sm:grid-cols-2 md:p-6 xl:grid-cols-3">
             @for (check of checks; track check) {
               <fieldset
-                class="bg-muted/20 focus-within:border-primary/50 focus-within:bg-muted/40 grid min-w-0 gap-2 rounded-lg border p-3 transition-colors"
+                class="bg-muted/20 hover:bg-muted/40 focus-within:border-primary/50 focus-within:ring-primary/20 grid min-w-0 gap-2 rounded-xl border p-3.5 transition-colors focus-within:ring-2"
               >
                 <legend class="text-sm font-medium">{{ t(label(check)) }}</legend>
                 <div class="flex flex-wrap gap-x-3 gap-y-1">
@@ -275,11 +290,14 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
             {{ t(errorKey) }}
           </p>
         }
-        <div class="flex flex-col-reverse gap-3 border-t pt-4 sm:flex-row sm:justify-end">
+        <div
+          class="bg-background/95 sticky bottom-0 z-10 -mx-4 flex flex-col-reverse gap-3 border-t px-4 py-4 sm:flex-row sm:items-center sm:justify-between md:-mx-8 md:px-8"
+        >
+          <p class="text-muted-foreground text-xs">{{ t('required') }}</p>
           <button
             id="inspector-visit-submit"
             hlmBtn
-            class="min-h-11 w-full px-6 sm:w-auto"
+            class="min-h-12 w-full px-8 sm:w-auto"
             type="submit"
             [disabled]="saving()"
           >
@@ -295,6 +313,7 @@ export class InspectorVisitCreatePage {
   protected readonly companyId = inject(INSPECTOR_COMPANY_ID)
   protected readonly store = inject(InspectionStore)
   protected readonly checks = INSPECTION_CHECKS
+  protected readonly driverSearchCopy = driverSearchCopy
   protected readonly drivers = signal<readonly InspectorLookupOption[]>([])
   protected readonly vehicles = signal<readonly InspectorLookupOption[]>([])
   protected readonly driverQuery = signal('')
@@ -302,8 +321,6 @@ export class InspectorVisitCreatePage {
   protected readonly saving = signal(false)
   protected readonly searchingDrivers = signal(false)
   protected readonly loadingVehicles = signal(false)
-  protected readonly vehiclePage = signal(1)
-  protected readonly vehicleHasNext = signal(false)
   protected readonly lookupError = signal(false)
   protected readonly formError = signal<InspectorTextKey | null>(null)
   private readonly changeDetector = inject(ChangeDetectorRef)
@@ -352,7 +369,6 @@ export class InspectorVisitCreatePage {
       untracked(() => {
         this.visitForm().reset()
         this.model.set(emptyVisit())
-        this.searchDrivers()
         this.loadVehiclePage(1)
       })
     })
@@ -383,18 +399,36 @@ export class InspectorVisitCreatePage {
     return this.positiveAnswer(check) === 'satisfactoryValue' ? 'needsAttentionValue' : 'noValue'
   }
 
-  protected searchDrivers() {
+  protected readonly driverOptionId = (option: InspectorLookupOption) => String(option.id)
+  protected readonly driverOptionLabel = (option: InspectorLookupOption): BilingualText => ({
+    en: option.label,
+    fa: option.label,
+  })
+
+  protected selectedDriver(): InspectorLookupOption | null {
+    const id = positiveInteger(this.model().driverId)
+    return id === null ? null : (this.drivers().find(driver => driver.id === id) ?? null)
+  }
+
+  protected selectDriver(driver: InspectorLookupOption) {
+    this.model.update(value => ({ ...value, driverId: String(driver.id) }))
+  }
+
+  protected searchDrivers(query: string) {
     const epoch = ++this.driverEpoch
     this.driverRequest?.unsubscribe()
+    this.model.update(value => ({ ...value, driverId: '' }))
+    this.drivers.set([])
+    if (!query.trim()) {
+      this.searchingDrivers.set(false)
+      return
+    }
     this.searchingDrivers.set(true)
     this.lookupError.set(false)
-    this.driverRequest = this.searchDriverRequest(this.driverQuery().trim()).subscribe({
+    this.driverRequest = this.searchDriverRequest(query.trim()).subscribe({
       next: drivers => {
         if (epoch !== this.driverEpoch) return
         this.drivers.set(drivers)
-        const selectedId = positiveInteger(this.model().driverId)
-        if (selectedId !== null && !drivers.some(option => option.id === selectedId))
-          this.model.update(value => ({ ...value, driverId: '' }))
         this.searchingDrivers.set(false)
       },
       error: () => {
@@ -416,8 +450,6 @@ export class InspectorVisitCreatePage {
       next: page => {
         if (epoch !== this.vehicleEpoch) return
         this.vehicles.set(page.items)
-        this.vehiclePage.set(page.pageNumber)
-        this.vehicleHasNext.set(page.hasNext)
         const selectedId = positiveInteger(this.model().vehicleId)
         if (selectedId !== null && !page.items.some(option => option.id === selectedId))
           this.model.update(value => ({ ...value, vehicleId: '' }))
@@ -499,10 +531,9 @@ export class InspectorVisitCreatePage {
     this.vehicleRequest?.unsubscribe()
     this.drivers.set([])
     this.vehicles.set([])
+    this.driverQuery.set('')
     this.searchingDrivers.set(false)
     this.loadingVehicles.set(false)
-    this.vehiclePage.set(1)
-    this.vehicleHasNext.set(false)
     this.lookupError.set(false)
   }
 }

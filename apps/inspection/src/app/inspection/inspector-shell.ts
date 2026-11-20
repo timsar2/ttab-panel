@@ -16,7 +16,7 @@ import { PreferencesStore } from '@org/platform'
       <a
         layoutBrand
         class="inline-flex min-h-12 items-center px-4 font-semibold"
-        routerLink="/inspections/new"
+        routerLink="/inspections"
       >
         {{ isRtl() ? 'بازرسی' : 'Inspection' }}
       </a>
@@ -29,10 +29,16 @@ export class InspectorShell {
   protected readonly isRtl = this.preferences.isRtl
   protected readonly items = computed<readonly LayoutNavItem[]>(() => [
     {
+      id: 'inspections',
+      label: this.isRtl() ? 'بازرسی‌ها' : 'Inspections',
+      commands: ['/inspections'],
+      exact: true,
+    },
+    {
       id: 'new-inspection',
       label: this.isRtl() ? 'ثبت بازرسی' : 'Register inspection',
       commands: ['/inspections', 'new'],
-      exact: false,
+      exact: true,
     },
   ])
 }

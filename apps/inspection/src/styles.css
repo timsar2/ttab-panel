@@ -4,6 +4,7 @@
 @source './app';
 @source '../../../libs/shared';
 @source '../../../libs/passenger/feature';
+@source '../../../libs/inspection/feature/inspector';
 @source '../../../libs/transport/shell/feature';
 @source '../../../libs/spartan/button';
 @source '../../../libs/spartan/alert';
@@ -16,5 +17,6 @@
 @source '../../../libs/spartan/calendar';
 @source '../../../libs/spartan/date-picker';
 @source '../../../libs/spartan/popover';
+@source '../../../libs/spartan/autocomplete';
 @source '../../../libs/spartan/select';
 @source '../../../libs/spartan/sidebar';

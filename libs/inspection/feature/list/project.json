@@ -1,0 +1,9 @@
+{
+  "name": "inspection-feature-list",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/inspection/feature/list/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:inspection", "type:feature"],
+  "targets": {}
+}

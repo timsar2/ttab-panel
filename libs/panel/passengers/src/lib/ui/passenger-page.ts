@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { FormsModule } from '@angular/forms'
 import { ActivatedRoute } from '@angular/router'
 import { TransportHttp, transportRecord, unwrapTransport } from '@org/transport-http'
-import { AutocompleteSearch, type BilingualText } from '@org/ui-forms'
+import { AutocompleteSearch, JalaliDatePicker, type BilingualText } from '@org/ui-forms'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { Subscription, finalize } from 'rxjs'
 import {
@@ -90,7 +90,7 @@ const searchCopy = {
 
 @Component({
   selector: 'lib-passenger-page',
-  imports: [FormsModule, AutocompleteSearch, HlmButton],
+  imports: [FormsModule, AutocompleteSearch, HlmButton, JalaliDatePicker],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block min-w-0 p-4 md:p-8' },
   template: `
@@ -117,13 +117,15 @@ const searchCopy = {
         (queryRequested)="search($event)"
         (optionSelected)="selectSuggestion($event)"
       />
-      <label class="grid gap-1 text-sm"
-        >{{ text().date
-        }}<input
-          class="bg-background min-h-11 rounded-md border px-3"
-          type="date"
-          [(ngModel)]="fromDate"
-      /></label>
+      <label class="grid gap-1 text-sm">
+        {{ text().date }}
+        <lib-jalali-date-picker
+          inputId="passenger-assignment-date"
+          [language]="language()"
+          [value]="fromDate"
+          (valueChange)="fromDate = $event ?? ''"
+        />
+      </label>
       <label class="grid gap-1 text-sm"
         >{{ text().direction
         }}<select

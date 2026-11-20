@@ -30,7 +30,9 @@ function createInspectorRoutes(): Route[] {
       return request =>
         of(
           hasInspectorRole(session.user()?.roles) &&
-            (request.action === 'create' || request.action === 'detail'),
+            (request.action === 'create' ||
+              request.action === 'detail' ||
+              request.action === 'search'),
         )
     },
     lookupProviders: [
@@ -138,6 +140,18 @@ function createInspectorRoutes(): Route[] {
     component: InspectorShell,
     canActivate: [...(featureRoute.canActivate ?? []), inspectorOnlyGuard],
     data: { ...featureRoute.data, breadcrumb: 'Inspections' },
+    children: (featureRoute.children ?? []).map(child =>
+      child.path === '' && child.redirectTo === 'new'
+        ? {
+            path: '',
+            pathMatch: 'full' as const,
+            loadComponent: () =>
+              import('@org/inspection-feature-list').then(
+                module => module.InspectorInspectionListPage,
+              ),
+          }
+        : child,
+    ),
   }))
 }
 

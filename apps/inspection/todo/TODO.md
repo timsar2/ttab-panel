@@ -56,10 +56,10 @@ database installation or acceptance.
       handle uncertain responses without blindly retrying an insert-only operation.
 - [x] On successful creation, use the returned visit ID to navigate to the saved
       detail and load it through the Inspector ownership check.
-- [ ] Add an Inspector "My inspections" list only after an authorized backend
-      endpoint filters by the authenticated InspectorId. `Inspection.uspGetVisitList`
-      has no Inspector/company filter; never fetch its global results and filter in
-      the browser.
+- [x] Show an Inspector-scoped inspections list at `/inspections`. The backend
+      authorizes the Inspector role, derives InspectorId from the authenticated SID,
+      and filters the existing stored-procedure pages server-side. Never send global
+      rows to the browser or trust a client-supplied InspectorId.
 - [ ] Show an Inspector the authoritative review status and Admin result. The
       current detail procedure/DTO does not return status, so do not infer status from
       the create response or an old list row.
@@ -90,8 +90,9 @@ database installation or acceptance.
 
 ## API and Business Contract Gates
 
-- [ ] Add/approve an Inspector-scoped list endpoint before implementing "My
-      inspections"; current `Inspection.uspGetVisitList` cannot safely serve it.
+- [x] Provide an Inspector-scoped list response using the existing
+      `Inspection.uspGetVisitList`; the procedure remains unchanged and the backend
+      filters its stable bounded pages by the authenticated InspectorId.
 - [ ] Add/approve a detail/read response that includes current status for an
       Inspector-owned visit. The current `Inspection.uspGetById` output omits it.
 - [ ] Define the Admin description-change operation. No current API or stored
