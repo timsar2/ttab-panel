@@ -2,6 +2,7 @@ import type { NeshanMapPoint } from './neshan-map.component'
 import {
   decodeNeshanPolyline,
   generateNeshanRouteGeoJson,
+  generateNeshanRoutePolyline,
   neshanDirectionsUrl,
   neshanRouteCoordinates,
   parseRouteGeoJson,
@@ -89,6 +90,23 @@ describe('Neshan directions', () => {
       expect(fetchMock).toHaveBeenCalledWith(expect.any(String), {
         headers: { 'Api-Key': 'test-key' },
       })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('encodes the route returned by Neshan for persistence', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        routes: [{ overview_polyline: { points: '_p~iF~ps|U_ulLnnqC_mqNvxq`@' } }],
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      await expect(
+        generateNeshanRoutePolyline([point(1, 1, 35.1, 51.1), point(2, 2, 35.2, 51.2)], 'test-key'),
+      ).resolves.toBe('_p~iF~ps|U_ulLnnqC_mqNvxq`@')
     } finally {
       vi.unstubAllGlobals()
     }

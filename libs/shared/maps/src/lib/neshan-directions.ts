@@ -1,5 +1,9 @@
 import type { NeshanMapPoint } from './neshan-map.component'
-import { decodeRouteGeometry, type GeoJsonLineString } from '@org/shared-route-geometry'
+import {
+  decodeRouteGeometry,
+  encodeRoutePolyline,
+  type GeoJsonLineString,
+} from '@org/shared-route-geometry'
 
 export type MapCoordinate = GeoJsonLineString['coordinates'][number]
 export type NeshanLineString = GeoJsonLineString
@@ -92,6 +96,14 @@ export async function generateNeshanRouteGeoJson(
   if (!response.ok) throw new Error('Neshan route request failed.')
   const coordinates = neshanRouteCoordinates(await response.json())
   return { type: 'LineString', coordinates }
+}
+
+export async function generateNeshanRoutePolyline(
+  points: readonly NeshanMapPoint[],
+  apiKey: string,
+): Promise<string | null> {
+  const geometry = await generateNeshanRouteGeoJson(points, apiKey)
+  return encodeRoutePolyline(geometry)
 }
 
 export function parseRouteGeoJson(

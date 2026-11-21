@@ -467,8 +467,7 @@ export class RouteEditor {
       if (companyId === null) return
       const id = this.id()
       this.submitted.set(true)
-      const routeGeometry = this.store.route()?.routeGeometry ?? null
-      if (!this.store.save(id, { companyId, ...this.draft(), routeGeometry }))
+      if (!this.store.save(id, { companyId, ...this.draft(), routeGeometry: null }))
         this.submitted.set(false)
     })
   }

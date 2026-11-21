@@ -109,9 +109,7 @@ export function routeMapPoints(stations: readonly RouteStation[]): readonly Nesh
                 [serviceApiKey]="config.neshanServiceApiKey ?? null"
                 [language]="language()"
                 [points]="mapPoints()"
-                [routeGeoJson]="
-                  store.route()?.routeGeometry ?? selectedRoute()?.routeGeometry ?? null
-                "
+                [routeGeoJson]="store.route()?.routeGeometry ?? null"
               />
               <p class="text-muted-foreground mt-2 text-sm">{{ text('mapOrderNote') }}</p>
             </section>

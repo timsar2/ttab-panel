@@ -6,6 +6,7 @@ import {
   inject,
   input,
   output,
+  untracked,
 } from '@angular/core'
 import { BrnCalendarI18nService, type MonthLabels } from '@spartan-ng/brain/calendar'
 import {
@@ -129,7 +130,10 @@ export class JalaliDatePicker {
   private readonly calendarI18n = inject(BrnCalendarI18nService)
 
   constructor() {
-    effect(() => this.calendarI18n.use(jalaliCalendarI18n(() => this.language())))
+    effect(() => {
+      const language = this.language()
+      untracked(() => this.calendarI18n.use(jalaliCalendarI18n(() => language)))
+    })
   }
 
   protected readonly selectedJalaliDate = computed(() => {

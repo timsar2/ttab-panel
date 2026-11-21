@@ -129,6 +129,7 @@ describe('RoutesApi', () => {
         address: 'Main street',
         cityId: 12,
         coordinate: { lat: 35.7, lng: 51.4 },
+        encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
         orderNo: 2,
       }),
     )
@@ -141,13 +142,14 @@ describe('RoutesApi', () => {
       address: 'Main street',
       cityId: 12,
       coordinate: { lat: 35.7, lng: 51.4 },
+      encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
       orderNo: 2,
     })
     request.flush({ code: '2000', massage: 'Success', result: null })
     await expect(save).resolves.toBeUndefined()
   })
 
-  it('sends an encoded polyline when saving a Direction', async () => {
+  it('does not send route geometry when saving a Direction', async () => {
     const save = firstValueFrom(
       api.save(routeId(42), {
         companyId: 12,
@@ -169,7 +171,6 @@ describe('RoutesApi', () => {
       companyId: 12,
       name: 'Route',
       departureTime: '07:30',
-      encodedPolyline: '_t{xE_avxH_pR_pR',
     })
     request.flush({ code: '2000', massage: 'Success', result: { id: 42 } })
     await expect(save).resolves.toBe(42)

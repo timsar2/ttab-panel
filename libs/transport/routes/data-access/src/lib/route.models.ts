@@ -1,10 +1,5 @@
 import { TransportError, transportInteger, transportRecord } from '@org/transport-http'
-import {
-  decodeRouteGeometry,
-  decodeRoutePolyline,
-  encodeRoutePolyline,
-  type GeoJsonLineString,
-} from '@org/shared-route-geometry'
+import { decodeRoutePolyline, type GeoJsonLineString } from '@org/shared-route-geometry'
 
 export type RouteId = number & { readonly __routeId: unique symbol }
 
@@ -30,9 +25,7 @@ export interface DirectionRouteDraft {
   readonly id?: RouteId
 }
 
-export type DirectionRouteWrite = Omit<DirectionRouteDraft, 'routeGeometry'> & {
-  readonly encodedPolyline: string | null
-}
+export type DirectionRouteWrite = Omit<DirectionRouteDraft, 'routeGeometry'>
 
 export interface DirectionPrice {
   readonly id: number | null
@@ -92,6 +85,7 @@ export interface StationDraft {
   readonly address: string
   readonly cityId: number | null
   readonly coordinate: { readonly lat: number; readonly lng: number } | null
+  readonly encodedPolyline: string | null
   readonly orderNo: number
 }
 
@@ -99,21 +93,9 @@ export function decodeRoute(value: unknown): DirectionRoute {
   const row = transportRecord(value)
   if (typeof row['name'] !== 'string' || typeof row['departureTime'] !== 'string')
     throw new TransportError('contract', 0, 'The route response is missing name or departure time.')
-  const encodedPolyline = row['encodedPolyline'] ?? row['EncodedPolyline']
-  const routeGeometry =
-    encodedPolyline === undefined
-      ? decodeRouteGeometry(row['routeGeoJson'] ?? row['RouteGeoJson'] ?? null)
-      : decodeRoutePolyline(encodedPolyline)
-  if (
-    encodedPolyline != null &&
-    encodedPolyline !== '' &&
-    (typeof encodedPolyline !== 'string' || !routeGeometry)
+  const routeGeometry = decodeRoutePolyline(
+    row['encodedPolyline'] ?? row['EncodedPolyline'] ?? null,
   )
-    throw new TransportError(
-      'contract',
-      0,
-      'The route response contains an invalid encoded polyline.',
-    )
   return {
     id: routeId(row['id']),
     name: row['name'],
@@ -167,7 +149,6 @@ export function routeWrite(draft: DirectionRouteDraft): DirectionRouteWrite {
     companyId: draft.companyId,
     name: draft.name.trim(),
     departureTime: draft.departureTime,
-    encodedPolyline: encodeRoutePolyline(draft.routeGeometry),
     ...(draft.id === undefined ? {} : { id: routeId(draft.id) }),
   }
 }

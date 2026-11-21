@@ -28,7 +28,7 @@ import {
   routeId,
 } from '@org/transport-routes-data-access'
 import {
-  generateNeshanRouteGeoJson,
+  generateNeshanRoutePolyline,
   NeshanLiveLocation,
   NeshanMapComponent,
   NeshanMapPoint,
@@ -588,6 +588,7 @@ export class StationEditor {
       address: model.address.trim(),
       cityId: model.cityId ? Number(model.cityId) : null,
       coordinate: lat === null || lng === null ? null : { lat, lng },
+      encodedPolyline: null,
       orderNo: model.orderNo,
     }
     this.saving.set(true)
@@ -610,25 +611,18 @@ export class StationEditor {
         } satisfies NeshanMapPoint
       })
       const validPoints = stations.filter(point => point.lat !== null && point.lng !== null)
-      const routeGeometry =
+      const encodedPolyline =
         validPoints.length >= 2
-          ? await generateNeshanRouteGeoJson(
+          ? await generateNeshanRoutePolyline(
               validPoints,
               this.config.neshanServiceApiKey?.trim() ?? '',
             )
           : null
 
-      await firstValueFrom(this.api.saveStation(directionId, draft))
-      const route = await firstValueFrom(this.api.detail(directionId))
-      const companyId = this.api.companyId()
-      if (!route || companyId === null)
-        throw new Error('The direction could not be loaded for its route update.')
       await firstValueFrom(
-        this.api.save(directionId, {
-          companyId,
-          name: route.name,
-          departureTime: route.departureTime,
-          routeGeometry,
+        this.api.saveStation(directionId, {
+          ...draft,
+          encodedPolyline,
         }),
       )
       this.store.loadStations(directionId)

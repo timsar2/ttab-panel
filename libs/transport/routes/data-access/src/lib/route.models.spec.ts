@@ -81,44 +81,24 @@ describe('Direction adapters', () => {
       id: 42,
       name: 'Route',
       departureTime: '17:51',
-      encodedPolyline: '_t{xE_avxH_pR_pR',
     })
   })
 
-  it('decodes encoded polylines and legacy GeoJSON responses to LineString geometry', () => {
-    const line = {
+  it('decodes EncodedPolyline responses to LineString geometry', () => {
+    expect(
+      decodeRoute({
+        id: 2,
+        name: 'Route',
+        departureTime: '08:00:00',
+        encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+      }).routeGeometry,
+    ).toEqual({
       type: 'LineString',
       coordinates: [
-        [51.4, 35.7],
-        [51.5, 35.8],
+        [-120.2, 38.5],
+        [-120.95, 40.7],
+        [-126.453, 43.252],
       ],
-    }
-    expect(
-      decodeRoute({
-        id: 2,
-        name: 'Route',
-        departureTime: '08:00:00',
-        routeGeoJson: JSON.stringify(line),
-      }).routeGeometry,
-    ).toEqual(line)
-    expect(
-      decodeRoute({
-        id: 2,
-        name: 'Route',
-        departureTime: '08:00:00',
-        encodedPolyline: '_t{xE_avxH_pR_pR',
-      }).routeGeometry,
-    ).toEqual(line)
-    expect(
-      decodeRoute({
-        id: 2,
-        name: 'Route',
-        departureTime: '08:00:00',
-        routeGeoJson: JSON.stringify({
-          type: 'FeatureCollection',
-          features: [{ type: 'Feature', geometry: line, properties: {} }],
-        }),
-      }).routeGeometry,
-    ).toEqual(line)
+    })
   })
 })
