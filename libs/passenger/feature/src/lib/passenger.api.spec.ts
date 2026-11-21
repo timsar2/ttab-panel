@@ -120,6 +120,7 @@ describe('PassengerApi', () => {
     const trip = await result
     expect(trip).toMatchObject({
       id: 1526,
+      directionId: 22,
       driverId: 315,
       fullName: 'کیوان نصیری',
       mobileNumber: '09368937323',
@@ -153,6 +154,31 @@ describe('PassengerApi', () => {
       },
     })
     await expect(location).resolves.toMatchObject({ tripId: 1526, driverId: 315 })
+  })
+
+  it('loads direction detail by id and decodes its encoded polyline', async () => {
+    const result = api.direction(22)
+    const request = http.expectOne('/api/v1/directions/22')
+    expect(request.request.method).toBe('GET')
+    request.flush({
+      code: '2000',
+      result: {
+        id: 22,
+        name: 'Route',
+        encodedPolyline: '_t{xE_avxH_pR_pR',
+        departureTime: '08:00:00',
+      },
+    })
+    await expect(result).resolves.toMatchObject({
+      id: 22,
+      routeGeoJson: {
+        type: 'LineString',
+        coordinates: [
+          [51.4, 35.7],
+          [51.5, 35.8],
+        ],
+      },
+    })
   })
 
   it('rejects an invalid driver id rather than requesting the location with NaN', async () => {

@@ -81,6 +81,9 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
             </div>
             <hlm-separator />
             <div class="stations-list">
+              <button hlmBtn variant="outline" class="stop-trip-action" (click)="endTrip()">
+                {{ fa() ? 'پایان سفر' : 'Stop Trip' }}
+              </button>
               @for (station of activeTrip.stations; track station.id; let i = $index) {
                 <button
                   class="station-item"
@@ -228,6 +231,10 @@ import { DRIVER_FEATURE_CONFIG } from '../driver-pwa-feature/driver.routes'
         flex: 1;
         padding: 0.5rem;
         overflow-y: auto;
+      }
+      .stop-trip-action {
+        width: 100%;
+        margin-bottom: 0.5rem;
       }
       .station-item {
         width: 100%;

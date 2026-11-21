@@ -634,6 +634,11 @@ export class DriverApi {
             : null,
       },
     }
+    try {
+      trip.routeGeoJson = (await this.directionRouteGeometry(trip.directionId)) ?? trip.routeGeoJson
+    } catch {
+      // Keep using route geometry embedded in the active-trip response if detail lookup fails.
+    }
     const savedNextStationId = this.savedNextStationId(driverId, trip.id)
     if (savedNextStationId !== null) {
       const savedIndex = trip.stations.findIndex(station => station.id === savedNextStationId)
@@ -643,6 +648,17 @@ export class DriverApi {
     }
     this.activeTripCache = trip
     return trip
+  }
+
+  private async directionRouteGeometry(directionId: number): Promise<GeoJsonLineString | null> {
+    if (!Number.isSafeInteger(directionId) || directionId <= 0)
+      throw new Error('The active trip has an invalid direction id.')
+    const result = dataResult(
+      await firstValueFrom(this.http.get(`/api/v1/directions/${directionId}`)),
+    )
+    if (Number(property(result, 'id')) !== directionId)
+      throw new Error('The direction response does not match the active trip.')
+    return decodeRouteGeometry(property(result, 'encodedPolyline'))
   }
 
   async routeGeometry(tripId: number, directionId: number): Promise<RouteGeometry> {

@@ -67,6 +67,7 @@ import {
             [serviceApiKey]="neshanServiceApiKey"
             [fitContainer]="true"
             [points]="mapPoints()"
+            [routeGeoJson]="trip()?.routeGeoJson ?? null"
             [liveLocation]="liveDriverLocation()"
             [followLive]="true"
             [language]="config.language()"
@@ -425,6 +426,7 @@ import {
               <lib-neshan-map
                 [apiKey]="neshanMapApiKey"
                 [serviceApiKey]="neshanServiceApiKey"
+                [fitContainer]="true"
                 [points]="mapPoints()"
                 [routeGeoJson]="currentTrip.routeGeoJson"
                 [liveLocation]="liveDriverLocation()"
@@ -503,18 +505,38 @@ import {
               <lib-neshan-map
                 [apiKey]="neshanMapApiKey"
                 [serviceApiKey]="neshanServiceApiKey"
+                [fitContainer]="true"
                 [points]="mapPoints()"
                 [routeGeoJson]="selectedDirection()?.routeGeoJson ?? null"
                 [language]="config.language()"
               />
               @if (selectedStations().length) {
-                <ol>
-                  @for (station of selectedStations(); track station.id; let index = $index) {
-                    <li>
-                      {{ index + 1 }}. {{ station.name }}
-                      @if (station.address) {
-                        · {{ station.address }}
-                      }
+                <ol class="station-timeline">
+                  @for (
+                    station of selectedStations();
+                    track station.id;
+                    let index = $index;
+                    let last = $last
+                  ) {
+                    <li
+                      class="station-item"
+                      [class.is-passenger]="station.id === person.stationId"
+                      [class.is-last]="last"
+                    >
+                      <span class="station-marker" aria-hidden="true">{{ index + 1 }}</span>
+                      <div class="station-info">
+                        <strong>{{ station.name }}</strong>
+                        @if (station.address) {
+                          <span>{{ station.address }}</span>
+                        }
+                      </div>
+                      <div class="station-tags">
+                        @if (station.id === person.stationId) {
+                          <span class="station-tag passenger-tag">{{
+                            fa() ? 'ایستگاه شما' : 'Your stop'
+                          }}</span>
+                        }
+                      </div>
                     </li>
                   }
                 </ol>
@@ -848,6 +870,12 @@ import {
         padding: 0;
         list-style: none;
       }
+      .stack > .panel > lib-neshan-map {
+        display: block;
+        height: clamp(20rem, 38dvh, 28rem);
+        overflow: hidden;
+        border-radius: 0.9rem;
+      }
       .station-item {
         position: relative;
         display: grid;
@@ -980,6 +1008,9 @@ import {
         opacity: 0.55;
       }
       @media (max-width: 700px) {
+        .stack > .panel > lib-neshan-map {
+          height: clamp(20rem, 32dvh, 22rem);
+        }
         .active-trip {
           width: calc(100% + 2rem);
           margin: -1rem -1rem 0;
@@ -1246,7 +1277,7 @@ export class PassengerHomePage {
     this.tripLoaded.set(false)
     try {
       const person = await this.api.passenger()
-      const [trip, choices, stations] = await Promise.all([
+      const [loadedTrip, choices, stations] = await Promise.all([
         this.api.activeTrip(),
         Promise.all([this.api.shifts(), this.api.directions()]).catch(
           () => [[], []] as [Choice[], Choice[]],
@@ -1255,6 +1286,15 @@ export class PassengerHomePage {
           ? this.api.stations(person.directionId).catch(() => [])
           : Promise.resolve([]),
       ])
+      let trip = loadedTrip
+      if (trip?.directionId) {
+        try {
+          const direction = await this.api.direction(trip.directionId)
+          trip = { ...trip, routeGeoJson: direction.routeGeoJson ?? trip.routeGeoJson }
+        } catch {
+          // Keep the active trip visible if route detail is temporarily unavailable.
+        }
+      }
       this.passenger.set(person)
       this.trip.set(trip)
       this.driverImageFailed.set(false)

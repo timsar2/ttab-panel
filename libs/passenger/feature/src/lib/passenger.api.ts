@@ -36,6 +36,7 @@ export interface Choice {
 
 export interface ActiveTrip {
   id: number
+  directionId: number | null
   driverId: number
   fullName: string
   mobileNumber: string
@@ -186,6 +187,25 @@ export class PassengerApi {
       .filter(item => Number.isSafeInteger(item.id) && item.name)
   }
 
+  async direction(directionId: number): Promise<Choice> {
+    if (!Number.isSafeInteger(directionId) || directionId <= 0)
+      throw new Error('A valid direction id is required.')
+    const result = dataResult(
+      await firstValueFrom(this.http.get(`/api/v1/directions/${directionId}`)),
+    )
+    const id = Number(field(result, 'id'))
+    if (id !== directionId) throw new Error('The direction response does not match the request.')
+    return {
+      id,
+      name: String(field(result, 'name') ?? ''),
+      detail:
+        typeof field(result, 'departureTime') === 'string'
+          ? String(field(result, 'departureTime'))
+          : undefined,
+      routeGeoJson: decodeRouteGeometry(field(result, 'encodedPolyline')),
+    }
+  }
+
   async stations(directionId: number): Promise<Choice[]> {
     const { companyId } = this.scope()
     return listResult(
@@ -249,6 +269,7 @@ export class PassengerApi {
     }
     const value = record(body)
     const id = Number(field(value, 'id'))
+    const directionId = Number(field(value, 'directionId'))
     const driverId = Number(field(value, 'driverId'))
     if (!Number.isSafeInteger(id) || id <= 0 || !Number.isSafeInteger(driverId) || driverId <= 0)
       throw new Error('The active-trip response is missing a valid trip or driver id.')
@@ -275,6 +296,7 @@ export class PassengerApi {
 
     return {
       id,
+      directionId: Number.isSafeInteger(directionId) && directionId > 0 ? directionId : null,
       driverId,
       fullName: String(field(value, 'fullName') ?? ''),
       mobileNumber: String(field(value, 'mobileNumber') ?? ''),

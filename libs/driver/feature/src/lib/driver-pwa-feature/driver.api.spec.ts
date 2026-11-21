@@ -178,6 +178,13 @@ describe('DriverApi route scoping and joins', () => {
       ],
       passengerAbsence: [],
     })
+    await Promise.resolve()
+    const directionRequest = http.expectOne('/api/v1/directions/7')
+    expect(directionRequest.request.method).toBe('GET')
+    directionRequest.flush({
+      code: '2000',
+      result: { id: 7, name: 'Direction', encodedPolyline: '_t{xE_avxH_pR_pR' },
+    })
 
     const trip = await result
     expect(trip).toMatchObject({
