@@ -50,7 +50,6 @@ describe('DriverApi route scoping and joins', () => {
       supportTypeId: 3,
       subject: 'Passenger complaint',
       body: 'A passenger violated the rules during the trip.',
-      reportedPersonId: 42,
       tripId: 91,
       violationTypeId: 5,
       occurredAt: '2026-11-17T10:00',
@@ -58,7 +57,6 @@ describe('DriverApi route scoping and joins', () => {
     const request = http.expectOne('/api/v1/support')
     expect(request.request.body).toMatchObject({
       SupportTypeId: 3,
-      ReportedPersonId: 42,
       TripId: 91,
       ViolationTypeIds: '5',
     })

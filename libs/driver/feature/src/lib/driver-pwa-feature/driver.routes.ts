@@ -4,6 +4,14 @@ import { AUTH_CONFIG, SessionStore } from '@org/platform'
 import { map } from 'rxjs'
 import { DriverApi, DRIVER_IDENTITY, DriverIdentity } from './driver.api'
 import { DRIVER_LOGIN_LANGUAGE, DRIVER_SET_LANGUAGE } from './driver.login-config'
+// Support UI is intentionally shared to keep Driver and Passenger workflows visually identical.
+// eslint-disable-next-line @softarc/sheriff/dependency-rule, @nx/enforce-module-boundaries
+import {
+  PassengerApi,
+  PassengerSupportApi,
+  PASSENGER_FEATURE_CONFIG,
+  PASSENGER_IDENTITY,
+} from '@org/passenger-pwa-feature'
 
 export interface DriverFeatureConfig {
   readonly identity: () => DriverIdentity
@@ -112,6 +120,45 @@ export function createDriverRoutes(config: () => DriverFeatureConfig): Routes {
         },
         {
           path: 'support',
+          providers: [
+            PassengerSupportApi,
+            {
+              provide: PASSENGER_IDENTITY,
+              useFactory: () => {
+                const { driverId, companyId, userId } = inject(DRIVER_IDENTITY)()
+                return () => ({ passengerId: driverId, companyId, userId })
+              },
+            },
+            {
+              provide: PassengerApi,
+              useFactory: () => {
+                const driverApi = inject(DriverApi)
+                const driverId = inject(DRIVER_IDENTITY)().driverId ?? 0
+                return {
+                  activeTrip: async () => {
+                    const trip = await driverApi.activeTrip()
+                    return trip ? ({ id: trip.id, driverId } as never) : null
+                  },
+                }
+              },
+            },
+            {
+              provide: PASSENGER_FEATURE_CONFIG,
+              useFactory: () => {
+                const config = inject(DRIVER_FEATURE_CONFIG)
+                return {
+                  identity: () => ({
+                    passengerId: config.identity().driverId,
+                    companyId: config.identity().companyId,
+                    userId: config.identity().userId,
+                  }),
+                  language: config.language,
+                  supportRoleLabel: 'DRIVER CARE' as const,
+                  supportHomeLink: '/driver/route-selection' as const,
+                }
+              },
+            },
+          ],
           loadComponent: () => import('../ui/support.page').then(m => m.SupportPage),
           title: 'Driver | Support',
         },

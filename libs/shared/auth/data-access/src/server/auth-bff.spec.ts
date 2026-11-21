@@ -361,6 +361,67 @@ describe('Node cookie authentication BFF', () => {
     }
   })
 
+  it('uses the authenticated BFF stream to select a trip group on the server connection', async () => {
+    let markStopped!: () => void
+    const stopped = new Promise<void>(resolve => (markStopped = resolve))
+    const invoke = vi.fn(async () => undefined)
+    const createTrackingConnection: NonNullable<
+      AuthBffOptions['createTrackingConnection']
+    > = () => ({
+      state: 'Connected',
+      on: () => undefined,
+      onclose: () => undefined,
+      start: async () => undefined,
+      invoke,
+      stop: async () => markStopped(),
+    })
+    const f = fixture(undefined, 86_400_000, config(), createTrackingConnection)
+    const loginResponse = await f.login().expect(200)
+    const server = f.app.listen(0, '127.0.0.1')
+    let streamRequest: ReturnType<typeof get> | undefined
+    try {
+      await new Promise<void>(resolve => server.once('listening', resolve))
+      const address = server.address() as AddressInfo
+      const connected = new Promise<void>((resolve, reject) => {
+        streamRequest = get({
+          hostname: '127.0.0.1',
+          port: address.port,
+          path: '/api/auth/tracking-stream?clientId=123e4567-e89b-12d3-a456-426614174000',
+          headers: {
+            Cookie: cookie(loginResponse),
+            Origin: origin,
+            'Sec-Fetch-Site': 'same-origin',
+          },
+        })
+        streamRequest.on('response', response => {
+          if (response.statusCode !== 200)
+            reject(new Error(`Unexpected SSE status ${response.statusCode}`))
+          else resolve()
+        })
+        streamRequest.on('error', reject)
+      })
+      await connected
+      await request(f.app)
+        .post('/api/auth/tracking-group')
+        .set('Cookie', cookie(loginResponse))
+        .set('Origin', origin)
+        .set('X-Auth-Request', '1')
+        .send({
+          clientId: '123e4567-e89b-12d3-a456-426614174000',
+          companyId: 7,
+          driverId: 42,
+          tripId: 84,
+        })
+        .expect(204)
+      expect(invoke).toHaveBeenCalledWith('SelectActiveTrip', 7, 42, 84)
+    } finally {
+      streamRequest?.destroy()
+      await stopped
+      server.closeAllConnections()
+      await new Promise<void>(resolve => server.close(() => resolve()))
+    }
+  })
+
   it('uses the configured tenant and does not expose the upstream OTP value', async () => {
     const configured = readAuthBffConfig({
       AUTH_API_URL: 'https://api.example.test/api',

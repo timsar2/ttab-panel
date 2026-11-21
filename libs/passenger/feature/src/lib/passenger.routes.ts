@@ -9,6 +9,8 @@ import { PassengerSupportApi } from './support.api'
 export interface PassengerFeatureConfig {
   readonly identity: () => PassengerIdentity
   readonly language: Signal<'fa' | 'en'>
+  readonly supportRoleLabel?: 'PASSENGER CARE' | 'DRIVER CARE'
+  readonly supportHomeLink?: '/passenger/home' | '/driver/route-selection'
 }
 
 export const PASSENGER_FEATURE_CONFIG = new InjectionToken<PassengerFeatureConfig>(

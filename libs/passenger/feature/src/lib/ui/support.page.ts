@@ -134,7 +134,7 @@ function jalaliCalendarI18n(language: () => 'fa' | 'en') {
     <div class="page-head support-intro">
       <span class="support-mark" aria-hidden="true">{{ fa() ? '؟' : '?' }}</span>
       <div class="support-intro-copy">
-        <span class="support-kicker">{{ fa() ? 'مرکز پشتیبانی' : 'PASSENGER CARE' }}</span>
+        <span class="support-kicker">{{ fa() ? 'مرکز پشتیبانی' : supportRoleLabel() }}</span>
         <h1>{{ fa() ? 'راهنمایی و پشتیبانی' : 'Help and support' }}</h1>
         <p>
           {{
@@ -205,26 +205,6 @@ function jalaliCalendarI18n(language: () => 'fa' | 'en') {
             }}
           </p>
         }
-        <label>
-          {{
-            supportTypeId() === 4
-              ? fa()
-                ? 'شناسه راننده گزارش‌شده'
-                : 'Reported driver ID'
-              : fa()
-                ? 'شناسه مسافر گزارش‌شده'
-                : 'Reported passenger ID'
-          }}
-          <input
-            type="number"
-            min="3"
-            [value]="
-              supportTypeId() === 4 && activeTrip() ? activeTrip()!.driverId : reportedPersonId()
-            "
-            [readonly]="supportTypeId() === 4 && !!activeTrip()"
-            (input)="reportedPersonId.set($any($event.target).value)"
-          />
-        </label>
         <fieldset class="date-picker">
           <legend>
             {{ fa() ? 'زمان وقوع (تقویم شمسی)' : 'Occurrence date and time' }}
@@ -449,7 +429,7 @@ function jalaliCalendarI18n(language: () => 'fa' | 'en') {
     </section>
 
     <div class="actions">
-      <a class="secondary" routerLink="/passenger/home">{{
+      <a class="secondary" [routerLink]="supportHomeLink()">{{
         fa() ? 'بازگشت به خانه' : 'Back to home'
       }}</a>
     </div>
@@ -564,10 +544,10 @@ function jalaliCalendarI18n(language: () => 'fa' | 'en') {
         line-height: 1.6;
       }
       .choice input {
-        width: 2rem;
-        height: 2rem;
-        min-height: 2rem;
-        flex: 0 0 2rem;
+        width: 1rem;
+        height: 1rem;
+        min-height: 1rem;
+        flex: 0 0 1rem;
         accent-color: var(--primary);
       }
       fieldset {
@@ -636,12 +616,17 @@ export class PassengerSupportPage {
   private readonly passengerApi = inject(PassengerApi)
   private readonly config = inject(PASSENGER_FEATURE_CONFIG)
   protected readonly fa = computed(() => this.config.language() === 'fa')
+  protected readonly supportRoleLabel = computed(
+    () => this.config.supportRoleLabel ?? 'PASSENGER CARE',
+  )
+  protected readonly supportHomeLink = computed(
+    () => this.config.supportHomeLink ?? '/passenger/home',
+  )
   protected readonly supportTypes = supportTypes
   protected readonly violationOptionLabel = violationOptionLabel
   protected readonly supportTypeId = signal(2)
   protected readonly subject = signal('')
   protected readonly body = signal('')
-  protected readonly reportedPersonId = signal('')
   protected readonly occurredDate = signal('')
   protected readonly occurredTime = signal('')
   protected readonly dateTouched = signal(false)
@@ -685,15 +670,9 @@ export class PassengerSupportPage {
     if (!this.subject().trim() || this.subject().trim().length > 200 || !this.body().trim())
       return false
     if (!this.isViolationReport()) return true
-    const reportedId =
-      this.supportTypeId() === 4 && this.activeTrip()
-        ? this.activeTrip()!.driverId
-        : Number(this.reportedPersonId())
     const violations = [...this.selectedViolationIds()]
     return Boolean(
       this.activeTrip() &&
-      reportedId &&
-      reportedId > 2 &&
       isValidOccurrenceDate(this.occurredDate()) &&
       /^\d{2}:\d{2}$/.test(this.occurredTime()) &&
       Number(this.occurredTime().slice(0, 2)) <= 23 &&
@@ -774,7 +753,6 @@ export class PassengerSupportPage {
     if (!supportTypes.some(type => type.id === id)) return
     this.supportTypeId.set(id)
     this.formError.set('')
-    this.reportedPersonId.set('')
     this.occurredDate.set('')
     this.occurredTime.set('')
     this.dateTouched.set(false)
@@ -796,10 +774,6 @@ export class PassengerSupportPage {
     this.submitting.set(true)
     this.formError.set('')
     const isReport = this.isViolationReport()
-    const reportedPersonId =
-      this.supportTypeId() === 4 && this.activeTrip()
-        ? this.activeTrip()!.driverId
-        : Number(this.reportedPersonId())
     const request: CreateSupportRequest = {
       Id: 0,
       SupportTypeId: this.supportTypeId(),
@@ -808,7 +782,6 @@ export class PassengerSupportPage {
       ...(isReport
         ? {
             ...buildViolationReportFields({
-              reportedPersonId,
               tripId: this.activeTrip()!.id,
               violationIds: [...this.selectedViolationIds()],
               occurredDate: this.occurredDate(),
@@ -822,7 +795,6 @@ export class PassengerSupportPage {
       this.tickets.update(items => [ticket, ...items.filter(item => item.id !== ticket.id)])
       this.subject.set('')
       this.body.set('')
-      this.reportedPersonId.set('')
       this.occurredDate.set('')
       this.occurredTime.set('')
       this.selectedViolationIds.set(new Set())

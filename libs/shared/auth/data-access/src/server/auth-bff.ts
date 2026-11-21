@@ -48,12 +48,14 @@ export interface AuthBffOptions {
 }
 
 export interface AuthBffTrackingConnection {
+  state?: string
   on(eventName: string, handler: (...args: unknown[]) => void): void
   onreconnecting?(handler: () => void): void
   onreconnected?(handler: () => void): void
   onclose(handler: () => void): void
   start(): Promise<void>
   stop(): Promise<void>
+  invoke?(methodName: string, ...args: unknown[]): Promise<unknown>
 }
 
 export interface AuthDiagnostic {
@@ -223,6 +225,11 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   const storage = options.storage ?? createMemorySessionStorage()
   const maxSessionLifetime = config.production ? 90 * 86_400_000 : 24 * 60 * 60 * 1000
   const trackingConnections = new Map<string, Set<AuthBffTrackingConnection>>()
+  const trackingClients = new Map<string, Map<string, AuthBffTrackingConnection>>()
+  const trackingSelections = new Map<
+    string,
+    Map<string, { companyId: number; driverId: number; tripId: number | null }>
+  >()
   const report = (diagnostic: AuthDiagnostic) => {
     try {
       options.onDiagnostic?.(diagnostic)
@@ -287,6 +294,8 @@ export function createAuthBff(options: AuthBffOptions): Router & {
 
   const stopTrackingConnections = async (sessionId: string) => {
     const connections = trackingConnections.get(sessionId)
+    trackingSelections.delete(sessionId)
+    trackingClients.delete(sessionId)
     if (!connections) return
     trackingConnections.delete(sessionId)
     await Promise.all([...connections].map(connection => connection.stop().catch(() => undefined)))
@@ -573,7 +582,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         ? 'login'
         : rawPath === '/auth/mobile-login' || rawPath === '/auth/mobile-register'
           ? 'login'
-          : rawPath === '/auth/tracking-stream'
+          : rawPath === '/auth/tracking-stream' || rawPath === '/auth/tracking-group'
             ? 'tracking'
             : rawPath === '/auth/mobile-logout'
               ? 'logout'
@@ -741,6 +750,54 @@ export function createAuthBff(options: AuthBffOptions): Router & {
           /* Local logout wins. */
         }
         res.sendStatus(204)
+      } else if (req.method === 'POST' && rawPath === '/auth/tracking-group') {
+        if (!req.is('application/json')) throw new Failure(415)
+        let body: { clientId?: unknown; companyId?: unknown; driverId?: unknown; tripId?: unknown }
+        try {
+          body = JSON.parse(req.body.toString('utf8'))
+        } catch {
+          throw new Failure(400)
+        }
+        if (
+          typeof body?.clientId !== 'string' ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.clientId) ||
+          !Number.isSafeInteger(body?.companyId) ||
+          (body.companyId as number) <= 0 ||
+          !Number.isSafeInteger(body?.driverId) ||
+          (body.driverId as number) <= 0 ||
+          !(
+            body.tripId === null ||
+            (Number.isSafeInteger(body.tripId) && (body.tripId as number) > 0)
+          )
+        )
+          throw new Failure(400)
+        const { session } = await current(req, res)
+        const selection = {
+          companyId: body.companyId as number,
+          driverId: body.driverId as number,
+          tripId: body.tripId as number | null,
+        }
+        const selections = trackingSelections.get(session.id) ?? new Map()
+        const previous = selections.get(body.clientId)
+        selections.set(body.clientId, selection)
+        trackingSelections.set(session.id, selections)
+        const connection = trackingClients.get(session.id)?.get(body.clientId)
+        try {
+          if (connection?.state === 'Connected' && connection.invoke) {
+            await connection.invoke(
+              'SelectActiveTrip',
+              selection.companyId,
+              selection.driverId,
+              selection.tripId,
+            )
+          }
+        } catch {
+          if (previous) selections.set(body.clientId, previous)
+          else selections.delete(body.clientId)
+          if (!selections.size) trackingSelections.delete(session.id)
+          throw new Failure(403, 'access-forbidden')
+        }
+        res.sendStatus(204)
       } else if (req.method === 'POST' && rawPath === '/auth/mobile-logout') {
         clear(res)
         let session: AuthStoredSession
@@ -770,11 +827,25 @@ export function createAuthBff(options: AuthBffOptions): Router & {
           throw new Failure(403, 'access-forbidden')
 
         const { session } = await current(req, res)
+        const requestedClientId = req.query['clientId']
+        if (
+          requestedClientId !== undefined &&
+          (typeof requestedClientId !== 'string' ||
+            !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              requestedClientId,
+            ))
+        )
+          throw new Failure(400)
+        const clientId = typeof requestedClientId === 'string' ? requestedClientId : 'default'
         const connection = await createTrackingConnection(session)
         const sessionConnections =
           trackingConnections.get(session.id) ?? new Set<AuthBffTrackingConnection>()
         sessionConnections.add(connection)
         trackingConnections.set(session.id, sessionConnections)
+        const sessionClients =
+          trackingClients.get(session.id) ?? new Map<string, AuthBffTrackingConnection>()
+        sessionClients.set(clientId, connection)
+        trackingClients.set(session.id, sessionClients)
         let connected = false
         let closed = false
         const pending: string[] = []
@@ -799,6 +870,17 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         })
         connection.onreconnected?.(() => {
           if (!config.production) console.info('[SSE] Upstream SignalR reconnected')
+          const selection = trackingSelections.get(session.id)?.get(clientId)
+          if (selection) {
+            void connection
+              .invoke?.(
+                'SelectActiveTrip',
+                selection.companyId,
+                selection.driverId,
+                selection.tripId,
+              )
+              .catch(() => undefined)
+          }
         })
         connection.onclose(() => {
           if (!config.production) console.info('[SSE] Upstream SignalR connection closed')
@@ -810,10 +892,21 @@ export function createAuthBff(options: AuthBffOptions): Router & {
           clearInterval(heartbeat)
           sessionConnections.delete(connection)
           if (!sessionConnections.size) trackingConnections.delete(session.id)
+          if (sessionClients.get(clientId) === connection) sessionClients.delete(clientId)
+          if (!sessionClients.size) trackingClients.delete(session.id)
           void connection.stop().catch(() => undefined)
         })
         await connection.start()
         if (closed) return
+        const selection = trackingSelections.get(session.id)?.get(clientId)
+        if (selection) {
+          await connection.invoke?.(
+            'SelectActiveTrip',
+            selection.companyId,
+            selection.driverId,
+            selection.tripId,
+          )
+        }
         if (!config.production) console.info('[SSE] Upstream SignalR connection established')
 
         res.status(200)

@@ -42,7 +42,6 @@ export interface CreateSupportRequest {
   readonly SupportTypeId: number
   readonly Subject: string
   readonly Body: string
-  readonly ReportedPersonId?: number
   readonly TripId?: number
   readonly ViolationTypeIds?: string
   readonly OccureAt?: string

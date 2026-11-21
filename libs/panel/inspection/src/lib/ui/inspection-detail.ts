@@ -99,7 +99,12 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
             <dd>{{ detail.driverName || '#' + detail.driverId }}</dd>
           </div>
           <div>
-            <dt class="text-muted-foreground text-sm">{{ t('vehicle') }}</dt>
+            <dt
+              class="text-muted-foreground text-sm whitespace-nowrap [unicode-bidi:isolate-override]"
+              dir="ltr"
+            >
+              {{ t('vehicle') }}
+            </dt>
             <dd>{{ detail.carPlate || '#' + detail.vehicleId }}</dd>
           </div>
         </dl>

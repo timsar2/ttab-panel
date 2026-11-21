@@ -6,14 +6,12 @@ export function violationOptionLabel(violation: SupportViolationType): string {
 }
 
 export function buildViolationReportFields(input: {
-  reportedPersonId: number
   tripId: number
   violationIds: readonly number[]
   occurredDate: string
   occurredTime: string
-}): Pick<CreateSupportRequest, 'ReportedPersonId' | 'TripId' | 'ViolationTypeIds' | 'OccureAt'> {
+}): Pick<CreateSupportRequest, 'TripId' | 'ViolationTypeIds' | 'OccureAt'> {
   return {
-    ReportedPersonId: input.reportedPersonId,
     TripId: input.tripId,
     ViolationTypeIds: input.violationIds.join(','),
     OccureAt: jalaliDateTimeToGregorian(input.occurredDate, input.occurredTime),

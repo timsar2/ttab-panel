@@ -34,7 +34,12 @@ import { VEHICLE_TEXT, vehicleText } from '../vehicle-text'
       <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <p class="text-muted-foreground mb-1 text-sm">{{ text('vehicles') }}</p>
-          <h1 class="text-2xl font-semibold">{{ record()?.carPlate ?? text('vehicleDetails') }}</h1>
+          <h1
+            class="text-2xl font-semibold whitespace-nowrap [unicode-bidi:isolate-override]"
+            dir="ltr"
+          >
+            {{ record()?.carPlate ?? text('vehicleDetails') }}
+          </h1>
         </div>
         <div class="flex flex-wrap gap-2">
           <a
@@ -97,9 +102,17 @@ import { VEHICLE_TEXT, vehicleText } from '../vehicle-text'
                 <h2 class="text-muted-foreground text-sm">{{ text('vehicleType') }}</h2>
                 <p class="mt-1 font-medium break-words">{{ typeName() }}</p>
               </article>
-              <article class="rounded-lg border p-4">
-                <h2 class="text-muted-foreground text-sm">{{ text('carPlate') }}</h2>
-                <p class="mt-1 font-mono font-semibold">{{ vehicle.carPlate }}</p>
+              <article class="rounded-lg border p-4" dir="ltr">
+                <h2
+                  class="text-muted-foreground text-sm whitespace-nowrap [unicode-bidi:isolate-override]"
+                >
+                  {{ text('carPlate') }}
+                </h2>
+                <p
+                  class="mt-1 font-mono font-semibold whitespace-nowrap [unicode-bidi:isolate-override]"
+                >
+                  {{ vehicle.carPlate }}
+                </p>
               </article>
               <article class="rounded-lg border p-4">
                 <h2 class="text-muted-foreground text-sm">{{ text('color') }}</h2>

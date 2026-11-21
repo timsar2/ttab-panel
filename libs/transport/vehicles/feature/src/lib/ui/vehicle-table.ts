@@ -66,6 +66,8 @@ import { VEHICLE_TEXT, vehicleText } from '../vehicle-text'
             class="min-h-11 min-w-0 px-1 text-start"
             [routerLink]="[cell.row.original.id]"
             queryParamsHandling="preserve"
+            class="whitespace-nowrap [unicode-bidi:isolate-override]"
+            dir="ltr"
             >{{ cell.row.original.carPlate }}</a
           >
         } @else {

@@ -63,6 +63,9 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
               <button hlmBtn variant="outline" (click)="goToLiveMap()">
                 {{ fa() ? 'نمایش نقشه' : 'View Map' }}
               </button>
+              <button hlmBtn variant="outline" (click)="endTrip()">
+                {{ fa() ? 'پایان سفر' : 'Stop Trip' }}
+              </button>
               <button hlmBtn variant="outline" (click)="showRoutes.set(!showRoutes())">
                 {{ fa() ? 'مسیر جدید' : 'New Route' }}
               </button>
@@ -120,6 +123,15 @@ import { HlmSpinner } from '@spartan-ng/helm/spinner'
             }
           </ol>
         </section>
+      }
+
+      @if (tripActionError()) {
+        <div class="publish-error" role="alert">
+          <p>{{ tripActionError() }}</p>
+          <button hlmBtn variant="outline" class="retry-btn" (click)="loadData()">
+            {{ fa() ? 'تلاش مجدد' : 'Retry' }}
+          </button>
+        </div>
       }
 
       @if (showRoutes() && routes().length > 0) {
@@ -385,6 +397,7 @@ export class RouteSelectionPage {
 
   protected readonly loading = signal(true)
   protected readonly error = signal<string | null>(null)
+  protected readonly tripActionError = signal<string | null>(null)
   protected readonly publishError = signal<string | null>(null)
   protected readonly routes = signal<RouteCard[]>([])
   protected readonly activeTrip = signal<ActiveTrip | null>(null)
@@ -408,6 +421,7 @@ export class RouteSelectionPage {
   protected async loadData(): Promise<void> {
     this.loading.set(true)
     this.error.set(null)
+    this.tripActionError.set(null)
     try {
       const [routes, activeTrip] = await Promise.all([
         this.api.availableRoutes(),
@@ -437,6 +451,7 @@ export class RouteSelectionPage {
   protected async startRoute(route: RouteCard): Promise<void> {
     this.loading.set(true)
     this.error.set(null)
+    this.tripActionError.set(null)
     try {
       await this.api.startTrip({
         driverLineId: route.driverLineId,
@@ -444,12 +459,37 @@ export class RouteSelectionPage {
         tripTypeId: route.tripTypeId,
         directionId: route.directionId,
       })
-      await this.router.navigateByUrl('/driver/live-map')
     } catch {
       this.error.set(
         this.fa()
           ? 'شروع سفر ناموفق بود. لطفاً دوباره تلاش کنید.'
           : 'Failed to start trip. Please try again.',
+      )
+      this.loading.set(false)
+      return
+    }
+
+    try {
+      const trip = await this.api.activeTrip()
+      if (!trip) {
+        this.showRoutes.set(true)
+        this.tripActionError.set(
+          this.fa()
+            ? 'سفر ثبت شد، اما دریافت اطلاعات آن ممکن نبود. لطفاً دوباره تلاش کنید.'
+            : 'Trip started, but its details could not be loaded. Please retry.',
+        )
+        return
+      }
+
+      this.activeTrip.set(trip)
+      this.showRoutes.set(false)
+      if (typeof navigator !== 'undefined') void this.startLocationPublishing()
+    } catch {
+      this.showRoutes.set(true)
+      this.tripActionError.set(
+        this.fa()
+          ? 'سفر ثبت شد، اما دریافت اطلاعات آن ممکن نبود. لطفاً دوباره تلاش کنید.'
+          : 'Trip started, but its details could not be loaded. Please retry.',
       )
     } finally {
       this.loading.set(false)
@@ -458,6 +498,33 @@ export class RouteSelectionPage {
 
   protected goToLiveMap(): void {
     this.router.navigateByUrl('/driver/live-map')
+  }
+
+  protected async endTrip(): Promise<void> {
+    const trip = this.activeTrip()
+    if (!trip) return
+    if (
+      !window.confirm(
+        this.fa() ? 'آیا از پایان سفر اطمینان دارید؟' : 'Are you sure you want to end this trip?',
+      )
+    )
+      return
+
+    this.loading.set(true)
+    this.tripActionError.set(null)
+    try {
+      await this.api.endTrip({ tripId: trip.id, directionId: trip.directionId })
+      this.publisher.stop()
+      this.activeTrip.set(null)
+      this.showRoutes.set(true)
+      this.publishError.set(null)
+    } catch {
+      this.tripActionError.set(
+        this.fa() ? 'پایان سفر ناموفق بود.' : 'Failed to end trip. Please try again.',
+      )
+    } finally {
+      this.loading.set(false)
+    }
   }
 
   private async startLocationPublishing(): Promise<void> {

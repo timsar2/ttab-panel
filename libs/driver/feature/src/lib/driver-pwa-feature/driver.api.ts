@@ -878,7 +878,6 @@ export class DriverApi {
     supportTypeId: 3 | 4
     subject: string
     body: string
-    reportedPersonId: number
     tripId: number
     violationTypeId: number
     occurredAt: string
@@ -890,7 +889,6 @@ export class DriverApi {
           SupportTypeId: request.supportTypeId,
           Subject: request.subject,
           Body: request.body,
-          ReportedPersonId: request.reportedPersonId,
           TripId: request.tripId,
           ViolationTypeIds: String(request.violationTypeId),
           OccureAt: request.occurredAt,

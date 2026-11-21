@@ -90,7 +90,9 @@ import { HlmButton } from '@spartan-ng/helm/button'
               <tr class="border-t">
                 <td class="px-4 py-3" dir="ltr">{{ visit.inspectionDate }}</td>
                 <td class="px-4 py-3">{{ visit.driverName || '#' + visit.driverId }}</td>
-                <td class="px-4 py-3">{{ visit.carPlate || '#' + visit.vehicleId }}</td>
+                <td class="px-4 py-3 whitespace-nowrap [unicode-bidi:isolate-override]" dir="ltr">
+                  {{ visit.carPlate || '#' + visit.vehicleId }}
+                </td>
                 <td class="px-4 py-3">
                   <span
                     class="bg-muted text-muted-foreground inline-flex rounded-full px-3 py-1 text-xs font-semibold"

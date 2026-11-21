@@ -308,11 +308,11 @@ import {
       </main>
     } @else {
       <div class="page-head">
-        <h1>{{ fa() ? 'سفر شما' : 'Your commute' }}</h1>
+        <h1>{{ fa() ? 'رفت‌وآمد من' : 'Your commute' }}</h1>
         <p>
           {{
             fa()
-              ? 'برنامه و وضعیت سفر ثبت‌شده برای حساب شما'
+              ? 'وضعیت سفر، مسیر رفت‌وآمد و اطلاعات راننده را در یک نگاه دنبال کنید.'
               : 'Your saved transport assignment and trip status'
           }}
         </p>
@@ -924,12 +924,15 @@ import {
       }
       .station-info strong {
         padding-block-start: 0.1rem;
-        font-size: 0.8rem;
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.4;
       }
       .station-info span {
         margin-block-start: 0.2rem;
         color: var(--muted-foreground);
-        font-size: 0.7rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
       }
       .station-tags {
         display: flex;

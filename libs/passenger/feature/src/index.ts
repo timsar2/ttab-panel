@@ -1,3 +1,7 @@
 export { createPassengerRoutes } from './lib/passenger.routes'
 export { createPassengerLoginRoutes } from './lib/passenger.routes'
 export type { PassengerFeatureConfig } from './lib/passenger.routes'
+export { PASSENGER_FEATURE_CONFIG } from './lib/passenger.routes'
+export { PASSENGER_IDENTITY, PassengerApi, type PassengerIdentity } from './lib/passenger.api'
+export { PassengerSupportApi } from './lib/support.api'
+export { PassengerSupportPage } from './lib/ui/support.page'

@@ -64,6 +64,14 @@ export function navigationFor(
       hint: choose,
     },
     {
+      id: 'dashboard',
+      label: rtl ? 'داشبورد' : 'Dashboard',
+      icon: lucideLayoutDashboard,
+      group: operations,
+      commands: companyId ? ['/client', companyId, 'dashboard'] : undefined,
+      hint: companyId ? undefined : choose,
+    },
+    {
       id: 'users',
       label: rtl ? 'کاربران' : 'Users',
       icon: lucideUsers,
@@ -220,6 +228,7 @@ function companyShellTranslations() {
           People: 'افراد',
           'Departure times': 'زمان‌های حرکت',
           'Support requests': 'درخواست‌های پشتیبانی',
+          Dashboard: 'داشبورد',
           'Live tracking': 'ردیابی زنده',
           Inspections: 'بازرسی‌ها',
           Details: 'جزئیات',
@@ -287,6 +296,7 @@ export const appRoutes: Route[] = [
         { path: 'direction', label: 'Routes' },
         { path: 'departure-times', label: 'Departure times' },
         { path: 'support', label: 'Support requests' },
+        { path: 'dashboard', label: 'Dashboard' },
         { path: 'shift', label: 'Shifts' },
         { path: 'inspections', label: 'Inspections' },
       ],
@@ -299,6 +309,13 @@ export const appRoutes: Route[] = [
         loadChildren: () =>
           import('./feature/shift-time/shift-time.routes').then(({ createPanelShiftTimeRoutes }) =>
             createPanelShiftTimeRoutes(),
+          ),
+      },
+      {
+        path: 'dashboard',
+        loadChildren: () =>
+          import('./dashboard/dashboard.routes').then(({ createPanelDashboardRoutes }) =>
+            createPanelDashboardRoutes(),
           ),
       },
       {

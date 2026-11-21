@@ -15,8 +15,14 @@ import { HlmButtonImports } from '@spartan-ng/helm/button'
   imports: [HlmButtonImports],
   template: `
     <div class="page-head">
-      <h1>{{ fa() ? 'حساب کاربری' : 'Account profile' }}</h1>
-      <p>{{ fa() ? 'اطلاعات هویتی و تماس شما' : 'Your identity and contact details' }}</p>
+      <h1>{{ fa() ? 'اطلاعات حساب کاربری' : 'Account profile' }}</h1>
+      <p>
+        {{
+          fa()
+            ? 'اطلاعات حساب و راه‌های تماس خود را مشاهده کنید و موارد قابل ویرایش را به‌روز نگه دارید.'
+            : 'Your identity and contact details'
+        }}
+      </p>
     </div>
     @if (loading()) {
       <div class="panel" role="status">

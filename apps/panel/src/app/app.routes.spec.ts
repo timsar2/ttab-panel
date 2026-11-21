@@ -1,6 +1,18 @@
 import { appRoutes, navigationFor } from './app.routes'
 
 describe('panel navigation', () => {
+  it('adds the Dashboard link to the selected company workspace in Persian', () => {
+    const dashboard = navigationFor(5, true).find(item => item.id === 'dashboard')
+    expect(dashboard?.label).toBe('داشبورد')
+    expect(dashboard?.commands).toEqual(['/client', 5, 'dashboard'])
+  })
+
+  it('keeps Dashboard unavailable until a company is selected', () => {
+    const dashboard = navigationFor(null, false).find(item => item.id === 'dashboard')
+    expect(dashboard?.commands).toBeUndefined()
+    expect(dashboard?.hint).toBe('Choose a company first')
+  })
+
   it('enables the departure-time feature in the selected company workspace', () => {
     const departureTimes = navigationFor(2, false).find(item => item.id === 'departure-times')
 

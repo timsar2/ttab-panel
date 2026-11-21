@@ -1,0 +1,9 @@
+{
+  "name": "panel-dashboard",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/panel/feature/dashboard/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:panel", "type:feature"],
+  "targets": {}
+}

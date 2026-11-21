@@ -15,11 +15,11 @@ import { HlmButtonImports } from '@spartan-ng/helm/button'
   imports: [HlmButtonImports],
   template: `
     <div class="page-head">
-      <h1>{{ fa() ? 'شیفت و ایستگاه' : 'Shift and pickup station' }}</h1>
+      <h1>{{ fa() ? 'برنامه رفت‌وآمد' : 'Shift and pickup station' }}</h1>
       <p>
         {{
           fa()
-            ? 'انتخاب جدید تا زمان تأیید سرویس، برنامه ذخیره‌شده را تغییر نمی‌دهد.'
+            ? 'برنامه ثبت‌شده شما تا زمان تأیید تغییر از سوی سرویس برقرار است.'
             : 'Your saved assignment stays in effect until the service confirms a change.'
         }}
       </p>

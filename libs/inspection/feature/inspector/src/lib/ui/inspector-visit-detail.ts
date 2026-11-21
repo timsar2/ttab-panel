@@ -123,7 +123,10 @@ function routeId(value: string | null): InspectionId | null {
             </div>
             <div class="bg-muted/30 min-w-0 rounded-xl p-4">
               <dt class="text-muted-foreground text-sm font-medium">{{ t('vehicle') }}</dt>
-              <dd class="mt-2 text-base font-semibold" dir="auto">
+              <dd
+                class="mt-2 text-base font-semibold whitespace-nowrap [unicode-bidi:isolate-override]"
+                dir="ltr"
+              >
                 {{ detail.carPlate || '#' + detail.vehicleId }}
               </dd>
             </div>
