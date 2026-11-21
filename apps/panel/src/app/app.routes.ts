@@ -153,6 +153,7 @@ export function navigationFor(
       label: rtl ? 'ردیابی زنده' : 'Live tracking',
       icon: lucideMap,
       group: rtl ? 'نظارت و پشتیبانی' : 'Monitoring and support',
+      groupCommands: companyId ? ['/client', companyId, 'support'] : undefined,
       hint: planned,
     },
     {

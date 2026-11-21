@@ -459,10 +459,6 @@ function jalaliCalendarI18n(language: () => 'fa' | 'en') {
       .support-history {
         margin-top: 1rem;
       }
-      .page-head h1 {
-        font-size: clamp(1.5rem, 3vw, 1.75rem);
-        line-height: 1.35;
-      }
       .support-intro {
         display: flex;
         align-items: center;
@@ -510,6 +506,9 @@ function jalaliCalendarI18n(language: () => 'fa' | 'en') {
       }
       .section-heading h2 {
         margin: 0.15rem 0 0;
+        font-size: 1.125rem;
+        font-weight: 600;
+        line-height: 1.4;
       }
       .section-index {
         display: grid;
@@ -528,12 +527,13 @@ function jalaliCalendarI18n(language: () => 'fa' | 'en') {
         background: var(--muted);
       }
       .page-head p {
-        font-size: 0.95rem;
+        font-size: 0.9375rem;
         line-height: 1.6;
       }
       .stack > h2 {
         margin: 0;
-        font-size: 1.25rem;
+        font-size: 1.125rem;
+        font-weight: 600;
         line-height: 1.4;
       }
       .date-picker {
@@ -560,8 +560,8 @@ function jalaliCalendarI18n(language: () => 'fa' | 'en') {
         font-weight: 400;
       }
       :host label {
-        font-size: 0.95rem;
-        line-height: 1.55;
+        font-size: 0.9375rem;
+        line-height: 1.6;
       }
       .choice input {
         width: 2rem;
@@ -593,9 +593,17 @@ function jalaliCalendarI18n(language: () => 'fa' | 'en') {
         background: var(--background);
         color: var(--foreground);
         cursor: pointer;
+        font: inherit;
+        font-size: 0.9375rem;
       }
       .ticket-button small {
         color: var(--muted-foreground);
+        font-size: 0.75rem;
+      }
+      .ticket-detail h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.4;
       }
       .ticket-detail {
         border-top: 1px solid var(--border);

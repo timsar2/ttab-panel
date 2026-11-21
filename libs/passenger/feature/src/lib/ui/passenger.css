@@ -3,6 +3,9 @@
   min-height: 100dvh;
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.6;
 }
 .passenger-layout {
   min-height: 100dvh;
@@ -85,12 +88,42 @@ footer {
 }
 .page-head h1 {
   margin: 0 0 0.4rem;
-  font-size: clamp(1.55rem, 4vw, 2.2rem);
+  font-size: clamp(1.4rem, 3vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.35;
   letter-spacing: -0.03em;
 }
 .page-head p {
   margin: 0;
   color: var(--muted-foreground);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+.panel h2 {
+  margin-block: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.panel h3 {
+  margin-block: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.panel p,
+.panel label,
+.panel a,
+.panel .person,
+.panel .tracking-status,
+.panel li {
+  font-size: 0.9375rem;
+}
+.panel small {
+  font-size: 0.75rem;
+}
+.assignment-current span {
+  font-size: 0.875rem;
 }
 .panel {
   border: 1px solid var(--border);
@@ -137,9 +170,16 @@ footer {
   color: var(--primary-foreground);
 }
 .secondary {
-  background: var(--secondary);
-  color: var(--secondary-foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  color: var(--foreground);
   border-color: var(--border);
+  text-decoration: none;
+}
+.secondary:hover:not(:disabled) {
+  background: var(--muted);
 }
 .primary:disabled,
 .secondary:disabled {
@@ -150,6 +190,7 @@ label {
   display: grid;
   gap: 0.4rem;
   color: var(--foreground);
+  font-size: 0.9375rem;
   font-weight: 600;
 }
 input,
@@ -177,6 +218,9 @@ button:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+button {
+  font: inherit;
 }
 .assignment-current {
   display: flex;
@@ -274,8 +318,9 @@ a:focus-visible {
 }
 .profile-identity-copy h2 {
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: 650;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.4;
 }
 .profile-identity-copy p {
   margin: 0.25rem 0 0;
@@ -303,6 +348,12 @@ a:focus-visible {
   }
   main {
     margin-block: 1rem;
+  }
+  .page-head h1 {
+    font-size: 1.5rem;
+  }
+  .panel h2 {
+    font-size: 1.125rem;
   }
   .grid {
     grid-template-columns: minmax(0, 1fr);

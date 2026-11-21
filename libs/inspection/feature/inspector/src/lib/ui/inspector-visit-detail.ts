@@ -274,6 +274,34 @@ function routeId(value: string | null): InspectionId | null {
               </form>
             }
           </section>
+          <section
+            class="bg-card min-w-0 rounded-2xl border p-4 shadow-sm md:p-6"
+            aria-labelledby="inspector-corrective-actions-heading"
+          >
+            <div class="border-b pb-4">
+              <h2 id="inspector-corrective-actions-heading" class="text-lg font-bold md:text-xl">
+                {{ t('correctiveActions') }}
+              </h2>
+            </div>
+            @if (!detail.correctiveActions.length) {
+              <p class="text-muted-foreground mt-4 rounded-xl border border-dashed p-5 text-sm">
+                {{ t('noCorrectiveActions') }}
+              </p>
+            }
+            <ul class="mt-4 grid gap-3">
+              @for (action of detail.correctiveActions; track action.id) {
+                <li class="bg-muted/30 min-w-0 rounded-xl p-4">
+                  <p class="text-muted-foreground text-xs font-medium">{{ t('completedAt') }}</p>
+                  <p class="mt-1 text-sm font-semibold tabular-nums" dir="ltr">
+                    {{ action.completedAt }}
+                  </p>
+                  <p class="mt-3 leading-6 break-words whitespace-pre-wrap">
+                    {{ action.description }}
+                  </p>
+                </li>
+              }
+            </ul>
+          </section>
         </div>
         @if (isPendingApproval(detail.statusTypeName, detail.statusTypeId)) {
           <section class="bg-card rounded-2xl border p-4 shadow-sm md:p-6">
@@ -285,7 +313,7 @@ function routeId(value: string | null): InspectionId | null {
               [disabled]="approving()"
               (click)="approveVisit(detail.id)"
             >
-              {{ approving() ? t('saving') : t('approve') }}
+              {{ approving() ? t('saving') : t('closeRequest') }}
             </button>
             @if (approvalSaved()) {
               <p class="mt-3" role="status">{{ t('approved') }}</p>
@@ -410,7 +438,7 @@ export class InspectorVisitDetailPage {
   }
 
   protected async approveVisit(id: InspectionId) {
-    if (this.approving() || !globalThis.confirm(this.t('approve'))) return
+    if (this.approving() || !globalThis.confirm(this.t('closeRequest'))) return
     this.approving.set(true)
     this.approvalError.set(false)
     this.approvalSaved.set(false)

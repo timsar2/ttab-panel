@@ -507,7 +507,7 @@ import {
                 [serviceApiKey]="neshanServiceApiKey"
                 [fitContainer]="true"
                 [points]="mapPoints()"
-                [routeGeoJson]="selectedDirection()?.routeGeoJson ?? null"
+                [routeGeoJson]="selectedDirectionDetail()?.routeGeoJson ?? null"
                 [language]="config.language()"
               />
               @if (selectedStations().length) {
@@ -553,10 +553,10 @@ import {
           }
 
           <div class="actions">
-            <a class="secondary" routerLink="/passenger/support">{{
+            <a hlmBtn variant="outline" routerLink="/passenger/support">{{
               fa() ? 'پشتیبانی' : 'Get support'
             }}</a>
-            <a class="secondary" routerLink="/passenger/profile">{{
+            <a hlmBtn variant="outline" routerLink="/passenger/profile">{{
               fa() ? 'حساب کاربری' : 'Profile'
             }}</a>
           </div>
@@ -706,7 +706,9 @@ import {
       }
       .trip-heading h1 {
         margin: 0;
-        font-size: clamp(1.35rem, 3vw, 1.8rem);
+        font-size: clamp(1.35rem, 3vw, 1.75rem);
+        font-weight: 600;
+        line-height: 1.35;
         letter-spacing: -0.03em;
       }
       .arrival-status {
@@ -784,7 +786,9 @@ import {
         overflow: hidden;
         margin: 0;
         text-overflow: ellipsis;
-        font-size: 1rem;
+        font-size: 1.05rem;
+        font-weight: 600;
+        line-height: 1.4;
       }
       .call-driver {
         display: inline-flex;
@@ -859,7 +863,9 @@ import {
       }
       .route-title-row h2 {
         margin: 0;
-        font-size: 0.95rem;
+        font-size: 1rem;
+        font-weight: 600;
+        line-height: 1.4;
       }
       .route-title-row > span {
         color: var(--muted-foreground);
@@ -1125,9 +1131,7 @@ export class PassengerHomePage {
   protected readonly passenger = signal<PassengerRecord | null>(null)
   protected readonly shifts = signal<Choice[]>([])
   protected readonly directions = signal<Choice[]>([])
-  protected readonly selectedDirection = computed(
-    () => this.directions().find(item => String(item.id) === this.selectedDirectionId()) ?? null,
-  )
+  protected readonly selectedDirectionDetail = signal<Choice | null>(null)
   protected readonly assignedStations = signal<Choice[]>([])
   protected readonly trip = signal<ActiveTrip | null>(null)
   protected readonly tripLoaded = signal(false)
@@ -1301,6 +1305,7 @@ export class PassengerHomePage {
       this.vehicleImageFailed.set(false)
       this.mapExpanded.set(false)
       this.selectedDirectionId.set(person.directionId ? String(person.directionId) : '')
+      this.selectedDirectionDetail.set(null)
       this.selectedStations.set(
         trip
           ? []
@@ -1323,6 +1328,7 @@ export class PassengerHomePage {
       this.directions.set(choices[1])
       this.assignedStations.set(stations)
       this.tripLoaded.set(true)
+      if (!trip && person.directionId) void this.loadSelectedDirection(person.directionId)
     } catch {
       this.error.set(
         this.fa()
@@ -1339,15 +1345,30 @@ export class PassengerHomePage {
     if (!(target instanceof HTMLSelectElement)) return
     this.selectedDirectionId.set(target.value)
     this.selectedStations.set([])
+    this.selectedDirectionDetail.set(null)
+    this.directionLoading.set(false)
     const directionId = Number(target.value)
     if (!Number.isSafeInteger(directionId) || directionId <= 0) return
+    await this.loadSelectedDirection(directionId)
+  }
+
+  private async loadSelectedDirection(directionId: number): Promise<void> {
     this.directionLoading.set(true)
     try {
-      this.selectedStations.set(await this.api.stations(directionId))
+      const [direction, stations] = await Promise.all([
+        this.api.direction(directionId),
+        this.api.stations(directionId),
+      ])
+      if (this.selectedDirectionId() !== String(directionId) || this.trip()) return
+      this.selectedDirectionDetail.set(direction)
+      this.selectedStations.set(stations)
     } catch {
-      this.selectedStations.set([])
+      if (this.selectedDirectionId() === String(directionId)) {
+        this.selectedDirectionDetail.set(null)
+        this.selectedStations.set([])
+      }
     } finally {
-      this.directionLoading.set(false)
+      if (this.selectedDirectionId() === String(directionId)) this.directionLoading.set(false)
     }
   }
 }

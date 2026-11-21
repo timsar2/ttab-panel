@@ -60,6 +60,15 @@ describe('panel navigation', () => {
     expect(navigationFor(5, false, ['Driver']).some(item => item.id === 'support')).toBe(false)
   })
 
+  it('links the Monitoring and support group heading to Support in a selected company', () => {
+    const groupHeading = navigationFor(5, true, ['Operator']).find(item => item.id === 'tracking')
+    expect(groupHeading?.group).toBe('نظارت و پشتیبانی')
+    expect(groupHeading?.groupCommands).toEqual(['/client', 5, 'support'])
+    expect(
+      navigationFor(null, true, ['Operator']).find(item => item.id === 'tracking')?.groupCommands,
+    ).toBeUndefined()
+  })
+
   it('shows the global-list Inspection feature only to backend-authorized staff', () => {
     expect(
       navigationFor(5, false, ['Admin']).find(item => item.id === 'inspections')?.commands,

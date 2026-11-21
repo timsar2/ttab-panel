@@ -47,7 +47,9 @@ describe('InspectionDetailPage', () => {
         carPlate: 'AB123',
         statusTypeName: 'Pending approval',
         description: 'Check every field.',
-        defects: [],
+        defects: [
+          { id: 2, inspectionVisitId: 12, dueDate: '2026-11-20', description: 'Replace tire' },
+        ],
         correctiveActions: [],
         ...checks,
       }),
@@ -85,10 +87,12 @@ describe('InspectionDetailPage', () => {
     expect(loadDetail).toHaveBeenCalledWith(12)
     expect(fixture.nativeElement.textContent).toContain('Needs attention')
     expect(fixture.nativeElement.textContent).toContain('Pending approval')
+    expect(fixture.nativeElement.textContent).toContain('Replace tire')
+    expect(fixture.nativeElement.textContent).toContain('2026-11-20')
     expect(fixture.nativeElement.querySelector('#inspection-status-form')).toBeNull()
 
     expect(fixture.nativeElement.querySelector('#inspection-defect-form')).toBeNull()
-    expect(fixture.nativeElement.textContent).not.toContain('Required actions')
+    expect(fixture.nativeElement.textContent).toContain('Required actions')
 
     const actionForm = fixture.nativeElement.querySelector(
       '#inspection-action-form',

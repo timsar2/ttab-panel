@@ -34,8 +34,17 @@ describe('InspectorVisitDetailPage', () => {
       carPlate: 'AB123',
       statusTypeName: 'Pending approval',
       description: 'Inspection details',
-      defects: [],
-      correctiveActions: [],
+      defects: [
+        { id: 2, inspectionVisitId: 12, dueDate: '2026-11-20', description: 'Replace tire' },
+      ],
+      correctiveActions: [
+        {
+          id: 3,
+          inspectionVisitId: 12,
+          completedAt: '2026-11-26',
+          description: 'Tire replaced by admin',
+        },
+      ],
       ...Object.fromEntries(INSPECTION_CHECKS.map(key => [key, false])),
     }
     const store = {
@@ -80,7 +89,10 @@ describe('InspectorVisitDetailPage', () => {
     expect(fixture.nativeElement.querySelector('#inspection-status-form')).toBeNull()
     expect(fixture.nativeElement.querySelector('#inspection-required-action-form')).not.toBeNull()
     expect(fixture.nativeElement.querySelector('#inspection-approve')).not.toBeNull()
-    expect(fixture.nativeElement.textContent).not.toContain('Completed corrective actions')
+    expect(fixture.nativeElement.textContent).toContain('Replace tire')
+    expect(fixture.nativeElement.textContent).toContain('Tire replaced by admin')
+    expect(fixture.nativeElement.textContent).toContain('2026-11-26')
+    expect(fixture.nativeElement.textContent).toContain('Close Request')
     fixture.destroy()
   })
 })

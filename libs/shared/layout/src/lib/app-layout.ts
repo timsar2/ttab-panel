@@ -21,6 +21,7 @@ export interface LayoutNavItem {
   readonly label: string
   readonly icon?: string
   readonly group?: string
+  readonly groupCommands?: (string | number)[]
   readonly commands?: (string | number)[]
   readonly exact?: boolean
   readonly hint?: string
@@ -73,7 +74,13 @@ export interface LayoutNavItem {
               <ul hlmSidebarMenu>
                 @for (item of items(); track item.id; let index = $index) {
                   @if (item.group && (index === 0 || item.group !== items()[index - 1].group)) {
-                    <li class="theme-menu-heading" aria-hidden="true">{{ item.group }}</li>
+                    <li class="theme-menu-heading">
+                      @if (item.groupCommands; as groupCommands) {
+                        <a [routerLink]="groupCommands">{{ item.group }}</a>
+                      } @else {
+                        <span aria-hidden="true">{{ item.group }}</span>
+                      }
+                    </li>
                   }
                   <li hlmSidebarMenuItem>
                     @if (item.commands; as commands) {

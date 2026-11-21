@@ -52,11 +52,13 @@ export type InspectorTextKey =
   | 'requiredAction'
   | 'recordRequiredAction'
   | 'approve'
+  | 'closeRequest'
   | 'approved'
   | 'approvalError'
   | 'actionError'
   | 'actionSaved'
   | 'noItems'
+  | 'noCorrectiveActions'
   | InspectionCheck
 
 const text = {
@@ -111,11 +113,13 @@ const text = {
     requiredAction: 'Required action description',
     recordRequiredAction: 'Record required action',
     approve: 'Approve and close inspection',
+    closeRequest: 'Close Request',
     approved: 'Inspection approved and closed.',
     approvalError: 'The inspection could not be approved. Refresh and try again.',
     actionError: 'The required action could not be saved.',
     actionSaved: 'Required action saved.',
     noItems: 'None recorded.',
+    noCorrectiveActions: 'No corrective actions are recorded.',
     tiresCondition: 'Tires condition',
     lightsCondition: 'Lights condition',
     seatsCondition: 'Seats condition',
@@ -180,11 +184,13 @@ const text = {
     requiredAction: 'شرح اقدام لازم',
     recordRequiredAction: 'ثبت اقدام لازم',
     approve: 'تأیید و اختتام بازرسی',
+    closeRequest: 'اختتام درخواست',
     approved: 'بازرسی تأیید و مختومه شد.',
     approvalError: 'تأیید بازرسی ناموفق بود. صفحه را تازه‌سازی و دوباره تلاش کنید.',
     actionError: 'ذخیره اقدام لازم ناموفق بود.',
     actionSaved: 'اقدام لازم ثبت شد.',
     noItems: 'موردی ثبت نشده است.',
+    noCorrectiveActions: 'اقدام اصلاحی ثبت نشده است.',
     tiresCondition: 'وضعیت لاستیک‌ها',
     lightsCondition: 'وضعیت چراغ‌ها',
     seatsCondition: 'وضعیت صندلی‌ها',

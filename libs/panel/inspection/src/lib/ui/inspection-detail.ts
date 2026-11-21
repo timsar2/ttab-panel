@@ -132,6 +132,20 @@ const checkLabels: Record<InspectionCheck, InspectionTextKey> = {
         <h3 class="mt-5 font-medium">{{ t('description') }}</h3>
         <p class="mt-2 whitespace-pre-wrap">{{ detail.description }}</p>
       </section>
+      <section class="mb-6 rounded-xl border p-5" aria-labelledby="inspection-defects-heading">
+        <h2 id="inspection-defects-heading" class="text-lg font-semibold">{{ t('defects') }}</h2>
+        @if (!detail.defects.length) {
+          <p class="text-muted-foreground mt-3">{{ t('noDefects') }}</p>
+        }
+        <ul class="mt-3 grid gap-3">
+          @for (defect of detail.defects; track defect.id) {
+            <li class="bg-muted/30 rounded-lg p-4">
+              <p dir="ltr">{{ t('dueDate') }}: {{ defect.dueDate }}</p>
+              <p class="mt-2 whitespace-pre-wrap">{{ defect.description }}</p>
+            </li>
+          }
+        </ul>
+      </section>
       <section class="rounded-xl border p-5">
         <h2 class="text-lg font-semibold">{{ t('correctiveActions') }}</h2>
         @if (!detail.correctiveActions.length) {

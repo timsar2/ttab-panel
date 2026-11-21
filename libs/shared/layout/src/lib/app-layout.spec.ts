@@ -64,19 +64,27 @@ describe('AppLayout', () => {
     expect(element.querySelector('main')?.textContent).not.toContain('Example brand')
   })
 
-  it('renders configured links, groups and disabled future modules without dead routes', async () => {
+  it('renders clickable group headings and disabled future modules without dead routes', async () => {
     await TestBed.configureTestingModule({
       imports: [Host],
       providers: [provideRouter([])],
     }).compileComponents()
     const fixture = TestBed.createComponent(AppLayout)
     fixture.componentRef.setInput('items', [
-      { id: 'home', label: 'Home', group: 'Management', commands: ['/'], exact: true },
+      {
+        id: 'home',
+        label: 'Home',
+        group: 'Management',
+        groupCommands: ['/support'],
+        commands: ['/'],
+        exact: true,
+      },
       { id: 'future', label: 'Vehicles', group: 'Operations', hint: 'Not implemented yet' },
     ])
     await fixture.whenStable()
     const element: HTMLElement = fixture.nativeElement
     expect(element.querySelector('a[hlmSidebarMenuButton]')?.getAttribute('href')).toBe('/')
+    expect(element.querySelector('.theme-menu-heading a')?.getAttribute('href')).toBe('/support')
     expect(element.querySelector('button[hlmSidebarMenuButton]')?.hasAttribute('disabled')).toBe(
       true,
     )
