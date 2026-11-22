@@ -3,11 +3,9 @@ import { computed, inject, signal } from '@angular/core'
 import { createAuthRoutes, type LayoutNavItem } from '@org/platform'
 import { createCompanyRoutes } from '@org/transport-company-feature'
 import { CompanyContextStore } from '@org/transport-company-data-access'
-import { createPeopleRoutes } from '@org/panel-people'
 import { createDepartureTimeRoutes } from '@org/panel-departure-times'
 import { SessionStore } from '@org/platform'
 import { departureCompanyId } from '@org/transport-departure-times-data-access'
-import { peopleCompanyId } from '@org/transport-people-data-access'
 import { createCompanyShellRoutes } from '@org/platform'
 import { of } from 'rxjs'
 import { PreferencesStore } from '@org/platform'
@@ -47,14 +45,6 @@ export function navigationFor(
       icon: lucideBuilding2,
       group: administration,
       commands: ['/companies'],
-    },
-    {
-      id: 'people',
-      label: rtl ? 'افراد' : 'People',
-      icon: lucideUsers,
-      group: operations,
-      commands: companyId ? ['/client', companyId, 'people'] : undefined,
-      hint: choose,
     },
     {
       id: 'dashboard',
@@ -97,27 +87,6 @@ export function navigationFor(
       hint: choose,
     },
     {
-      id: 'lines',
-      label: rtl ? 'خطوط' : 'Lines',
-      icon: lucideWaypoints,
-      group: operations,
-      hint: planned,
-    },
-    {
-      id: 'stations',
-      label: rtl ? 'ایستگاه‌ها' : 'Stations',
-      icon: lucideMapPin,
-      group: operations,
-      hint: planned,
-    },
-    {
-      id: 'assignments',
-      label: rtl ? 'تخصیص رانندگان' : 'Driver assignments',
-      icon: lucideUserRoundCheck,
-      group: operations,
-      hint: planned,
-    },
-    {
       id: 'driver-line',
       label: rtl ? 'خط راننده' : 'Driver-line assignments',
       icon: lucideUserRoundCog,
@@ -148,14 +117,6 @@ export function navigationFor(
       group: scheduling,
       commands: companyId ? ['/client', companyId, 'shift'] : undefined,
       hint: companyId ? undefined : choose,
-    },
-    {
-      id: 'tracking',
-      label: rtl ? 'ردیابی زنده' : 'Live tracking',
-      icon: lucideMap,
-      group: rtl ? 'نظارت و پشتیبانی' : 'Monitoring and support',
-      groupCommands: companyId ? ['/client', companyId, 'support'] : undefined,
-      hint: planned,
     },
     {
       id: 'support',
@@ -218,7 +179,6 @@ function companyShellTranslations() {
           Users: 'کاربران',
           User: 'کاربر',
           user: 'کاربران',
-          People: 'افراد',
           'Departure times': 'زمان‌های حرکت',
           'Support requests': 'درخواست‌های پشتیبانی',
           Dashboard: 'داشبورد',
@@ -309,7 +269,6 @@ export const appRoutes: Route[] = [
       navigation: panelNavigation,
       translations: companyShellTranslations,
       links: [
-        { path: 'people', label: 'People' },
         { path: 'users', label: 'Users' },
         { path: 'drivers', label: 'Drivers' },
         { path: 'passengers', label: 'Passengers' },
@@ -355,21 +314,6 @@ export const appRoutes: Route[] = [
             createPanelInspectionRoutes(),
           ),
       },
-      ...createPeopleRoutes({
-        path: 'people',
-        apiUrl: '/api',
-        company: () => {
-          const context = inject(CompanyContextStore)
-          return computed(() => {
-            const company = context.company()
-            return context.status() === 'ready' && company ? peopleCompanyId(company.id) : null
-          })
-        },
-        // A company detail read is not proof of Person access; keep live reads gated.
-        access: () => () => of(false),
-        deniedMessage:
-          'People access is not enabled until company membership and person-read permissions are approved.',
-      }),
       ...createDepartureTimeRoutes({
         path: 'departure-times',
         apiUrl: '/api',

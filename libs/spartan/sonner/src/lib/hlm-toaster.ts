@@ -2,6 +2,7 @@ import type { BooleanInput, NumberInput } from '@angular/cdk/coercion'
 import {
   ChangeDetectionStrategy,
   Component,
+  ViewEncapsulation,
   booleanAttribute,
   computed,
   input,
@@ -33,7 +34,29 @@ import type { ClassValue } from 'clsx'
       lucideLoader2,
     }),
   ],
+  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: [
+    `
+      [data-sonner-toaster] [data-sonner-toast][data-type='success'] {
+        background: var(--success-soft) !important;
+        border-color: var(--success) !important;
+        color: var(--success-foreground) !important;
+      }
+
+      [data-sonner-toaster] [data-sonner-toast][data-type='error'] {
+        background: var(--destructive-soft) !important;
+        border-color: var(--destructive) !important;
+        color: var(--destructive-foreground) !important;
+      }
+
+      [data-sonner-toaster] [data-sonner-toast][data-type='warning'] {
+        background: var(--warning-soft) !important;
+        border-color: var(--warning) !important;
+        color: var(--warning-foreground) !important;
+      }
+    `,
+  ],
   template: `
     <brn-sonner-toaster
       [class]="_computedClass()"
@@ -121,18 +144,6 @@ export class HlmToaster {
       classes: {
         ...options?.classes,
         toast: hlm('rounded-2xl!', options?.classes?.toast),
-        success: hlm(
-          'border-success! bg-success-soft! text-success-foreground!',
-          options?.classes?.success,
-        ),
-        error: hlm(
-          'border-destructive! bg-destructive-soft! text-destructive-foreground!',
-          options?.classes?.error,
-        ),
-        warning: hlm(
-          'border-warning! bg-warning-soft! text-warning-foreground!',
-          options?.classes?.warning,
-        ),
       },
     }
   })

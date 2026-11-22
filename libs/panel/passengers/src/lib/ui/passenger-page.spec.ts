@@ -108,7 +108,7 @@ describe('PassengerPage route entry', () => {
       Array.from(fixture.nativeElement.querySelectorAll('thead th')).map((cell: Element) =>
         cell.textContent?.trim(),
       ),
-    ).toEqual(['', 'Passenger name', 'Mobile number', 'National ID'])
+    ).toEqual(['', 'Passenger name', 'Mobile number'])
 
     selects[0].selectedIndex = 1
     selects[0].dispatchEvent(new Event('change', { bubbles: true }))
