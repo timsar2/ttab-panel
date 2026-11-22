@@ -1,5 +1,7 @@
 // Single source of truth for app environment URLs/config.
 // All apps use the same base URL; API/auth endpoints are derived from it.
+import { isDevMode } from '@angular/core'
+
 export const PLATFORM_BASE_URL = 'https://api.ttabline.com'
 export const PLATFORM_DEV_BASE_URL = 'https://localhost:5001'
 
@@ -30,4 +32,4 @@ export const productionEnvironment = {
 } as const
 
 // Convenience alias for environments that don't need file-replacement selection in libs.
-export const environment = developmentEnvironment
+export const environment = isDevMode() ? developmentEnvironment : productionEnvironment
