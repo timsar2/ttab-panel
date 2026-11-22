@@ -1183,6 +1183,36 @@ describe('Node cookie authentication BFF', () => {
     await request(app).get('/api/companies').set('Cookie', cookie(logged)).expect(502)
   })
 
+  it.each([
+    { code: '400', massage: 'کد ملی ثبت نشده', result: null },
+    { code: 'کد ملی ثبت نشده', massage: '400', result: null },
+  ])(
+    'normalizes standard ResultData error envelopes to code/message fields',
+    async upstreamBody => {
+      const { app, login, fetcher } = fixture()
+      const logged = await login()
+      const original = fetcher.getMockImplementation()
+      if (!original) throw new Error('Missing fetch test implementation.')
+      fetcher.mockImplementation(async (url, init) =>
+        String(url).endsWith('/drivers') ? json(upstreamBody, 400) : original(url, init),
+      )
+
+      const response = await request(app)
+        .post('/api/drivers')
+        .set('Origin', origin)
+        .set('X-Auth-Request', '1')
+        .set('Cookie', cookie(logged))
+        .send({})
+        .expect(400)
+
+      expect(response.body).toEqual({
+        code: '400',
+        message: 'کد ملی ثبت نشده',
+        result: null,
+      })
+    },
+  )
+
   it('binds email-derived tenant to the session and ignores browser tenant overrides', async () => {
     const f = fixture()
     const app = express().use(

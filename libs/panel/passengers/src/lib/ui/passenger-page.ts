@@ -38,6 +38,7 @@ function decodePassenger(value: unknown): PassengerRow {
   return {
     id: row['id'],
     fullName: typeof row['fullName'] === 'string' ? row['fullName'] : '',
+    mobileNumber: typeof row['mobileNumber'] === 'string' ? row['mobileNumber'] : '',
     nationalId: typeof row['nationalId'] === 'string' ? row['nationalId'] : '',
     profileImage: typeof row['profileImage'] === 'string' ? row['profileImage'] : '',
   }
@@ -54,6 +55,7 @@ const copy = {
   fa: {
     title: 'مسافران',
     name: 'نام مسافر',
+    mobileNumber: 'شماره همراه',
     date: 'تاریخ',
     direction: 'مسیر',
     shift: 'شیفت',
@@ -68,6 +70,7 @@ const copy = {
   en: {
     title: 'Passengers',
     name: 'Passenger name',
+    mobileNumber: 'Mobile number',
     date: 'Date',
     direction: 'Direction',
     shift: 'Shift',
@@ -191,10 +194,10 @@ const searchCopy = {
     }
     @if (rows().length) {
       <div class="overflow-x-auto rounded-md border">
-        <table class="w-full text-start text-sm">
+        <table class="w-full table-fixed text-start text-sm">
           <thead>
             <tr class="border-b">
-              <th class="p-3">
+              <th class="w-12 p-3 text-center align-middle">
                 <input
                   type="checkbox"
                   aria-label="Select all passengers"
@@ -202,14 +205,14 @@ const searchCopy = {
                   (change)="selectAll($event)"
                 />
               </th>
-              <th class="p-3">{{ text().name }}</th>
-              <th class="p-3">{{ language() === 'fa' ? 'کد ملی' : 'National ID' }}</th>
+              <th class="p-3 text-start align-middle">{{ text().name }}</th>
+              <th class="p-3 text-start align-middle">{{ text().mobileNumber }}</th>
             </tr>
           </thead>
           <tbody>
             @for (row of rows(); track row.id) {
               <tr class="border-b last:border-0">
-                <td class="p-3">
+                <td class="p-3 text-center align-middle">
                   <input
                     type="checkbox"
                     [attr.aria-label]="row.fullName"
@@ -217,8 +220,8 @@ const searchCopy = {
                     (change)="toggle(row.id, $event)"
                   />
                 </td>
-                <td class="p-3">{{ row.fullName }}</td>
-                <td class="p-3">{{ row.nationalId }}</td>
+                <td class="p-3 text-start align-middle">{{ row.fullName }}</td>
+                <td class="p-3 text-start align-middle">{{ row.mobileNumber }}</td>
               </tr>
             }
           </tbody>

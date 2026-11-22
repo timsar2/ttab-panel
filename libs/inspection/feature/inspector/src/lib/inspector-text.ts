@@ -37,6 +37,13 @@ export type InspectorTextKey =
   | 'submit'
   | 'saving'
   | 'required'
+  | 'driverRequired'
+  | 'vehicleRequired'
+  | 'inspectionDateInvalid'
+  | 'dueDateInvalid'
+  | 'actionRequired'
+  | 'actionLimit'
+  | 'checkRequired'
   | 'dateRequired'
   | 'descriptionRequired'
   | 'descriptionLimit'
@@ -98,6 +105,13 @@ const text = {
     submit: 'Register visit',
     saving: 'Registering…',
     required: 'Choose a driver and vehicle, enter a date and description, and answer every check.',
+    driverRequired: 'Choose a valid driver.',
+    vehicleRequired: 'Choose a valid vehicle.',
+    inspectionDateInvalid: 'Enter a valid inspection date.',
+    dueDateInvalid: 'Enter a valid due date.',
+    actionRequired: 'Enter a required action description.',
+    actionLimit: 'Required action description is limited to 300 characters.',
+    checkRequired: 'Choose an answer for this inspection item.',
     dateRequired: 'Enter a valid due date.',
     descriptionRequired: 'Enter a description for the required action.',
     descriptionLimit: 'Description is limited to 1000 characters.',
@@ -169,6 +183,13 @@ const text = {
     submit: 'ثبت بازدید',
     saving: 'در حال ثبت…',
     required: 'راننده، خودرو، تاریخ، توضیحات و پاسخ همه موارد را وارد کنید.',
+    driverRequired: 'یک راننده معتبر انتخاب کنید.',
+    vehicleRequired: 'یک وسیله نقلیه معتبر انتخاب کنید.',
+    inspectionDateInvalid: 'تاریخ بازرسی معتبری وارد کنید.',
+    dueDateInvalid: 'مهلت معتبری وارد کنید.',
+    actionRequired: 'شرح اقدام لازم را وارد کنید.',
+    actionLimit: 'شرح اقدام لازم حداکثر ۳۰۰ نویسه است.',
+    checkRequired: 'برای این مورد بازرسی یک پاسخ انتخاب کنید.',
     dateRequired: 'مهلت معتبری وارد کنید.',
     descriptionRequired: 'شرح اقدام لازم را وارد کنید.',
     descriptionLimit: 'توضیحات حداکثر ۱۰۰۰ نویسه است.',

@@ -59,7 +59,7 @@ export interface DataTablePage {
       tabindex="0"
       [attr.aria-busy]="loading()"
     >
-      <table hlmTable dir="auto">
+      <table hlmTable [attr.dir]="direction()">
         <caption hlmCaption>
           {{
             caption()
@@ -160,6 +160,7 @@ export class DataTable<T extends object> {
   readonly rowId = input.required<(row: T) => string>()
   readonly rowLabel = input<(row: T) => string>(() => '')
   readonly page = input.required<DataTablePage>()
+  readonly direction = input<'ltr' | 'rtl' | 'auto'>('auto')
   readonly showPagination = input(true)
   readonly caption = input.required<string>()
   readonly loading = input(false)

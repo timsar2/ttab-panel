@@ -39,6 +39,19 @@ describe('transport adapters', () => {
         }),
       ),
     ).toMatchObject({ kind: 'business', status: 403, code: '400', message: 'Denied' })
+    expect(
+      normalizeTransportError(
+        new HttpErrorResponse({
+          status: 400,
+          error: { code: '400', message: 'National ID is missing', result: null },
+        }),
+      ),
+    ).toMatchObject({
+      kind: 'business',
+      status: 400,
+      code: '400',
+      message: 'National ID is missing',
+    })
   })
   it('handles empty, text, network, and exception errors without diagnostics', () => {
     expect(normalizeTransportError(new HttpErrorResponse({ status: 0 }))).toMatchObject({

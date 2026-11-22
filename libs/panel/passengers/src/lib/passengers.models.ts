@@ -1,6 +1,7 @@
 export interface PassengerRow {
   readonly id: number
   readonly fullName: string
+  readonly mobileNumber: string
   readonly nationalId: string
   readonly profileImage: string
 }

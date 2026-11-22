@@ -87,6 +87,7 @@
       "@spartan-ng/helm/typography": ["./libs/spartan/typography/src/index.ts"],
       "@spartan-ng/helm/utils": ["./libs/spartan/utils/src/index.ts"],
       "@org/auth-data-access": ["./libs/shared/auth/data-access/src/index.ts"],
+      "@org/http-core": ["./libs/shared/http/core/src/index.ts"],
       "@org/auth-data-access/node": ["./libs/shared/auth/data-access/src/server/index.ts"],
       "@org/layout": ["./libs/shared/layout/src/index.ts"],
       "@org/auth-feature": ["./libs/shared/auth/feature/src/index.ts"],

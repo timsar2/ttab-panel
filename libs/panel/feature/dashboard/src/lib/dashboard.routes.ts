@@ -4,10 +4,12 @@ import {
   Component,
   DestroyRef,
   InjectionToken,
+  TemplateRef,
   computed,
   effect,
   inject,
   signal,
+  viewChild,
 } from '@angular/core'
 import { HttpHeaders } from '@angular/common/http'
 import type { Signal } from '@angular/core'
@@ -20,6 +22,8 @@ import { decodeRouteGeometry } from '@org/shared-route-geometry'
 import type { GeoJsonLineString } from '@org/shared-route-geometry'
 import { authGuard } from '@org/auth-data-access'
 import { TrackingConnectionService } from '@org/shared-tracking'
+import { DataTable, DataTableColumn, DataTablePage } from '@org/ui-data-table'
+import { HlmButton } from '@spartan-ng/helm/button'
 import { firstValueFrom } from 'rxjs'
 
 export interface DashboardFeatureConfig {
@@ -59,7 +63,7 @@ const DASHBOARD_CONFIG = new InjectionToken<DashboardFeatureConfig>('DASHBOARD_C
 
 @Component({
   selector: 'lib-dashboard-page',
-  imports: [NeshanMapComponent, RouterLink],
+  imports: [NeshanMapComponent, RouterLink, DataTable, HlmButton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block min-w-0 p-4 md:p-8' },
   template: `
@@ -125,40 +129,43 @@ const DASHBOARD_CONFIG = new InjectionToken<DashboardFeatureConfig>('DASHBOARD_C
           <h2 id="dashboard-support-heading" class="mb-3 text-lg font-semibold">
             {{ language() === 'fa' ? 'درخواست‌های باز' : 'Open support requests' }}
           </h2>
-          @if (loadingSupport()) {
-            <p role="status">
-              {{
-                language() === 'fa'
-                  ? 'در حال بارگذاری درخواست‌ها...'
-                  : 'Loading support requests...'
-              }}
-            </p>
-          } @else if (supportError()) {
-            <p role="alert">{{ supportError() }}</p>
-          } @else {
-            <ul class="grid gap-2">
-              @for (request of supportRequests(); track request.id) {
-                <li>
-                  <a
-                    class="hover:bg-muted/50 block rounded-md border p-3"
-                    [routerLink]="['/client', companyId(), 'support', request.id]"
-                    ><span class="font-medium">{{ request.subject }}</span
-                    ><span class="text-muted-foreground mt-1 block text-sm">{{
-                      request.requestDate
-                    }}</span></a
-                  >
-                </li>
-              } @empty {
-                <li role="status" class="text-muted-foreground">
-                  {{
-                    language() === 'fa'
-                      ? 'درخواست بازی برای نمایش وجود ندارد.'
-                      : 'No open requests found.'
-                  }}
-                </li>
-              }
-            </ul>
-          }
+          <lib-data-table
+            [rows]="supportRequests()"
+            [columns]="supportColumns()"
+            [rowId]="supportRowId"
+            [rowLabel]="supportRowLabel"
+            [caption]="language() === 'fa' ? 'درخواست‌های باز' : 'Open support requests'"
+            [loading]="loadingSupport()"
+            [error]="supportError() || null"
+            [page]="supportTablePage()"
+            [showPagination]="false"
+            [rowActions]="supportActionsTemplate()"
+            [actionHeading]="language() === 'fa' ? 'مشاهده' : 'Open'"
+            [loadingLabel]="
+              language() === 'fa' ? 'در حال بارگذاری درخواست‌ها...' : 'Loading support requests...'
+            "
+            [emptyLabel]="
+              language() === 'fa'
+                ? 'درخواست بازی برای نمایش وجود ندارد.'
+                : 'No open requests found.'
+            "
+            [errorTitle]="language() === 'fa' ? 'بارگذاری ناموفق بود' : 'Unable to load requests'"
+            [retryLabel]="language() === 'fa' ? 'تلاش دوباره' : 'Retry'"
+            [pagingLabel]="language() === 'fa' ? 'صفحه درخواست‌ها' : 'Support request pages'"
+            [pageLabel]="language() === 'fa' ? 'صفحه' : 'Page'"
+            [previousLabel]="language() === 'fa' ? 'قبلی' : 'Previous'"
+            [nextLabel]="language() === 'fa' ? 'بعدی' : 'Next'"
+            (retry)="reloadSupport()"
+          />
+          <ng-template #dashboardSupportActions let-request>
+            <a
+              hlmBtn
+              variant="outline"
+              class="min-h-11"
+              [routerLink]="['/client', companyId(), 'support', request.id]"
+              >{{ language() === 'fa' ? 'مشاهده' : 'Open' }}</a
+            >
+          </ng-template>
         </section>
       }
     </main>
@@ -175,6 +182,25 @@ class DashboardPage {
   protected readonly points = signal<NeshanMapPoint[]>([])
   protected readonly routeGeoJson = signal<GeoJsonLineString | null>(null)
   protected readonly supportRequests = signal<Support[]>([])
+  protected readonly supportColumns = computed<readonly DataTableColumn<Support>[]>(() => [
+    { accessorKey: 'subject', header: this.language() === 'fa' ? 'موضوع' : 'Subject' },
+    {
+      accessorKey: 'requestDate',
+      header: this.language() === 'fa' ? 'تاریخ درخواست' : 'Request date',
+      cell: info => info.getValue() ?? '-',
+    },
+  ])
+  protected readonly supportRowId = (request: Support) => String(request.id)
+  protected readonly supportRowLabel = (request: Support) => request.subject
+  protected readonly supportTablePage = computed<DataTablePage>(() => ({
+    pageIndex: 0,
+    pageSize: Math.max(this.supportRequests().length, 1),
+    totalPages: 1,
+    hasPreviousPage: false,
+    hasNextPage: false,
+  }))
+  protected readonly supportActionsTemplate =
+    viewChild.required<TemplateRef<{ $implicit: Support }>>('dashboardSupportActions')
   protected readonly loadingTrips = signal(false)
   protected readonly loadingSupport = signal(true)
   protected readonly supportError = signal('')
@@ -260,6 +286,11 @@ class DashboardPage {
       }
     }
     if (trip) void this.loadTripData(trip)
+  }
+
+  protected reloadSupport() {
+    const companyId = this.companyId()
+    if (companyId) void this.loadSupportRequests(companyId)
   }
 
   private async loadTrips(companyId: number) {

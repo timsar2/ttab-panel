@@ -26,10 +26,13 @@ import {
         <div class="min-w-0">
           <span class="block truncate font-semibold">{{ driverName() }}</span>
           @if (homeDetails(); as details) {
-            <span class="text-muted-foreground block truncate text-sm">
+            <span class="text-muted-foreground block truncate">
               {{ details.vehicle.name ?? (fa() ? 'نوع وسیله' : 'Vehicle type') }}
               @if (details.vehicle.plate) {
-                · {{ details.vehicle.plate }}
+                ·
+                <span class="text-sm whitespace-nowrap [unicode-bidi:isolate-override]" dir="ltr">{{
+                  details.vehicle.plate
+                }}</span>
               }
             </span>
           }

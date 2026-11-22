@@ -9,6 +9,7 @@ import {
 } from '@angular/core'
 import { SessionStore } from './session.store'
 import { authInterceptor } from './auth.interceptor'
+import { apiErrorInterceptor, apiMessageInterceptor } from '@org/http-core'
 
 export interface AuthConfig {
   apiUrl: string
@@ -138,7 +139,9 @@ export function provideAuth(config: AuthConfig): EnvironmentProviders {
     { provide: AUTH_CONFIG, useFactory: () => normalize(config) },
     // Config, session, and the HTTP chain must share a scope; never delegate to a parent session.
     SessionStore,
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(
+      withInterceptors([authInterceptor, apiMessageInterceptor, apiErrorInterceptor]),
+    ),
   ])
 }
 

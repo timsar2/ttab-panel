@@ -3,14 +3,13 @@ import { computed, inject, signal } from '@angular/core'
 import { createAuthRoutes, type LayoutNavItem } from '@org/platform'
 import { createCompanyRoutes } from '@org/transport-company-feature'
 import { CompanyContextStore } from '@org/transport-company-data-access'
-import { createPeopleRoutes } from '@org/panel-people'
 import { createDepartureTimeRoutes } from '@org/panel-departure-times'
 import { SessionStore } from '@org/platform'
 import { departureCompanyId } from '@org/transport-departure-times-data-access'
-import { peopleCompanyId } from '@org/transport-people-data-access'
-import { createCompanyShellRoutes, createWorkspaceRoutes } from '@org/platform'
+import { createCompanyShellRoutes } from '@org/platform'
 import { of } from 'rxjs'
 import { PreferencesStore } from '@org/platform'
+import { CompanyAdminShell, PANEL_ADMIN_NAVIGATION } from './company-admin-shell'
 import {
   lucideLayoutDashboard,
   lucideBuilding2,
@@ -41,27 +40,11 @@ export function navigationFor(
   const scheduling = rtl ? 'برنامه‌ریزی' : 'Scheduling'
   const items: LayoutNavItem[] = [
     {
-      id: 'workspace',
-      label: rtl ? 'فضای کاری' : 'Workspace',
-      icon: lucideLayoutDashboard,
-      group: administration,
-      commands: ['/workspace'],
-      exact: true,
-    },
-    {
       id: 'companies',
       label: rtl ? 'شرکت‌ها' : 'Companies',
       icon: lucideBuilding2,
       group: administration,
       commands: ['/companies'],
-    },
-    {
-      id: 'people',
-      label: rtl ? 'افراد' : 'People',
-      icon: lucideUsers,
-      group: operations,
-      commands: companyId ? ['/client', companyId, 'people'] : undefined,
-      hint: choose,
     },
     {
       id: 'dashboard',
@@ -104,27 +87,6 @@ export function navigationFor(
       hint: choose,
     },
     {
-      id: 'lines',
-      label: rtl ? 'خطوط' : 'Lines',
-      icon: lucideWaypoints,
-      group: operations,
-      hint: planned,
-    },
-    {
-      id: 'stations',
-      label: rtl ? 'ایستگاه‌ها' : 'Stations',
-      icon: lucideMapPin,
-      group: operations,
-      hint: planned,
-    },
-    {
-      id: 'assignments',
-      label: rtl ? 'تخصیص رانندگان' : 'Driver assignments',
-      icon: lucideUserRoundCheck,
-      group: operations,
-      hint: planned,
-    },
-    {
       id: 'driver-line',
       label: rtl ? 'خط راننده' : 'Driver-line assignments',
       icon: lucideUserRoundCog,
@@ -155,14 +117,6 @@ export function navigationFor(
       group: scheduling,
       commands: companyId ? ['/client', companyId, 'shift'] : undefined,
       hint: companyId ? undefined : choose,
-    },
-    {
-      id: 'tracking',
-      label: rtl ? 'ردیابی زنده' : 'Live tracking',
-      icon: lucideMap,
-      group: rtl ? 'نظارت و پشتیبانی' : 'Monitoring and support',
-      groupCommands: companyId ? ['/client', companyId, 'support'] : undefined,
-      hint: planned,
     },
     {
       id: 'support',
@@ -225,7 +179,6 @@ function companyShellTranslations() {
           Users: 'کاربران',
           User: 'کاربر',
           user: 'کاربران',
-          People: 'افراد',
           'Departure times': 'زمان‌های حرکت',
           'Support requests': 'درخواست‌های پشتیبانی',
           Dashboard: 'داشبورد',
@@ -251,8 +204,35 @@ function companyShellTranslations() {
   )
 }
 
+function panelCompanyRoutes(routes: Route[]): Route[] {
+  const list = routes.find(route => route.path === 'companies')
+  if (!list) throw new Error('The panel company list route is required.')
+  const editors = routes
+    .filter(route => route.path?.startsWith('companies/'))
+    .map(route => {
+      const path = route.path!.slice('companies/'.length)
+      return {
+        ...route,
+        path,
+        data: {
+          ...route.data,
+          breadcrumb: path === 'new' ? 'Create company' : 'Edit company',
+        },
+      }
+    })
+
+  return [
+    {
+      path: 'companies',
+      component: CompanyAdminShell,
+      providers: [{ provide: PANEL_ADMIN_NAVIGATION, useFactory: panelNavigation }],
+      children: [...editors, { ...list, path: '', data: { ...list.data, breadcrumb: null } }],
+    },
+  ]
+}
+
 export const appRoutes: Route[] = [
-  { path: '', pathMatch: 'full', redirectTo: 'login' },
+  { path: '', pathMatch: 'full', redirectTo: 'companies' },
   ...createAuthRoutes({ path: 'login', title: 'Panel | Sign in' }),
   { path: 'auth/login', pathMatch: 'full', redirectTo: 'login' },
   { path: 'companys', pathMatch: 'full', redirectTo: 'companies' },
@@ -262,20 +242,22 @@ export const appRoutes: Route[] = [
     pathMatch: 'full',
     redirectTo: 'companies/:companyId/edit',
   },
-  ...createCompanyRoutes({
-    path: 'companies',
-    apiUrl: '/api/v1',
-    language: () => inject(PreferencesStore).language,
-    heading: 'Companies',
-    actionLabel: 'Open workspace',
-    actionCommands: company => ['/client', company.id],
-    editor: {
-      geographyApiUrl: '/api',
-      maxLogoBytes: 256 * 1024,
-      canCreate: roles => roles.some(role => role === 'Admin' || role === 'Manager'),
-      canEdit: roles => roles.some(role => role === 'Admin' || role === 'Manager'),
-    },
-  }),
+  ...panelCompanyRoutes(
+    createCompanyRoutes({
+      path: 'companies',
+      apiUrl: '/api/v1',
+      language: () => inject(PreferencesStore).language,
+      heading: 'Companies',
+      actionLabel: 'Open workspace',
+      actionCommands: company => ['/client', company.id],
+      editor: {
+        geographyApiUrl: '/api',
+        maxLogoBytes: 256 * 1024,
+        canCreate: roles => roles.some(role => role === 'Admin' || role === 'Manager'),
+        canEdit: roles => roles.some(role => role === 'Admin' || role === 'Manager'),
+      },
+    }),
+  ),
   ...createCompanyShellRoutes(
     {
       path: 'client/:companyId',
@@ -287,7 +269,6 @@ export const appRoutes: Route[] = [
       navigation: panelNavigation,
       translations: companyShellTranslations,
       links: [
-        { path: 'people', label: 'People' },
         { path: 'users', label: 'Users' },
         { path: 'drivers', label: 'Drivers' },
         { path: 'passengers', label: 'Passengers' },
@@ -302,6 +283,7 @@ export const appRoutes: Route[] = [
       ],
     },
     [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'passenger', pathMatch: 'full', redirectTo: 'passengers' },
       { path: 'passenger/add', pathMatch: 'full', redirectTo: 'passengers/add' },
       {
@@ -332,21 +314,6 @@ export const appRoutes: Route[] = [
             createPanelInspectionRoutes(),
           ),
       },
-      ...createPeopleRoutes({
-        path: 'people',
-        apiUrl: '/api',
-        company: () => {
-          const context = inject(CompanyContextStore)
-          return computed(() => {
-            const company = context.company()
-            return context.status() === 'ready' && company ? peopleCompanyId(company.id) : null
-          })
-        },
-        // A company detail read is not proof of Person access; keep live reads gated.
-        access: () => () => of(false),
-        deniedMessage:
-          'People access is not enabled until company membership and person-read permissions are approved.',
-      }),
       ...createDepartureTimeRoutes({
         path: 'departure-times',
         apiUrl: '/api',
@@ -417,36 +384,5 @@ export const appRoutes: Route[] = [
       },
     ],
   ),
-  ...createWorkspaceRoutes({
-    path: 'workspace',
-    brand: 'Panel',
-    companiesCommands: ['/companies'],
-    loginUrl: '/login',
-    navigation: panelNavigation,
-    text: () => {
-      const preferences = inject(PreferencesStore)
-      return computed(() =>
-        preferences.isRtl()
-          ? {
-              navigation: 'ناوبری',
-              workspace: 'فضای کاری',
-              administration: 'پنل مدیریت',
-              signOut: 'خروج',
-              heading: 'ورود با موفقیت انجام شد',
-              description: 'برای ورود به فضای کاری، یک شرکت را انتخاب کنید.',
-              chooseCompany: 'انتخاب شرکت',
-            }
-          : {
-              navigation: 'Navigation',
-              workspace: 'Workspace',
-              administration: 'Administration',
-              signOut: 'Sign out',
-              heading: 'You are signed in',
-              description: 'Choose a company to open its workspace.',
-              chooseCompany: 'Choose a company',
-            },
-      )
-    },
-  }),
   { path: '**', redirectTo: 'login' },
 ]

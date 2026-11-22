@@ -1,6 +1,6 @@
-import { HttpClient } from '@angular/common/http'
 import { Injectable, InjectionToken, inject, makeEnvironmentProviders } from '@angular/core'
 import { catchError, defer, map, throwError } from 'rxjs'
+import { ApiService } from '@org/http-core'
 import { normalizeTransportError } from './transport-adapters'
 
 const TRANSPORT_API_URL = new InjectionToken<string>('TRANSPORT_API_URL')
@@ -26,13 +26,14 @@ function normalizeApiUrl(raw: string) {
 export function provideTransportHttp(config: { apiUrl: string }) {
   return makeEnvironmentProviders([
     { provide: TRANSPORT_API_URL, useValue: normalizeApiUrl(config.apiUrl) },
+    ApiService,
     TransportHttp,
   ])
 }
 
 @Injectable()
 export class TransportHttp {
-  private readonly http = inject(HttpClient)
+  private readonly api = inject(ApiService)
   private readonly apiUrl = inject(TRANSPORT_API_URL)
 
   /** A decoder is mandatory: raw, enveloped, and paged endpoints are distinct contracts. */
@@ -49,7 +50,7 @@ export class TransportHttp {
         throw new Error('Invalid transport endpoint path.')
       }
       const apiUrl = options ? normalizeApiUrl(options.apiUrl) : this.apiUrl
-      return this.http.request<unknown>(method, `${apiUrl}/${path}`, {
+      return this.api.request<unknown>(method, `${apiUrl}/${path}`, {
         body,
         transferCache: false,
         credentials: 'omit',

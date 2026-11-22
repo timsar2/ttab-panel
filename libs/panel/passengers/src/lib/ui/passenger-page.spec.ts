@@ -72,7 +72,17 @@ describe('PassengerPage route entry', () => {
 
     const envelope = (result: unknown) => ({ code: '2000', massage: 'OK', result })
     passengers.flush(
-      envelope({ list: [{ id: 45, fullName: 'Ava Reed', nationalId: '101', profileImage: '' }] }),
+      envelope({
+        list: [
+          {
+            id: 45,
+            fullName: 'Ava Reed',
+            mobileNumber: '09120000000',
+            nationalId: '101',
+            profileImage: '',
+          },
+        ],
+      }),
     )
     directions.flush(envelope([{ id: 12, name: 'North Route', departureTime: '08:00' }]))
     shifts.flush(
@@ -93,6 +103,12 @@ describe('PassengerPage route entry', () => {
     expect(selects[0].options[1].textContent).toContain('North Route')
     expect(selects[1].options[1].textContent).toContain('Morning')
     expect(fixture.nativeElement.textContent).toContain('Ava Reed')
+    expect(fixture.nativeElement.textContent).toContain('09120000000')
+    expect(
+      Array.from(fixture.nativeElement.querySelectorAll('thead th')).map((cell: Element) =>
+        cell.textContent?.trim(),
+      ),
+    ).toEqual(['', 'Passenger name', 'Mobile number'])
 
     selects[0].selectedIndex = 1
     selects[0].dispatchEvent(new Event('change', { bubbles: true }))
@@ -130,11 +146,19 @@ describe('PassengerPage route entry', () => {
     })
     expect(assignment.request.body.fromDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
     assignment.flush(envelope(true))
-    http
-      .expectOne('/api/v1/passengers/search')
-      .flush(
-        envelope({ list: [{ id: 45, fullName: 'Ava Reed', nationalId: '101', profileImage: '' }] }),
-      )
+    http.expectOne('/api/v1/passengers/search').flush(
+      envelope({
+        list: [
+          {
+            id: 45,
+            fullName: 'Ava Reed',
+            mobileNumber: '09120000000',
+            nationalId: '101',
+            profileImage: '',
+          },
+        ],
+      }),
+    )
     http.verify()
   })
 })
