@@ -75,6 +75,9 @@ describe('DataTable public composition', () => {
     expect(fixture.nativeElement.querySelector('[role="region"]')?.getAttribute('dir')).toBe('ltr')
     const table = fixture.nativeElement.querySelector('table') as HTMLTableElement
     expect(table.getAttribute('dir')).toBe('auto')
+    fixture.componentRef.setInput('direction', 'rtl')
+    await fixture.whenStable()
+    expect(table.getAttribute('dir')).toBe('rtl')
     expect(root.dir).toBe('rtl')
     fixture.destroy()
     root.dir = original

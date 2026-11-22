@@ -38,7 +38,6 @@ describe('App', () => {
     '/',
     '/login',
     '/unknown',
-    '/workspace',
     '/auth/login',
     '/client/2/drivers',
     '/client/2/drivers/new',
@@ -56,7 +55,7 @@ describe('App', () => {
         .flush({}, { status: 401, statusText: 'Unauthorized' })
     })
     // A protected-route redirect also runs the guest guard on the login route.
-    if (url === '/workspace' || url.startsWith('/client/')) {
+    if (url.startsWith('/client/')) {
       await vi.waitFor(() =>
         controller
           .expectOne('/api/auth/session')

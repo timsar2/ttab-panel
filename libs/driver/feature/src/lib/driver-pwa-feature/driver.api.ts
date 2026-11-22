@@ -152,6 +152,22 @@ export interface DocumentUploadRequest {
   licenceLevel?: string
 }
 
+export interface DriverDocumentImages {
+  nationalCardFrontImage: string | null
+  nationalCardBehindImage: string | null
+  drivingLicenceImage: string | null
+  driverSmartCardImage: string | null
+  driverLicenceLevelId: number
+}
+
+export type DriverDocumentImageField = keyof Pick<
+  DriverDocumentImages,
+  | 'nationalCardFrontImage'
+  | 'nationalCardBehindImage'
+  | 'drivingLicenceImage'
+  | 'driverSmartCardImage'
+>
+
 export interface DriverLocationPublishRequest {
   tripId?: number | null
   driverId?: number | null
@@ -775,18 +791,71 @@ export class DriverApi {
       return typeof path === 'string' ? path : ''
     }
 
-    const formData = new FormData()
-    formData.append('driverId', String(driverId))
-    formData.append('companyId', String(companyId))
-    formData.append('documentType', request.documentType)
-    formData.append('file', request.file)
-    if (request.licenceLevel) formData.append('licenceLevel', request.licenceLevel)
-    const response = record(
-      await firstValueFrom(this.http.post('/api/v1/drivers/upload-document', formData)),
+    const current = dataResult(await firstValueFrom(this.http.get(`/api/v1/drivers/${driverId}`)))
+    const documentProperty = {
+      nationalId: 'nationalCardFrontImage',
+      drivingLicense: 'drivingLicenceImage',
+      smartCard: 'driverSmartCardImage',
+    }[request.documentType]
+    const saved = dataResult(
+      await firstValueFrom(
+        this.http.post('/api/v1/drivers', {
+          id: driverId,
+          companyId,
+          driverLicenceLevelId:
+            request.licenceLevel ?? property(current, 'driverLicenceLevelId') ?? 0,
+          [documentProperty]: await this.fileUploadPayload(request.file),
+        }),
+      ),
     )
-    if (response['code'] !== '2000' || typeof response['result'] !== 'string')
-      throw new Error('The document could not be uploaded.')
-    return response['result']
+    const path = property(saved, documentProperty)
+    return typeof path === 'string' ? path : ''
+  }
+
+  async driverDocumentImages(): Promise<DriverDocumentImages> {
+    const { driverId } = this.scope()
+    const result = dataResult(await firstValueFrom(this.http.get(`/api/v1/drivers/${driverId}`)))
+    const image = (field: DriverDocumentImageField): string | null => {
+      const value = property(result, field)
+      return typeof value === 'string' && value.length > 0 ? value : null
+    }
+    return {
+      nationalCardFrontImage: image('nationalCardFrontImage'),
+      nationalCardBehindImage: image('nationalCardBehindImage'),
+      drivingLicenceImage: image('drivingLicenceImage'),
+      driverSmartCardImage: image('driverSmartCardImage'),
+      driverLicenceLevelId: Number(property(result, 'driverLicenceLevelId') ?? 0),
+    }
+  }
+
+  async saveDriverDocumentImages(
+    images: Partial<Record<DriverDocumentImageField, File>>,
+    licenceLevel: string,
+    currentImages: DriverDocumentImages,
+  ): Promise<DriverDocumentImages> {
+    const { driverId, companyId } = this.scope()
+    const payload: Record<string, unknown> = {
+      id: driverId,
+      companyId,
+      driverLicenceLevelId: Number(licenceLevel || currentImages.driverLicenceLevelId),
+    }
+    for (const [field, file] of Object.entries(images) as [DriverDocumentImageField, File][]) {
+      if (file) payload[field] = await this.fileUploadPayload(file)
+    }
+    const saved = dataResult(await firstValueFrom(this.http.post('/api/v1/drivers', payload)))
+    const image = (field: DriverDocumentImageField): string | null => {
+      const value = property(saved, field) ?? currentImages[field]
+      return typeof value === 'string' && value.length > 0 ? value : null
+    }
+    return {
+      nationalCardFrontImage: image('nationalCardFrontImage'),
+      nationalCardBehindImage: image('nationalCardBehindImage'),
+      drivingLicenceImage: image('drivingLicenceImage'),
+      driverSmartCardImage: image('driverSmartCardImage'),
+      driverLicenceLevelId: Number(
+        property(saved, 'driverLicenceLevelId') ?? currentImages.driverLicenceLevelId,
+      ),
+    }
   }
 
   async profile(): Promise<Record<string, unknown>> {

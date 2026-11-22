@@ -5,6 +5,7 @@ import {
   computed,
   effect,
   inject,
+  signal,
 } from '@angular/core'
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop'
 import {
@@ -17,12 +18,16 @@ import {
 } from '@angular/router'
 import { SessionStore } from '@org/auth-data-access'
 import { AppLayout } from '@org/layout'
-import { CompanyContextStore } from '@org/transport-company-data-access'
+import {
+  CompanyContextStore,
+  CompanySearchStore,
+  type CompanySearch,
+} from '@org/transport-company-data-access'
 import { HlmButton } from '@spartan-ng/helm/button'
 import { HlmCardImports } from '@spartan-ng/helm/card'
 import { HlmAlertImports } from '@spartan-ng/helm/alert'
 import { HlmBreadcrumbImports } from '@spartan-ng/helm/breadcrumb'
-import { filter } from 'rxjs'
+import { Subject, debounceTime, distinctUntilChanged, filter } from 'rxjs'
 import { COMPANY_SHELL_CONFIG } from './company-shell.routes'
 
 @Component({
@@ -65,6 +70,47 @@ import { COMPANY_SHELL_CONFIG } from './company-shell.routes'
         }
       </nav>
       <div layoutHeader class="flex w-full min-w-0 items-center justify-between gap-3">
+        @if (showCompanySearch()) {
+          <label class="relative min-w-0 flex-1 md:max-w-sm">
+            <span class="sr-only">{{ labels().searchCompany }}</span>
+            <input
+              type="search"
+              class="bg-background min-h-11 w-full rounded-md border px-3"
+              [placeholder]="labels().searchCompany"
+              [value]="companyQuery()"
+              (input)="searchCompanies($event)"
+            />
+            @if (companyQuery().length >= 2) {
+              <ul
+                class="bg-background absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border shadow-lg"
+                role="listbox"
+              >
+                @if (companySearch.loading()) {
+                  <li class="p-3 text-sm" role="status">{{ labels().loadingCompanies }}</li>
+                } @else {
+                  @for (company of companySearch.page()?.items ?? []; track company.id) {
+                    <li role="option" [attr.aria-selected]="context.company()?.id === company.id">
+                      <button
+                        type="button"
+                        class="hover:bg-accent min-h-11 w-full px-3 text-start"
+                        (click)="selectCompany(company.id)"
+                      >
+                        {{ company.companyTypeName ? company.companyTypeName + '.' : ''
+                        }}{{ company.name }}
+                      </button>
+                    </li>
+                  } @empty {
+                    @if (!companySearch.error()) {
+                      <li class="p-3 text-sm">{{ labels().noCompanies }}</li>
+                    } @else {
+                      <li class="p-3 text-sm" role="alert">{{ companySearch.error()?.message }}</li>
+                    }
+                  }
+                }
+              </ul>
+            }
+          </label>
+        }
         <div class="min-w-0">
           <span class="block truncate font-semibold">{{
             context.company()?.name ?? labels().workspace
@@ -152,6 +198,8 @@ import { COMPANY_SHELL_CONFIG } from './company-shell.routes'
 export class CompanyShell {
   protected readonly config = inject(COMPANY_SHELL_CONFIG)
   protected readonly context = inject(CompanyContextStore)
+  protected readonly companySearch = inject(CompanySearchStore)
+  protected readonly companyQuery = signal('')
   protected readonly navigationItems = this.config.navigation?.() ?? computed(() => [])
   private readonly translations =
     this.config.translations?.() ??
@@ -159,9 +207,14 @@ export class CompanyShell {
   private readonly session = inject(SessionStore)
   private readonly router = inject(Router)
   private readonly route = inject(ActivatedRoute)
+  private readonly companySearchTerms = new Subject<CompanySearch>()
   private readonly navigation = toSignal(
     this.router.events.pipe(filter(event => event instanceof NavigationEnd)),
   )
+  protected readonly showCompanySearch = computed(() => {
+    this.navigation()
+    return this.router.url.split(/[?#]/, 1)[0].replace(/\/$/, '') !== '/companies'
+  })
   protected readonly labels = computed(() => {
     const translations = this.translations()
     return {
@@ -173,6 +226,9 @@ export class CompanyShell {
       signOut: translations['Sign out'] ?? 'Sign out',
       breadcrumbs: translations['Breadcrumbs'] ?? 'Breadcrumbs',
       account: translations['Signed-in account'] ?? 'Signed-in account',
+      searchCompany: translations['Search companies'] ?? 'Search companies',
+      loadingCompanies: translations['Searching companies'] ?? 'Searching...',
+      noCompanies: translations['No companies found'] ?? 'No companies found.',
       ...this.config.labels,
     }
   })
@@ -224,6 +280,13 @@ export class CompanyShell {
 
   constructor() {
     const destroyRef = inject(DestroyRef)
+    this.companySearchTerms
+      .pipe(
+        debounceTime(500),
+        distinctUntilChanged((left, right) => left.name === right.name),
+        takeUntilDestroyed(destroyRef),
+      )
+      .subscribe(query => this.companySearch.load(query))
     destroyRef.onDestroy(() => this.context.clear())
     this.router.events.pipe(takeUntilDestroyed(destroyRef)).subscribe(event => {
       if (event instanceof NavigationEnd) {
@@ -236,6 +299,27 @@ export class CompanyShell {
         void this.router.navigateByUrl(this.config.loginUrl)
       }
     })
+  }
+
+  protected searchCompanies(event: Event) {
+    const input = event.target
+    if (!(input instanceof HTMLInputElement)) return
+    const name = input.value
+    this.companyQuery.set(name)
+    if (name.trim().length < 2) {
+      this.companySearch.clear()
+      return
+    }
+    this.companySearch.clear()
+    this.companySearchTerms.next({ name, pageIndex: 0, pageSize: 10 })
+  }
+
+  protected selectCompany(id: number) {
+    const segments = this.router.parseUrl(this.router.url).root.children['primary']?.segments ?? []
+    const workspace = segments.slice(2).map(segment => segment.path)
+    this.companyQuery.set('')
+    this.companySearch.clear()
+    void this.router.navigate(['/client', id, ...workspace])
   }
 
   protected logout() {

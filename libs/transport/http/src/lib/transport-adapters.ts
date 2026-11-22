@@ -66,7 +66,13 @@ export function normalizeTransportError(error: unknown): TransportError {
       }
     }
     if (typeof body.code === 'string' && Object.prototype.hasOwnProperty.call(body, 'result')) {
-      return new TransportError('business', error.status, message(body.massage), {}, body.code)
+      return new TransportError(
+        'business',
+        error.status,
+        message(body.message ?? body.massage),
+        {},
+        body.code,
+      )
     }
     // Exception diagnostics stay out of UI state, including database details in 5xx messages.
     if (error.status < 500 && Array.isArray(body.messages)) {

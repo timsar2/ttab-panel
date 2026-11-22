@@ -164,25 +164,34 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
             </div>
           </div>
           <div class="grid items-start gap-x-6 gap-y-6 p-4 md:grid-cols-2 md:p-6">
-            <lib-autocomplete-search
-              class="block w-full !max-w-none"
-              id="inspector-driver"
-              [(query)]="driverQuery"
-              [selectedOption]="selectedDriver()"
-              [language]="language()"
-              [label]="driverSearchCopy.label"
-              [placeholder]="driverSearchCopy.placeholder"
-              [clearLabel]="driverSearchCopy.clear"
-              [loadingLabel]="driverSearchCopy.loading"
-              [minimumQueryLabel]="driverSearchCopy.minimumQuery"
-              [emptyLabel]="driverSearchCopy.empty"
-              [options]="drivers()"
-              [loading]="searchingDrivers()"
-              [optionId]="driverOptionId"
-              [optionLabel]="driverOptionLabel"
-              (queryRequested)="searchDrivers($event)"
-              (optionSelected)="selectDriver($event)"
-            />
+            <div
+              class="rounded-md"
+              [class.ring-2]="showValidation() && driverInvalid()"
+              [class.ring-destructive]="showValidation() && driverInvalid()"
+            >
+              <lib-autocomplete-search
+                class="block w-full !max-w-none"
+                id="inspector-driver"
+                [(query)]="driverQuery"
+                [selectedOption]="selectedDriver()"
+                [language]="language()"
+                [label]="driverSearchCopy.label"
+                [placeholder]="driverSearchCopy.placeholder"
+                [clearLabel]="driverSearchCopy.clear"
+                [loadingLabel]="driverSearchCopy.loading"
+                [minimumQueryLabel]="driverSearchCopy.minimumQuery"
+                [emptyLabel]="driverSearchCopy.empty"
+                [options]="drivers()"
+                [loading]="searchingDrivers()"
+                [optionId]="driverOptionId"
+                [optionLabel]="driverOptionLabel"
+                (queryRequested)="searchDrivers($event)"
+                (optionSelected)="selectDriver($event)"
+              />
+            </div>
+            @if (showValidation() && driverInvalid()) {
+              <p class="text-destructive text-sm" role="alert">{{ t('driverRequired') }}</p>
+            }
             <div class="grid min-w-0 content-start gap-2">
               <label for="inspector-vehicle" class="text-sm font-semibold">{{
                 t('vehicle')
@@ -190,6 +199,8 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
               <select
                 id="inspector-vehicle"
                 class="bg-background focus-visible:ring-ring min-h-11 w-full rounded-md border px-3 text-sm transition outline-none focus-visible:ring-2"
+                [class.border-destructive]="showValidation() && vehicleInvalid()"
+                [attr.aria-invalid]="showValidation() && vehicleInvalid() ? 'true' : null"
                 [formField]="visitForm.vehicleId"
               >
                 <option value="">{{ t('vehiclePlaceholder') }}</option>
@@ -204,29 +215,53 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
                   {{ t('noVehicles') }}
                 }
               </p>
+              @if (showValidation() && vehicleInvalid()) {
+                <p class="text-destructive text-sm" role="alert">{{ t('vehicleRequired') }}</p>
+              }
             </div>
             <div class="grid min-w-0 content-start gap-2">
               <label class="text-sm font-semibold" for="inspector-date">{{
                 t('inspectionDate')
               }}</label>
-              <input
-                id="inspector-date"
-                class="bg-background focus-visible:ring-ring min-h-11 w-full rounded-md border px-3 text-sm font-normal transition outline-none focus-visible:ring-2"
-                type="date"
-                [formField]="visitForm.inspectionDate"
-              />
+              <div
+                class="rounded-md"
+                [class.ring-2]="showValidation() && inspectionDateInvalid()"
+                [class.ring-destructive]="showValidation() && inspectionDateInvalid()"
+              >
+                <lib-jalali-date-picker
+                  inputId="inspector-date"
+                  [language]="language()"
+                  [value]="model().inspectionDate"
+                  [disabled]="saving()"
+                  (valueChange)="setInspectionDate($event)"
+                />
+              </div>
+              @if (showValidation() && inspectionDateInvalid()) {
+                <p class="text-destructive text-sm" role="alert">
+                  {{ t('inspectionDateInvalid') }}
+                </p>
+              }
             </div>
             <div class="grid min-w-0 content-start gap-2">
               <label class="text-sm font-semibold" for="inspection-due-date">{{
                 t('dueDate')
               }}</label>
-              <lib-jalali-date-picker
-                inputId="inspection-due-date"
-                [language]="language()"
-                [value]="model().dueDate"
-                [disabled]="saving()"
-                (valueChange)="setDueDate($event)"
-              />
+              <div
+                class="rounded-md"
+                [class.ring-2]="showValidation() && dueDateInvalid()"
+                [class.ring-destructive]="showValidation() && dueDateInvalid()"
+              >
+                <lib-jalali-date-picker
+                  inputId="inspection-due-date"
+                  [language]="language()"
+                  [value]="model().dueDate"
+                  [disabled]="saving()"
+                  (valueChange)="setDueDate($event)"
+                />
+              </div>
+              @if (showValidation() && dueDateInvalid()) {
+                <p class="text-destructive text-sm" role="alert">{{ t('dueDateInvalid') }}</p>
+              }
             </div>
             <div class="grid min-w-0 content-start gap-2 sm:col-span-2">
               <label class="text-sm font-semibold" for="required-action-description">{{
@@ -235,8 +270,15 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
               <textarea
                 id="required-action-description"
                 class="bg-background min-h-24 rounded-md border p-3"
+                [class.border-destructive]="showValidation() && actionDescriptionInvalid()"
+                [attr.aria-invalid]="showValidation() && actionDescriptionInvalid() ? 'true' : null"
                 [formField]="visitForm.requiredActionDescription"
               ></textarea>
+              @if (showValidation() && actionDescriptionInvalid()) {
+                <p class="text-destructive text-sm" role="alert">
+                  {{ t(actionDescriptionError()) }}
+                </p>
+              }
             </div>
             <div class="grid min-w-0 content-start gap-2">
               <label class="text-sm font-semibold" for="inspector-description">{{
@@ -245,8 +287,15 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
               <textarea
                 id="inspector-description"
                 class="bg-background focus-visible:ring-ring min-h-28 w-full rounded-md border p-3 text-sm font-normal transition outline-none focus-visible:ring-2"
+                [class.border-destructive]="showValidation() && descriptionInvalid()"
+                [attr.aria-invalid]="showValidation() && descriptionInvalid() ? 'true' : null"
                 [formField]="visitForm.description"
               ></textarea>
+              @if (showValidation() && descriptionInvalid()) {
+                <p class="text-destructive text-sm" role="alert">
+                  {{ t(model().description.trim() ? 'descriptionLimit' : 'descriptionRequired') }}
+                </p>
+              }
               <span class="text-muted-foreground text-xs" aria-hidden="true"
                 >{{ model().description.length }}/1000</span
               >
@@ -284,6 +333,8 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
             @for (check of checks; track check) {
               <fieldset
                 class="bg-muted/20 hover:bg-muted/40 focus-within:border-primary/50 focus-within:ring-primary/20 grid min-w-0 gap-2 rounded-xl border p-3.5 transition-colors focus-within:ring-2"
+                [class.border-destructive]="showValidation() && checkInvalid(check)"
+                [attr.aria-invalid]="showValidation() && checkInvalid(check) ? 'true' : null"
               >
                 <legend class="text-sm font-medium">{{ t(label(check)) }}</legend>
                 <div class="flex flex-wrap gap-x-3 gap-y-1">
@@ -306,6 +357,9 @@ const checkLabels: Record<InspectionCheck, InspectorTextKey> = {
                     />{{ t(negativeAnswer(check)) }}</label
                   >
                 </div>
+                @if (showValidation() && checkInvalid(check)) {
+                  <p class="text-destructive text-sm" role="alert">{{ t('checkRequired') }}</p>
+                }
               </fieldset>
             }
           </div>
@@ -351,6 +405,7 @@ export class InspectorVisitCreatePage {
   protected readonly loadingVehicles = signal(false)
   protected readonly lookupError = signal(false)
   protected readonly formError = signal<InspectorTextKey | null>(null)
+  protected readonly showValidation = signal(false)
   private readonly changeDetector = inject(ChangeDetectorRef)
   protected readonly visitForm = form(this.model, schema => {
     required(schema.driverId)
@@ -410,11 +465,13 @@ export class InspectorVisitCreatePage {
         this.clearLookups()
         this.visitForm().reset()
         this.model.set(emptyVisit())
+        this.showValidation.set(false)
         return
       }
       untracked(() => {
         this.visitForm().reset()
         this.model.set(emptyVisit())
+        this.showValidation.set(false)
         this.loadVehiclePage(1)
       })
     })
@@ -433,8 +490,40 @@ export class InspectorVisitCreatePage {
   protected negativeAnswer(check: InspectionCheck): InspectorTextKey {
     return inspectionCheckAnswerLabel(check, false)
   }
+  protected driverInvalid(): boolean {
+    const id = positiveInteger(this.model().driverId)
+    return id === null || !this.drivers().some(driver => driver.id === id)
+  }
+  protected vehicleInvalid(): boolean {
+    const id = positiveInteger(this.model().vehicleId)
+    return id === null || !this.vehicles().some(vehicle => vehicle.id === id)
+  }
+  protected inspectionDateInvalid(): boolean {
+    return !validDate(this.model().inspectionDate)
+  }
+  protected dueDateInvalid(): boolean {
+    return !validDate(this.model().dueDate)
+  }
+  protected descriptionInvalid(): boolean {
+    const value = this.model().description
+    return !value.trim() || value.length > 1000
+  }
+  protected actionDescriptionInvalid(): boolean {
+    const value = this.model().requiredActionDescription
+    return !value.trim() || value.length > 300
+  }
+  protected actionDescriptionError(): InspectorTextKey {
+    return this.model().requiredActionDescription.trim() ? 'actionLimit' : 'actionRequired'
+  }
+  protected checkInvalid(check: InspectionCheck): boolean {
+    const value = this.model()[check]
+    return value !== 'true' && value !== 'false'
+  }
   protected setDueDate(dueDate: string | null) {
     this.model.update(value => ({ ...value, dueDate: dueDate ?? '' }))
+  }
+  protected setInspectionDate(inspectionDate: string | null) {
+    this.model.update(value => ({ ...value, inspectionDate: inspectionDate ?? '' }))
   }
 
   protected readonly driverOptionId = (option: InspectorLookupOption) => String(option.id)
@@ -505,6 +594,8 @@ export class InspectorVisitCreatePage {
   protected save(event: Event) {
     event.preventDefault()
     if (this.saving()) return
+    this.showValidation.set(true)
+    submit(this.visitForm, async () => undefined)
     const companyId = this.companyId()
     const value = this.model()
     const driverId = positiveInteger(value.driverId)
@@ -527,11 +618,11 @@ export class InspectorVisitCreatePage {
       !this.drivers().some(driver => driver.id === driverId) ||
       !this.vehicles().some(vehicle => vehicle.id === vehicleId)
     ) {
-      this.formError.set('required')
-      submit(this.visitForm, async () => undefined)
+      this.formError.set(null)
       this.changeDetector.detectChanges()
       return
     }
+    this.formError.set(null)
     submit(this.visitForm, async () => {
       const current = this.model()
       if (this.companyId() !== companyId) {

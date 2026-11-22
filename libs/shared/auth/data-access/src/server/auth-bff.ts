@@ -92,8 +92,9 @@ class Failure extends Error {
     readonly status: number,
     readonly reason: AuthDiagnostic['reason'] = 'request-failed',
     readonly messages?: string[],
+    readonly responseBody?: { code: string; message: string; result: unknown },
   ) {
-    super(messages?.[0] ?? 'Authentication request failed.')
+    super(responseBody?.message ?? messages?.[0] ?? 'Authentication request failed.')
   }
 }
 
@@ -962,7 +963,42 @@ export function createAuthBff(options: AuthBffOptions): Router & {
         }
         const code = (response.body as { code?: unknown } | null)?.code
         if (response.status >= 400 || (typeof code === 'string' && code !== '2000')) {
-          throw new Failure(response.status >= 400 ? response.status : 502)
+          const envelope = response.body as {
+            code?: unknown
+            massage?: unknown
+            result?: unknown
+          } | null
+          let safeResultData: { code: string; message: string; result: unknown } | undefined
+          if (
+            response.status >= 400 &&
+            response.status < 500 &&
+            envelope &&
+            typeof envelope.code === 'string' &&
+            envelope.code.length > 0 &&
+            envelope.code.length <= 32 &&
+            Object.prototype.hasOwnProperty.call(envelope, 'result') &&
+            typeof envelope.massage === 'string' &&
+            envelope.massage.trim().length > 0 &&
+            envelope.massage.length <= 512
+          ) {
+            const codeFirst = /^\d{3,4}$/.test(envelope.code)
+            const messageIsCode = /^\d{3,4}$/.test(envelope.massage)
+            safeResultData = {
+              code: codeFirst ? envelope.code : messageIsCode ? envelope.massage : envelope.code,
+              message: codeFirst
+                ? envelope.massage
+                : messageIsCode
+                  ? envelope.code
+                  : envelope.massage,
+              result: envelope.result,
+            }
+          }
+          throw new Failure(
+            response.status >= 400 ? response.status : 502,
+            'request-failed',
+            safeResultData ? [safeResultData.message] : undefined,
+            safeResultData,
+          )
         }
         res.status(response.status)
         if (req.method === 'HEAD' || response.status === 204) res.end()
@@ -972,6 +1008,10 @@ export function createAuthBff(options: AuthBffOptions): Router & {
       diagnose(operation, error)
       const status = error instanceof Failure ? error.status : 502
       if (status === 401) clear(res)
+      if (error instanceof Failure && error.responseBody) {
+        res.status(status).json(error.responseBody)
+        return
+      }
       const messages =
         error instanceof Failure && status >= 400 && status < 500 && error.messages?.length
           ? error.messages

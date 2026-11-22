@@ -1,6 +1,34 @@
 import { appRoutes, navigationFor } from './app.routes'
 
 describe('panel navigation', () => {
+  it('lands on Companies and opens each selected workspace on Dashboard', () => {
+    expect(appRoutes[0]).toMatchObject({ path: '', pathMatch: 'full', redirectTo: 'companies' })
+    expect(appRoutes.some(route => route.path === 'workspace')).toBe(false)
+    const company = appRoutes.find(route => route.path === 'client/:companyId')
+    expect(company?.children?.[0]).toMatchObject({
+      path: '',
+      pathMatch: 'full',
+      redirectTo: 'dashboard',
+    })
+  })
+
+  it('exposes Companies in the sidebar for company management routes', () => {
+    const companies = navigationFor(null, false).find(item => item.id === 'companies')
+    expect(companies?.commands).toEqual(['/companies'])
+    expect(companies?.label).toBe('Companies')
+  })
+
+  it('mounts company list and editor pages under the panel layout shell', () => {
+    const companies = appRoutes.find(route => route.path === 'companies')
+    expect(companies?.component).toBeDefined()
+    expect(companies?.children?.map(route => route.path)).toEqual(['new', ':companyId/edit', ''])
+    expect(companies?.children?.map(route => route.data?.['breadcrumb'])).toEqual([
+      'Create company',
+      'Edit company',
+      null,
+    ])
+  })
+
   it('adds the Dashboard link to the selected company workspace in Persian', () => {
     const dashboard = navigationFor(5, true).find(item => item.id === 'dashboard')
     expect(dashboard?.label).toBe('داشبورد')

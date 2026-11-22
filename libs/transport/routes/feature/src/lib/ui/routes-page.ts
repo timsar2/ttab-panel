@@ -70,7 +70,9 @@ import { ROUTE_TEXT, routeText } from '../route-text'
     <ng-template #routeMenu let-route>
       <details class="relative">
         <summary
-          class="bg-secondary text-secondary-foreground flex min-h-11 min-w-11 cursor-pointer list-none items-center justify-center rounded-md border px-3"
+          hlmBtn
+          variant="outline"
+          class="min-h-11 min-w-11 cursor-pointer list-none px-3"
           [attr.aria-label]="text('menu') + ': ' + route.name"
         >
           <span aria-hidden="true">•••</span>

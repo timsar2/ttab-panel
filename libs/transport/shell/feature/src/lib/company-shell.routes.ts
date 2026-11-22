@@ -10,7 +10,11 @@ import {
   Routes,
 } from '@angular/router'
 import { authGuard } from '@org/auth-data-access'
-import { CompanyApi, CompanyContextStore } from '@org/transport-company-data-access'
+import {
+  CompanyApi,
+  CompanyContextStore,
+  CompanySearchStore,
+} from '@org/transport-company-data-access'
 import { provideTransportHttp } from '@org/transport-http'
 import { from, isObservable, map, of, switchMap } from 'rxjs'
 
@@ -85,6 +89,7 @@ export function createCompanyShellRoutes(
       providers: [
         provideTransportHttp({ apiUrl: config.apiUrl }),
         CompanyApi,
+        CompanySearchStore,
         CompanyContextStore,
         { provide: COMPANY_SHELL_CONFIG, useValue: config },
         provideEnvironmentInitializer(() => {

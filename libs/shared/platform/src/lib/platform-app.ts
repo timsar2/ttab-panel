@@ -24,6 +24,7 @@ import { provideAuth, SessionStore, type AuthConfig } from '@org/auth-data-acces
 import { provideTheme, ThemeStore, type ThemeOptions } from '@org/theme'
 import { PreferencesStore } from './preferences.store'
 import { AppDirectionality } from './app-directionality'
+import { ApiService } from '@org/http-core'
 
 export interface PlatformAppOptions {
   readonly id: string
@@ -68,6 +69,7 @@ export function providePlatformApp(
       storageKey: themeStorageKey,
     }),
     provideAuth(auth),
+    ApiService,
     provideAuthFeature({ brandName: options.brandName }),
     {
       provide: AUTH_APPEARANCE,

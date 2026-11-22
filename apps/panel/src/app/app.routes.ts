@@ -8,9 +8,10 @@ import { createDepartureTimeRoutes } from '@org/panel-departure-times'
 import { SessionStore } from '@org/platform'
 import { departureCompanyId } from '@org/transport-departure-times-data-access'
 import { peopleCompanyId } from '@org/transport-people-data-access'
-import { createCompanyShellRoutes, createWorkspaceRoutes } from '@org/platform'
+import { createCompanyShellRoutes } from '@org/platform'
 import { of } from 'rxjs'
 import { PreferencesStore } from '@org/platform'
+import { CompanyAdminShell, PANEL_ADMIN_NAVIGATION } from './company-admin-shell'
 import {
   lucideLayoutDashboard,
   lucideBuilding2,
@@ -40,14 +41,6 @@ export function navigationFor(
   const operations = rtl ? 'عملیات حمل‌ونقل' : 'Transport operations'
   const scheduling = rtl ? 'برنامه‌ریزی' : 'Scheduling'
   const items: LayoutNavItem[] = [
-    {
-      id: 'workspace',
-      label: rtl ? 'فضای کاری' : 'Workspace',
-      icon: lucideLayoutDashboard,
-      group: administration,
-      commands: ['/workspace'],
-      exact: true,
-    },
     {
       id: 'companies',
       label: rtl ? 'شرکت‌ها' : 'Companies',
@@ -251,8 +244,35 @@ function companyShellTranslations() {
   )
 }
 
+function panelCompanyRoutes(routes: Route[]): Route[] {
+  const list = routes.find(route => route.path === 'companies')
+  if (!list) throw new Error('The panel company list route is required.')
+  const editors = routes
+    .filter(route => route.path?.startsWith('companies/'))
+    .map(route => {
+      const path = route.path!.slice('companies/'.length)
+      return {
+        ...route,
+        path,
+        data: {
+          ...route.data,
+          breadcrumb: path === 'new' ? 'Create company' : 'Edit company',
+        },
+      }
+    })
+
+  return [
+    {
+      path: 'companies',
+      component: CompanyAdminShell,
+      providers: [{ provide: PANEL_ADMIN_NAVIGATION, useFactory: panelNavigation }],
+      children: [...editors, { ...list, path: '', data: { ...list.data, breadcrumb: null } }],
+    },
+  ]
+}
+
 export const appRoutes: Route[] = [
-  { path: '', pathMatch: 'full', redirectTo: 'login' },
+  { path: '', pathMatch: 'full', redirectTo: 'companies' },
   ...createAuthRoutes({ path: 'login', title: 'Panel | Sign in' }),
   { path: 'auth/login', pathMatch: 'full', redirectTo: 'login' },
   { path: 'companys', pathMatch: 'full', redirectTo: 'companies' },
@@ -262,20 +282,22 @@ export const appRoutes: Route[] = [
     pathMatch: 'full',
     redirectTo: 'companies/:companyId/edit',
   },
-  ...createCompanyRoutes({
-    path: 'companies',
-    apiUrl: '/api/v1',
-    language: () => inject(PreferencesStore).language,
-    heading: 'Companies',
-    actionLabel: 'Open workspace',
-    actionCommands: company => ['/client', company.id],
-    editor: {
-      geographyApiUrl: '/api',
-      maxLogoBytes: 256 * 1024,
-      canCreate: roles => roles.some(role => role === 'Admin' || role === 'Manager'),
-      canEdit: roles => roles.some(role => role === 'Admin' || role === 'Manager'),
-    },
-  }),
+  ...panelCompanyRoutes(
+    createCompanyRoutes({
+      path: 'companies',
+      apiUrl: '/api/v1',
+      language: () => inject(PreferencesStore).language,
+      heading: 'Companies',
+      actionLabel: 'Open workspace',
+      actionCommands: company => ['/client', company.id],
+      editor: {
+        geographyApiUrl: '/api',
+        maxLogoBytes: 256 * 1024,
+        canCreate: roles => roles.some(role => role === 'Admin' || role === 'Manager'),
+        canEdit: roles => roles.some(role => role === 'Admin' || role === 'Manager'),
+      },
+    }),
+  ),
   ...createCompanyShellRoutes(
     {
       path: 'client/:companyId',
@@ -302,6 +324,7 @@ export const appRoutes: Route[] = [
       ],
     },
     [
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'passenger', pathMatch: 'full', redirectTo: 'passengers' },
       { path: 'passenger/add', pathMatch: 'full', redirectTo: 'passengers/add' },
       {
@@ -417,36 +440,5 @@ export const appRoutes: Route[] = [
       },
     ],
   ),
-  ...createWorkspaceRoutes({
-    path: 'workspace',
-    brand: 'Panel',
-    companiesCommands: ['/companies'],
-    loginUrl: '/login',
-    navigation: panelNavigation,
-    text: () => {
-      const preferences = inject(PreferencesStore)
-      return computed(() =>
-        preferences.isRtl()
-          ? {
-              navigation: 'ناوبری',
-              workspace: 'فضای کاری',
-              administration: 'پنل مدیریت',
-              signOut: 'خروج',
-              heading: 'ورود با موفقیت انجام شد',
-              description: 'برای ورود به فضای کاری، یک شرکت را انتخاب کنید.',
-              chooseCompany: 'انتخاب شرکت',
-            }
-          : {
-              navigation: 'Navigation',
-              workspace: 'Workspace',
-              administration: 'Administration',
-              signOut: 'Sign out',
-              heading: 'You are signed in',
-              description: 'Choose a company to open its workspace.',
-              chooseCompany: 'Choose a company',
-            },
-      )
-    },
-  }),
   { path: '**', redirectTo: 'login' },
 ]
