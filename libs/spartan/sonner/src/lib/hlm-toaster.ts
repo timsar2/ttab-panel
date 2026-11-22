@@ -40,20 +40,20 @@ import type { ClassValue } from 'clsx'
     `
       [data-sonner-toaster] [data-sonner-toast][data-type='success'] {
         background: var(--success-soft) !important;
-        border-color: var(--success) !important;
-        color: var(--success-foreground) !important;
+        border: 0 !important;
+        color: var(--heading) !important;
       }
 
       [data-sonner-toaster] [data-sonner-toast][data-type='error'] {
         background: var(--destructive-soft) !important;
-        border-color: var(--destructive) !important;
-        color: var(--destructive-foreground) !important;
+        border: 0 !important;
+        color: var(--heading) !important;
       }
 
       [data-sonner-toaster] [data-sonner-toast][data-type='warning'] {
         background: var(--warning-soft) !important;
-        border-color: var(--warning) !important;
-        color: var(--warning-foreground) !important;
+        border: 0 !important;
+        color: var(--heading) !important;
       }
     `,
   ],

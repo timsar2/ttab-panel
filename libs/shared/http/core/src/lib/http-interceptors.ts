@@ -16,11 +16,15 @@ export function apiMessageContext(message?: ApiMessageType): HttpContext {
   return new HttpContext().set(API_MESSAGE, message ?? null)
 }
 
+function isDisplayableMessage(value: unknown): value is string {
+  return typeof value === 'string' && value.trim() !== '' && value.trim() !== 'Success'
+}
+
 function responseMessage(value: unknown): string | null {
   if (!value || typeof value !== 'object') return null
   const body = value as Record<string, unknown>
   const message = body['message'] ?? body['massage']
-  return typeof message === 'string' && message.trim() ? message : null
+  return isDisplayableMessage(message) ? message : null
 }
 
 function errorMessages(error: unknown): string[] {
@@ -30,15 +34,16 @@ function errorMessages(error: unknown): string[] {
   if (error.status >= 500) return ['The server encountered an internal error.']
   const body = error.error as Record<string, unknown> | null
   const messages = body?.['messages']
-  if (Array.isArray(messages))
-    return messages.filter((item): item is string => typeof item === 'string')
+  if (Array.isArray(messages)) return messages.filter(isDisplayableMessage)
   const errors = body?.['errors']
   if (errors && typeof errors === 'object') {
     const flattened = Object.values(errors)
       .flatMap(value => (Array.isArray(value) ? value : [value]))
-      .filter((item): item is string => typeof item === 'string')
-    if (flattened.length) return flattened
+      .filter(isDisplayableMessage)
+    if (Object.keys(errors).length) return flattened
   }
+  const suppliedMessage = body?.['message'] ?? body?.['massage']
+  if (typeof suppliedMessage === 'string' && !isDisplayableMessage(suppliedMessage)) return []
   const message = responseMessage(body)
   return message
     ? [message]
