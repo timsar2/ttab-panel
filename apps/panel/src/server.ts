@@ -1,5 +1,5 @@
 import { createPlatformSsrServer } from '@org/platform/node'
-import { environment } from './environments/environment'
+import { environment } from '@org/platform'
 
 const { reqHandler } = createPlatformSsrServer({
   appId: 'panel',

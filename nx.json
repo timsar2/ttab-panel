@@ -38,7 +38,19 @@
     "@angular/build:application": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
+      "inputs": ["production", "^production"],
+      "configurations": {
+        "production": {
+          "fileReplacements": [
+            {
+              "replace": "libs/shared/platform/src/environments/environment.ts",
+              "with": "libs/shared/platform/src/environments/environment.production.ts"
+            }
+          ],
+          "optimization": true,
+          "outputHashing": "all"
+        }
+      }
     },
     "@nx/angular:ng-packagr-lite": {
       "cache": true,

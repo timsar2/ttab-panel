@@ -1,4 +1,4 @@
-import { environment } from '../environments/environment'
+import { environment } from '@org/platform'
 
 export const panelConfig = {
   apiUrl: '/api',

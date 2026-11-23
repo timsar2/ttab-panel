@@ -673,35 +673,27 @@ describe('Node cookie authentication BFF', () => {
     expect((call?.[1]?.body as Uint8Array).byteLength).toBeGreaterThan(2 * 1024 * 1024)
   })
 
-  it('validates restore upstream and rejects tampered/duplicate cookies', async () => {
+  it('uses token claims for session metadata without requesting permissions', async () => {
     const { app, login, fetcher } = fixture()
     const logged = await login()
     const value = cookie(logged)
     await request(app).get('/api/auth/session').set('Cookie', `${value}x`).expect(401)
     await request(app).get('/api/auth/session').set('Cookie', `${value}; ${value}`).expect(401)
-    const original = fetcher.getMockImplementation()
-    if (!original) throw new Error('Missing fetch test implementation.')
-    fetcher.mockImplementation((url, init) =>
-      String(url).endsWith('/personal/permissions')
-        ? Promise.resolve(json({ messages: ['sensitive'] }, 401))
-        : original(url, init),
+    const restored = await request(app).get('/api/auth/session').set('Cookie', value).expect(200)
+    expect(restored.body.user.roles).toEqual(['Admin'])
+    expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/personal/permissions'))).toBe(
+      false,
     )
-    const rejected = await request(app).get('/api/auth/session').set('Cookie', value).expect(401)
-    expect(rejected.headers['set-cookie'][0]).toMatch(/Expires=Thu, 01 Jan 1970/)
-    expect(JSON.stringify(rejected.body)).not.toContain('sensitive')
-    expect(
-      fetcher.mock.calls.filter(([url]) => String(url).endsWith('/tokens/refresh')),
-    ).toHaveLength(1)
   })
 
-  it('refreshes a backend-rejected access token even before its local expiry', async () => {
-    const { app, login, fetcher, setToken, diagnostics } = fixture()
+  it('refreshes credentials without requesting permissions', async () => {
+    const { app, login, fetcher, diagnostics } = fixture()
     const logged = await login()
-    setToken(jwt(Date.now() + 180_000))
-    fetcher.mockResolvedValueOnce(json({ messages: ['expired-upstream'] }, 401))
     const restored = await request(app)
-      .get('/api/auth/session')
+      .post('/api/auth/refresh')
       .set('Cookie', cookie(logged))
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
       .expect(200)
     expect(restored.body.user.id).toBe('user-1')
     expect(restored.headers['set-cookie'][0]).not.toMatch(/Expires=Thu, 01 Jan 1970/)
@@ -719,24 +711,16 @@ describe('Node cookie authentication BFF', () => {
     )
   })
 
-  it('coalesces simultaneous session validation failures into one refresh', async () => {
-    const { app, login, fetcher, setToken } = fixture()
+  it('coalesces simultaneous expired-session refreshes', async () => {
+    const { app, login, fetcher } = fixture()
     const logged = await login()
-    const oldAuthorization = (fetcher.mock.calls[1][1]?.headers as Record<string, string>)[
-      'Authorization'
-    ]
-    setToken(jwt(Date.now() + 180_000))
-    const original = fetcher.getMockImplementation()
-    if (!original) throw new Error('Missing fetch test implementation.')
-    fetcher.mockImplementation((url, init) =>
-      String(url).endsWith('/personal/permissions') &&
-      (init?.headers as Record<string, string>)['Authorization'] === oldAuthorization
-        ? Promise.resolve(json({}, 401))
-        : original(url, init),
-    )
     const responses = await Promise.all(
       Array.from({ length: 4 }, () =>
-        request(app).get('/api/auth/session').set('Cookie', cookie(logged)),
+        request(app)
+          .post('/api/auth/refresh')
+          .set('Cookie', cookie(logged))
+          .set('Origin', origin)
+          .set('X-Auth-Request', '1'),
       ),
     )
     expect(responses.map(response => response.status)).toEqual([200, 200, 200, 200])
@@ -745,30 +729,37 @@ describe('Node cookie authentication BFF', () => {
     ).toHaveLength(1)
   })
 
-  it('does not refresh forbidden session validation or clear its cookie', async () => {
+  it('does not call permissions while restoring a session', async () => {
     const { app, login, fetcher } = fixture()
     const logged = await login()
-    fetcher.mockResolvedValueOnce(json({}, 403))
     const denied = await request(app)
       .get('/api/auth/session')
       .set('Cookie', cookie(logged))
-      .expect(403)
-    expect(denied.headers['set-cookie']).toBeUndefined()
+      .expect(200)
+    expect(denied.body.user.roles).toEqual(['Admin'])
+    expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/personal/permissions'))).toBe(
+      false,
+    )
     expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/tokens/refresh'))).toBe(false)
   })
 
   it('retains a recoverable session when refresh encounters a transient upstream failure', async () => {
     const { app, login, fetcher, diagnostics } = fixture()
     const logged = await login()
-    fetcher
-      .mockResolvedValueOnce(json({}, 401))
-      .mockResolvedValueOnce(json({ secret: 'do-not-log' }, 503))
+    fetcher.mockResolvedValueOnce(json({ secret: 'do-not-log' }, 503))
     const failed = await request(app)
-      .get('/api/auth/session')
+      .post('/api/auth/refresh')
       .set('Cookie', cookie(logged))
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
       .expect(502)
     expect(failed.headers['set-cookie']).toBeUndefined()
-    await request(app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(200)
+    await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', cookie(logged))
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .expect(200)
     expect(diagnostics).toHaveBeenCalledWith({
       operation: 'refresh',
       reason: 'refresh-rejected',
@@ -780,10 +771,12 @@ describe('Node cookie authentication BFF', () => {
   it('removes the server session when its refresh token is rejected without retry loops', async () => {
     const { app, login, fetcher, diagnostics } = fixture()
     const logged = await login()
-    fetcher.mockResolvedValueOnce(json({}, 401)).mockResolvedValueOnce(json({}, 400))
+    fetcher.mockResolvedValueOnce(json({}, 400))
     const rejected = await request(app)
-      .get('/api/auth/session')
+      .post('/api/auth/refresh')
       .set('Cookie', cookie(logged))
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
       .expect(401)
     expect(rejected.headers['set-cookie'][0]).toMatch(/Expires=Thu, 01 Jan 1970/)
     await request(app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(401)
@@ -838,8 +831,8 @@ describe('Node cookie authentication BFF', () => {
     )
   })
 
-  it('recovers SSR session validation and preserves its cookie during a temporary outage', async () => {
-    const { login, bff, fetcher, diagnostics } = fixture()
+  it('resolves SSR session metadata without an upstream permissions request', async () => {
+    const { login, bff, fetcher } = fixture()
     const logged = await login()
     const ssr = express().use((req, res, next) => {
       void bff
@@ -847,22 +840,12 @@ describe('Node cookie authentication BFF', () => {
         .then(metadata => res.json(metadata))
         .catch(next)
     })
-    fetcher.mockResolvedValueOnce(json({}, 401))
     const restored = await request(ssr).get('/workspace').set('Cookie', cookie(logged)).expect(200)
     expect(restored.body.user.id).toBe('user-1')
-    fetcher.mockRejectedValueOnce(new Error('credentials-must-not-leak'))
-    const unavailable = await request(ssr)
-      .get('/workspace')
-      .set('Cookie', cookie(logged))
-      .expect(200)
-    expect(unavailable.body).toBeNull()
-    expect(unavailable.headers['set-cookie']).toBeUndefined()
-    expect(diagnostics).toHaveBeenCalledWith({
-      operation: 'ssr',
-      reason: 'upstream-unavailable',
-      status: 502,
-    })
-    expect(JSON.stringify(diagnostics.mock.calls)).not.toContain('credentials-must-not-leak')
+    expect(restored.body.user.roles).toEqual(['Admin'])
+    expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/personal/permissions'))).toBe(
+      false,
+    )
   })
 
   it.each([false, true])(
@@ -910,7 +893,7 @@ describe('Node cookie authentication BFF', () => {
     await request(app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(401)
   })
 
-  it('shares one refresh budget between permissions validation and the proxied request', async () => {
+  it('refreshes a rejected proxied request at most once', async () => {
     const { app, login, fetcher } = fixture()
     const logged = await login()
     const original = fetcher.getMockImplementation()
@@ -918,60 +901,20 @@ describe('Node cookie authentication BFF', () => {
     fetcher.mockImplementation((url, init) =>
       String(url).endsWith('/companies') ? Promise.resolve(json({}, 401)) : original(url, init),
     )
-    fetcher.mockResolvedValueOnce(json({}, 401))
     await request(app).get('/api/companies').set('Cookie', cookie(logged)).expect(401)
     expect(
       fetcher.mock.calls.filter(([url]) => String(url).endsWith('/tokens/refresh')),
     ).toHaveLength(1)
-    expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith('/companies'))).toHaveLength(1)
+    expect(fetcher.mock.calls.filter(([url]) => String(url).endsWith('/companies'))).toHaveLength(2)
   })
 
-  it('uses the current stored credentials for a delayed 401 after another request rotated them', async () => {
-    const { app, login, fetcher, setToken } = fixture()
+  it('does not issue permissions requests when resolving sessions', async () => {
+    const { app, login, fetcher } = fixture()
     const logged = await login()
-    const oldAuthorization = (fetcher.mock.calls[1][1]?.headers as Record<string, string>)[
-      'Authorization'
-    ]
-    const original = fetcher.getMockImplementation()
-    if (!original) throw new Error('Missing fetch test implementation.')
-    let started!: () => void
-    let release!: () => void
-    const start = new Promise<void>(resolve => {
-      started = resolve
-    })
-    const gate = new Promise<void>(resolve => {
-      release = resolve
-    })
-    fetcher.mockImplementation(async (url, init) => {
-      if (
-        String(url).endsWith('/personal/permissions') &&
-        (init?.headers as Record<string, string>)['Authorization'] === oldAuthorization
-      ) {
-        started()
-        await gate
-        return json({}, 401)
-      }
-      return original(url, init)
-    })
-    const delayed = request(app)
-      .get('/api/auth/session')
-      .set('Cookie', cookie(logged))
-      .then(response => response)
-    await start
-    setToken(jwt(Date.now() + 180_000))
-    await request(app)
-      .post('/api/auth/refresh')
-      .set('Cookie', cookie(logged))
-      .set('Origin', origin)
-      .set('X-Auth-Request', '1')
-      .expect(200)
-    const now = Date.now()
-    vi.spyOn(Date, 'now').mockReturnValue(now + 6000)
-    release()
-    expect((await delayed).status).toBe(200)
-    expect(
-      fetcher.mock.calls.filter(([url]) => String(url).endsWith('/tokens/refresh')),
-    ).toHaveLength(1)
+    await request(app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(200)
+    expect(fetcher.mock.calls.some(([url]) => String(url).endsWith('/personal/permissions'))).toBe(
+      false,
+    )
   })
 
   it('isolates failures in the diagnostic observer from successful refresh recovery', async () => {
@@ -989,8 +932,12 @@ describe('Node cookie authentication BFF', () => {
       .set('X-Auth-Request', '1')
       .send({ username: 'test@example.com', password: 'secret' })
       .expect(200)
-    fetcher.mockResolvedValueOnce(json({}, 401))
-    await request(app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(200)
+    await request(app)
+      .post('/api/auth/refresh')
+      .set('Cookie', cookie(logged))
+      .set('Origin', origin)
+      .set('X-Auth-Request', '1')
+      .expect(200)
     expect(observer).toHaveBeenCalledWith({ operation: 'refresh', reason: 'refresh-succeeded' })
   })
 
@@ -1355,7 +1302,7 @@ describe('Node cookie authentication BFF', () => {
     await request(app).get('/api/auth/session').set('Cookie', cookie(logged)).expect(401)
   })
 
-  it('provides only upstream-validated metadata to the SSR resolver', async () => {
+  it('provides token-derived metadata to the SSR resolver', async () => {
     const f = fixture()
     const logged = await f.login()
     f.app.get('/render', (req, res, next) => {
@@ -1367,10 +1314,11 @@ describe('Node cookie authentication BFF', () => {
     const response = await request(f.app).get('/render').set('Cookie', cookie(logged)).expect(200)
     expect(response.body.authSession.user.id).toBe('user-1')
     expect(JSON.stringify(response.body)).not.toMatch(/refreshToken|signature/)
-    f.fetcher.mockResolvedValueOnce(json({}, 401)).mockResolvedValueOnce(json({}, 401))
     const rejected = await request(f.app).get('/render').set('Cookie', cookie(logged)).expect(200)
-    expect(rejected.body).toEqual({ authSession: null })
-    expect(rejected.headers['set-cookie'][0]).toMatch(/Expires=Thu, 01 Jan 1970/)
+    expect(rejected.body.authSession.user.roles).toEqual(['Admin'])
+    expect(
+      f.fetcher.mock.calls.some(([url]) => String(url).endsWith('/personal/permissions')),
+    ).toBe(false)
   })
 
   it('forbids redirects, limits upstream response bodies and uses a fetch timeout signal', async () => {

@@ -1,1 +1,1 @@
-export { environment } from '@org/platform/config'
+export { productionEnvironment as environment } from '@org/platform/config'

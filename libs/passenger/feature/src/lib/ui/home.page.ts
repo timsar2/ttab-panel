@@ -22,7 +22,7 @@ import {
 import { HlmButtonImports } from '@spartan-ng/helm/button'
 import { NeshanLiveLocation, NeshanMapComponent, NeshanMapPoint } from '@org/shared-maps'
 import { TrackingConnectionService } from '@org/shared-tracking'
-import { environment } from '@org/platform/config'
+import { environment } from '@org/platform'
 import {
   ActiveTrip,
   Choice,

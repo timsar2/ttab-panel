@@ -8,7 +8,7 @@ import {
 } from '@angular/core'
 import { NeshanLiveLocation, NeshanMapComponent } from '@org/shared-maps'
 import { TrackingConnectionService } from '@org/shared-tracking'
-import { environment } from '@org/platform/config'
+import { environment } from '@org/platform'
 import { PreferencesStore } from '@org/platform'
 
 @Component({
