@@ -180,7 +180,7 @@ describe('Node cookie authentication BFF', () => {
     )
     expect(resolved.production).toBe(true)
     expect(resolved.apiUrl).toBe(hostDefaults.apiUrl)
-    expect(resolved.mobileTenant).toBeUndefined()
+    expect(resolved.mobileTenant).toBe('root')
     expect(() => readAuthBffConfig({ AUTH_API_URL: '' }, hostDefaults)).toThrow('configuration')
   })
 
@@ -506,22 +506,45 @@ describe('Node cookie authentication BFF', () => {
     await request(f.app).get('/api/auth/session').set('Cookie', cookie(response)).expect(401)
   })
 
-  it('fails mobile authentication closed in production without an explicit tenant', async () => {
+  it.each([false, true])(
+    'defaults mobile authentication to root without an explicit tenant (production=%s)',
+    production => {
+      const resolved = readAuthBffConfig(
+        { AUTH_SESSION_SECRET: secret },
+        {
+          apiUrl: 'https://api.example.test/api',
+          publicOrigin: 'https://driver.example.test',
+          production,
+        },
+      )
+      expect(resolved.mobileTenant).toBe('root')
+    },
+  )
+
+  it('defaults mobile authentication to root in production without an explicit tenant', async () => {
     const productionOrigin = 'https://passenger.example.test'
-    const productionConfig = readAuthBffConfig({
-      AUTH_API_URL: 'https://api.example.test/api',
-      AUTH_PUBLIC_ORIGIN: productionOrigin,
-      AUTH_SESSION_SECRET: secret,
-      NODE_ENV: 'production',
-    })
+    const productionConfig = readAuthBffConfig(
+      { AUTH_SESSION_SECRET: secret },
+      {
+        apiUrl: 'https://api.example.test/api',
+        publicOrigin: productionOrigin,
+        production: true,
+      },
+    )
+    expect(productionConfig.mobileTenant).toBe('root')
     const f = fixture(undefined, 86_400_000, productionConfig)
     await request(f.app)
-      .post('/api/auth/mobile-login')
+      .post('/api/auth/mobile-register')
       .set('Origin', productionOrigin)
       .set('X-Auth-Request', '1')
-      .send({ mobile: '09123456789', otp: '123456' })
-      .expect(503)
-    expect(f.fetcher).not.toHaveBeenCalled()
+      .send({ mobile: '09123456789' })
+      .expect(204)
+    expect(f.fetcher).toHaveBeenCalledWith(
+      'https://api.example.test/api/users/mobile-register/09123456789',
+      expect.objectContaining({
+        headers: expect.objectContaining({ tenant: 'root' }),
+      }),
+    )
   })
 
   it('uses __Host secure cookies for production HTTPS', async () => {

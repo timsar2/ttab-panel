@@ -154,7 +154,7 @@ export function readAuthBffConfig(
       throw new Error()
     }
 
-    const mobileTenant = env['AUTH_MOBILE_TENANT'] ?? (!production ? 'root' : undefined)
+    const mobileTenant = env['AUTH_MOBILE_TENANT'] ?? 'root'
 
     return {
       apiUrl: api.href.replace(/\/$/, ''),
