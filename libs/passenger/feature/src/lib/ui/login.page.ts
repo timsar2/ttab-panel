@@ -264,7 +264,7 @@ export class PassengerLoginPage {
   })
   protected readonly introStep = signal(0)
   protected readonly onboarded = signal(this.readIntroState())
-  protected readonly phone = signal('09193422694')
+  protected readonly phone = signal('')
   protected readonly otp = signal('')
   protected readonly otpSent = signal(false)
   protected readonly busy = signal(false)

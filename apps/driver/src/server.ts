@@ -1,5 +1,5 @@
 import { createPlatformSsrServer } from '@org/platform/node'
-import { environment } from '@org/platform'
+import { environment } from './environments/environment'
 
 const { reqHandler } = createPlatformSsrServer({
   appId: 'driver',

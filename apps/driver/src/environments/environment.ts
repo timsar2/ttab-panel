@@ -1,6 +1,5 @@
-import { developmentEnvironment } from '@org/platform/config'
+import { developmentEnvironment, type DevelopmentEnvironment } from '@org/platform/config'
 
 export const environment = {
   ...developmentEnvironment,
-  // panel-specific development overrides
-} as const
+} as const satisfies DevelopmentEnvironment

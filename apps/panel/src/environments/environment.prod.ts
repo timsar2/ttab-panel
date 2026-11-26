@@ -1,6 +1,6 @@
-import { productionEnvironment } from '@org/platform/config'
+import { productionEnvironment, type ProductionEnvironment } from '@org/platform/config'
 
 export const environment = {
   ...productionEnvironment,
-  // panel-specific production overrides
-} as const
+  publicOrigin: 'https://app.ttabline.com',
+} as const satisfies ProductionEnvironment

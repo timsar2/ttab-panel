@@ -4,24 +4,22 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node'
-import express, { type Express } from 'express'
+import express, { type Express, type Request } from 'express'
 import process from 'node:process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Agent, fetch as undiciFetch } from 'undici'
-import { createAuthBff, readAuthBffConfig } from '@org/auth-data-access/node'
-import type { AuthDiagnostic } from '@org/auth-data-access/node'
+import { createAuthBff, readAuthBffConfig, type AuthDiagnostic } from '@org/auth-data-access/node'
+import type { DevelopmentEnvironment, ProductionEnvironment } from '../config'
 
-export interface PlatformSsrEnvironment {
-  readonly apiUrl: string
-  readonly production: boolean
-}
+export type PlatformSsrEnvironment =
+  | Pick<DevelopmentEnvironment, 'apiUrl' | 'production' | 'publicOrigin'>
+  | Pick<ProductionEnvironment, 'apiUrl' | 'production' | 'publicOrigin'>
 
 export interface PlatformSsrOptions {
   readonly appId: string
   readonly environment: PlatformSsrEnvironment
   readonly moduleUrl: string
-  readonly developmentOrigin?: string
   readonly onDiagnostic?: (diagnostic: AuthDiagnostic) => void
 }
 
@@ -30,88 +28,168 @@ export interface PlatformSsrServer {
   readonly reqHandler: ReturnType<typeof createNodeRequestHandler>
 }
 
+const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'] as const
+
+function isLoopback(hostname: string): boolean {
+  return LOOPBACK_HOSTS.some(host => host === hostname)
+}
+
 function createDevLoopbackFetch(
   apiUrl: string,
   production: boolean,
 ): typeof globalThis.fetch | undefined {
   if (production) return undefined
+
   try {
     const url = new URL(apiUrl)
-    const loopback =
-      url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]'
-    if (url.protocol !== 'https:' || !loopback) return undefined
+
+    if (url.protocol !== 'https:' || !isLoopback(url.hostname)) {
+      return undefined
+    }
   } catch {
     return undefined
   }
-  const dispatcher = new Agent({ connect: { rejectUnauthorized: false } })
-  return ((input: any, init?: any) =>
-    undiciFetch(input, { ...init, dispatcher })) as unknown as typeof globalThis.fetch
+
+  const dispatcher = new Agent({
+    connect: {
+      rejectUnauthorized: false,
+    },
+  })
+
+  return (...[input, init]: Parameters<typeof globalThis.fetch>) =>
+    undiciFetch(
+      input as Parameters<typeof undiciFetch>[0],
+      {
+        ...init,
+        dispatcher,
+      } as Parameters<typeof undiciFetch>[1],
+    ) as unknown as ReturnType<typeof globalThis.fetch>
+}
+
+function resolveDevelopmentOrigin(req: Request): string {
+  const host = req.get('host')
+
+  if (!host) {
+    throw new Error('Request host is required')
+  }
+
+  const url = new URL(`${req.protocol}://${host}`)
+
+  if (
+    !isLoopback(url.hostname) ||
+    !['http:', 'https:'].includes(url.protocol) ||
+    url.username ||
+    url.password ||
+    url.pathname !== '/' ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error('Invalid development origin')
+  }
+
+  return url.origin
 }
 
 export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSsrServer {
-  if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(options.appId)) {
+  const { appId, environment, moduleUrl } = options
+  const { production, apiUrl } = environment
+
+  if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(appId)) {
     throw new Error('Platform SSR appId must be a lowercase URL-safe identifier.')
   }
-  // Dev-only: trust the self-signed TLS cert on the loopback backend so the
-  // server-side SignalR negotiate (and any Node fetch) succeeds over https.
-  if (!options.environment.production) {
-    try {
-      const api = new URL(options.environment.apiUrl)
-      const loopback =
-        api.hostname === 'localhost' || api.hostname === '127.0.0.1' || api.hostname === '[::1]'
-      if (api.protocol === 'https:' && loopback) {
-        process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
-      }
-    } catch {
-      /* ignore malformed apiUrl */
+
+  if (!production) {
+    const api = URL.parse(apiUrl)
+
+    if (api?.protocol === 'https:' && isLoopback(api.hostname)) {
+      process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0'
     }
   }
 
-  const serverDistFolder = dirname(fileURLToPath(options.moduleUrl))
+  const serverDistFolder = dirname(fileURLToPath(moduleUrl))
   const browserDistFolder = resolve(serverDistFolder, '../browser')
+
   const app = express()
+
   app.disable('x-powered-by')
 
-  const authConfig = (() => {
-    try {
-      return readAuthBffConfig(process.env, {
-        apiUrl: options.environment.apiUrl,
-        production: options.environment.production,
-        developmentOrigin:
-          options.developmentOrigin ?? `http://localhost:${process.env['PORT'] || 4200}`,
-        cookieNamespace: options.appId,
-      })
-    } catch {
-      console.error(
-        '[auth-bff] Authentication is disabled: configure API URL, public origin, and server-only session secret.',
-      )
-      return null
-    }
-  })()
-  const authBff = authConfig
-    ? createAuthBff({
-        config: authConfig,
-        fetch: createDevLoopbackFetch(authConfig.apiUrl, authConfig.production),
-        onDiagnostic:
-          options.onDiagnostic ??
-          (diagnostic => {
-            if (diagnostic.status && diagnostic.status >= 400)
-              console.warn('[auth-bff]', diagnostic)
-            else console.info('[auth-bff]', diagnostic)
-          }),
-      })
-    : null
+  const allowedHosts = environment.production
+    ? [new URL(environment.publicOrigin).hostname]
+    : [...LOOPBACK_HOSTS]
+
   const angularApp = new AngularNodeAppEngine({
-    ...(authConfig ? { allowedHosts: [new URL(authConfig.publicOrigin).hostname] } : {}),
-    trustProxyHeaders: false,
+    allowedHosts,
+    trustProxyHeaders: production,
   })
 
-  if (authBff) app.use('/api', authBff)
-  else
-    app.use('/api', (_req, res) => {
-      res.setHeader('Cache-Control', 'no-store')
-      res.status(503).json({ messages: ['Authentication is unavailable.'] })
+  const onDiagnostic =
+    options.onDiagnostic ??
+    ((diagnostic: AuthDiagnostic) => {
+      if (diagnostic.status && diagnostic.status >= 400) {
+        console.warn('[auth-bff]', diagnostic)
+      } else {
+        console.info('[auth-bff]', diagnostic)
+      }
     })
+
+  const authFetch = createDevLoopbackFetch(apiUrl, production)
+
+  function createAuthContext(publicOrigin: string) {
+    const config = readAuthBffConfig(process.env, {
+      apiUrl,
+      publicOrigin,
+      production,
+      cookieNamespace: appId,
+    })
+
+    const bff = createAuthBff({
+      config,
+      fetch: authFetch,
+      onDiagnostic,
+    })
+
+    return { config, bff }
+  }
+
+  const authContexts = new Map<string, ReturnType<typeof createAuthContext>>()
+
+  function resolveAuthContext(req: Request) {
+    const publicOrigin = environment.production
+      ? environment.publicOrigin
+      : resolveDevelopmentOrigin(req)
+
+    const existing = authContexts.get(publicOrigin)
+
+    if (existing) {
+      return existing
+    }
+
+    if (authContexts.size >= 16) {
+      throw new Error('Authentication context limit exceeded')
+    }
+
+    const context = createAuthContext(publicOrigin)
+
+    authContexts.set(publicOrigin, context)
+
+    return context
+  }
+
+  app.use('/api', (req, res, next) => {
+    let context: ReturnType<typeof createAuthContext>
+
+    try {
+      context = resolveAuthContext(req)
+    } catch {
+      res.setHeader('Cache-Control', 'no-store')
+
+      return res.status(503).json({
+        messages: ['Authentication is unavailable.'],
+      })
+    }
+
+    return context.bff(req, res, next)
+  })
 
   app.use(
     express.static(browserDistFolder, {
@@ -120,43 +198,73 @@ export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSs
       redirect: false,
     }),
   )
-  app.use((req, res, next) => {
+
+  app.use(async (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store')
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-    Promise.resolve(authBff?.resolveSession(req, res) ?? null)
-      .then(authSession =>
-        angularApp.handle(req, {
-          authSession,
-          authApiOrigin: authConfig?.publicOrigin,
-        }),
-      )
-      .then(response => {
-        if (!response) return next()
-        response.headers.set('Cache-Control', 'no-store')
-        return writeResponseToNodeResponse(response, res)
+
+    try {
+      let context: ReturnType<typeof createAuthContext> | null = null
+
+      try {
+        context = resolveAuthContext(req)
+      } catch {
+        context = null
+      }
+
+      const authSession = (await context?.bff.resolveSession(req, res)) ?? null
+
+      const response = await angularApp.handle(req, {
+        authSession,
+        authApiOrigin: context?.config.publicOrigin,
       })
-      .catch(next)
+
+      if (!response) {
+        return next()
+      }
+
+      response.headers.set('Cache-Control', 'no-store')
+
+      await writeResponseToNodeResponse(response, res)
+    } catch (error) {
+      next(error)
+    }
   })
 
-  if (isMainModule(options.moduleUrl) || process.env['pm_id']) {
-    const port = process.env['PORT'] || 4000
-    const server = app.listen(port, () => {
-      console.log(`Node Express server listening on http://localhost:${port}`)
+  if (isMainModule(moduleUrl) || process.env['pm_id']) {
+    const port = Number(process.env['PORT'] ?? 4000)
+    const host = process.env['HOST'] ?? '127.0.0.1'
+
+    const server = app.listen(port, host, () => {
+      console.info('[platform-ssr]', {
+        appId,
+        host,
+        port,
+        production,
+        allowedHosts,
+      })
+
       if (process.env['NX_READY_SIGNAL_SOCKET']) {
         void (async () => {
           try {
-            const load = new Function('s', 'return import(s)') as (
-              s: string,
-            ) => Promise<{ emitReadySignal(server: unknown): boolean }>
-            ;(await load('@nx/js/ready-signal')).emitReadySignal(server)
-          } catch {
-            // @nx/js is optional in production deployments.
+            const load = new Function('s', 'return import(s)') as (s: string) => Promise<{
+              emitReadySignal(server: unknown): boolean
+            }>
+
+            const { emitReadySignal } = await load('@nx/js/ready-signal')
+
+            emitReadySignal(server)
+          } catch (error) {
+            console.warn('[platform-ssr] Nx ready signal failed', error)
           }
         })()
       }
     })
   }
 
-  return { app, reqHandler: createNodeRequestHandler(app) }
+  return {
+    app,
+    reqHandler: createNodeRequestHandler(app),
+  }
 }

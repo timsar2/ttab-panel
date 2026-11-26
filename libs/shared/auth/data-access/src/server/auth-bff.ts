@@ -13,10 +13,10 @@ export interface AuthBffConfig {
 }
 
 export interface AuthBffHostDefaults {
-  apiUrl: string
-  production: boolean
-  developmentOrigin: string
-  cookieNamespace?: string
+  readonly apiUrl: string
+  readonly publicOrigin: string
+  readonly production: boolean
+  readonly cookieNamespace?: string
 }
 
 export interface AuthBffSession {
@@ -119,24 +119,19 @@ function sessionTenantMatches(session: AuthStoredSession, mobileTenant?: string)
 }
 
 export function readAuthBffConfig(
-  env: NodeJS.ProcessEnv = process.env,
-  defaults?: AuthBffHostDefaults,
+  env: NodeJS.ProcessEnv,
+  defaults: AuthBffHostDefaults,
 ): AuthBffConfig {
   try {
-    // A production bundle must never inherit development defaults from its runtime.
-    const mode =
-      defaults?.production || env['NODE_ENV'] === 'production'
-        ? 'production'
-        : (env['NODE_ENV'] ?? (defaults ? 'development' : undefined))
-    const development = !!defaults && mode === 'development'
-    const api = new URL(env['AUTH_API_URL'] ?? defaults?.apiUrl ?? '')
-    const origin = new URL(
-      env['AUTH_PUBLIC_ORIGIN'] ?? (development ? defaults.developmentOrigin : ''),
-    )
+    const { production, cookieNamespace } = defaults
+
+    const api = new URL(defaults.apiUrl)
+    const origin = new URL(defaults.publicOrigin)
+
     const secret =
-      env['AUTH_SESSION_SECRET'] ?? (development ? randomBytes(32).toString('base64url') : '')
+      env['AUTH_SESSION_SECRET'] ?? (!production ? randomBytes(32).toString('base64url') : '')
+
     if (
-      !['production', 'development', 'test'].includes(mode ?? '') ||
       Buffer.byteLength(secret) < 32 ||
       api.username ||
       api.password ||
@@ -150,22 +145,24 @@ export function readAuthBffConfig(
       !['http:', 'https:'].includes(api.protocol) ||
       !['http:', 'https:'].includes(origin.protocol) ||
       (api.protocol === 'http:' && !loopback(api.hostname)) ||
-      (origin.protocol === 'http:' && (mode === 'production' || !loopback(origin.hostname)))
-    )
+      (origin.protocol === 'http:' && (production || !loopback(origin.hostname)))
+    ) {
       throw new Error()
-    if (
-      defaults?.cookieNamespace !== undefined &&
-      !/^[a-z0-9][a-z0-9-]{0,31}$/.test(defaults.cookieNamespace)
-    )
+    }
+
+    if (cookieNamespace !== undefined && !/^[a-z0-9][a-z0-9-]{0,31}$/.test(cookieNamespace)) {
       throw new Error()
-    const mobileTenant = env['AUTH_MOBILE_TENANT'] ?? (development ? 'root' : undefined)
+    }
+
+    const mobileTenant = env['AUTH_MOBILE_TENANT'] ?? (!production ? 'root' : undefined)
+
     return {
       apiUrl: api.href.replace(/\/$/, ''),
       publicOrigin: origin.origin,
       apiPublicOrigin: `${origin.origin}/api`,
       secret,
-      production: mode === 'production',
-      ...(defaults?.cookieNamespace ? { cookieNamespace: defaults.cookieNamespace } : {}),
+      production,
+      ...(cookieNamespace ? { cookieNamespace } : {}),
       ...(mobileTenant ? { mobileTenant: validateTenant(mobileTenant) } : {}),
     }
   } catch {
@@ -209,16 +206,13 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   // Validate programmatic configuration as strictly as environment configuration.
   const config = readAuthBffConfig(
     {
-      AUTH_API_URL: options.config.apiUrl,
-      AUTH_PUBLIC_ORIGIN: options.config.publicOrigin,
       AUTH_SESSION_SECRET: options.config.secret,
       ...(options.config.mobileTenant ? { AUTH_MOBILE_TENANT: options.config.mobileTenant } : {}),
-      NODE_ENV: options.config.production ? 'production' : 'development',
     },
     {
       apiUrl: options.config.apiUrl,
+      publicOrigin: options.config.publicOrigin,
       production: options.config.production,
-      developmentOrigin: options.config.publicOrigin,
       cookieNamespace: options.config.cookieNamespace,
     },
   )
@@ -256,15 +250,6 @@ export function createAuthBff(options: AuthBffOptions): Router & {
   const allowedConnection = (req: Request) =>
     secure || ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '')
   const allowedOrigins = new Set([config.publicOrigin])
-  if (!config.production) {
-    const publicUrl = new URL(config.publicOrigin)
-    if (publicUrl.hostname === 'localhost' && ['4200', '4400'].includes(publicUrl.port)) {
-      for (const port of ['4200', '4400']) {
-        publicUrl.port = port
-        allowedOrigins.add(publicUrl.origin)
-      }
-    }
-  }
 
   const trackingHubUrl = () => {
     const api = new URL(config.apiUrl)
