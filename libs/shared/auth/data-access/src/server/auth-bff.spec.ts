@@ -422,28 +422,32 @@ describe('Node cookie authentication BFF', () => {
     }
   })
 
-  it('uses the configured tenant and does not expose the upstream OTP value', async () => {
-    const configured = readAuthBffConfig({
-      AUTH_API_URL: 'https://api.example.test/api',
-      AUTH_PUBLIC_ORIGIN: 'https://passenger.example.test',
-      AUTH_SESSION_SECRET: secret,
-      AUTH_MOBILE_TENANT: 'root',
-      NODE_ENV: 'production',
-    })
-    const f = fixture(undefined, 86_400_000, configured)
-    const response = await request(f.app)
-      .post('/api/auth/mobile-register')
-      .set('Origin', 'https://passenger.example.test')
-      .set('X-Auth-Request', '1')
-      .send({ mobile: '09123456789' })
-      .expect(204)
-    expect(response.text).toBe('')
-    expect(JSON.stringify(response.body)).not.toContain('otp-secret')
-    expect(f.fetcher.mock.calls[0][0]).toBe(
-      'https://api.example.test/api/users/mobile-register/09123456789',
-    )
-    expect((f.fetcher.mock.calls[0][1]?.headers as Record<string, string>)['tenant']).toBe('root')
-  })
+  it.each([false, true])(
+    'uses the configured tenant and returns the upstream OTP response (production=%s)',
+    async production => {
+      const configured = readAuthBffConfig(
+        { AUTH_SESSION_SECRET: secret, AUTH_MOBILE_TENANT: 'root' },
+        {
+          apiUrl: 'https://api.example.test/api',
+          publicOrigin: 'https://passenger.example.test',
+          production,
+        },
+      )
+      const f = fixture(undefined, 86_400_000, configured)
+      const response = await request(f.app)
+        .post('/api/auth/mobile-register')
+        .set('Origin', 'https://passenger.example.test')
+        .set('X-Auth-Request', '1')
+        .send({ mobile: '09123456789' })
+        .expect(200)
+      expect(response.body).toEqual({ code: '2000', result: 'otp-secret' })
+      expect(response.headers['set-cookie']).toBeUndefined()
+      expect(f.fetcher.mock.calls[0][0]).toBe(
+        'https://api.example.test/api/users/mobile-register/09123456789',
+      )
+      expect((f.fetcher.mock.calls[0][1]?.headers as Record<string, string>)['tenant']).toBe('root')
+    },
+  )
 
   it('stores mobile OTP credentials only in an HttpOnly BFF session and proxies scoped requests', async () => {
     const configured = readAuthBffConfig({
@@ -538,7 +542,7 @@ describe('Node cookie authentication BFF', () => {
       .set('Origin', productionOrigin)
       .set('X-Auth-Request', '1')
       .send({ mobile: '09123456789' })
-      .expect(204)
+      .expect(200)
     expect(f.fetcher).toHaveBeenCalledWith(
       'https://api.example.test/api/users/mobile-register/09123456789',
       expect.objectContaining({

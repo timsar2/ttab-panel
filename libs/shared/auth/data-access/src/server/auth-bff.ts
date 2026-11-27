@@ -664,11 +664,7 @@ export function createAuthBff(options: AuthBffOptions): Router & {
               : undefined
           throw new Failure(response.status === 429 ? 429 : 502, 'request-failed', messages)
         }
-        if (!config.production) {
-          res.status(200).json(envelope ?? { code: '2000' })
-          return
-        }
-        res.sendStatus(204)
+        res.status(200).json(envelope)
       } else if (req.method === 'POST' && rawPath === '/auth/mobile-login') {
         if (!config.mobileTenant) throw new Failure(503)
         if (!req.is('application/json')) throw new Failure(415)

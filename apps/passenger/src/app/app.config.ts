@@ -1,10 +1,17 @@
-import { ApplicationConfig, afterNextRender, inject, provideAppInitializer } from '@angular/core'
+import {
+  ApplicationConfig,
+  afterNextRender,
+  inject,
+  provideAppInitializer,
+  isDevMode,
+} from '@angular/core'
 import { providePlatformApp } from '@org/platform'
 import { PreferencesStore } from '@org/platform'
 import { appRoutes } from './app.routes'
 import { AuthBackend } from '@org/platform'
 import { passengerAuthBackend } from './passenger/mobile-auth.backend'
 import { ShiftTimesStore } from '@org/transport-scheduling-data-access'
+import { provideServiceWorker } from '@angular/service-worker'
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -28,6 +35,10 @@ export const appConfig: ApplicationConfig = {
           /* Browser preferences are optional and stay at the shared default. */
         }
       })
+    }),
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000',
     }),
   ],
 }
