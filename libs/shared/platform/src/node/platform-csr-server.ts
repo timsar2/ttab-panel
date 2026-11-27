@@ -1,31 +1,26 @@
-import {
-  AngularNodeAppEngine,
-  createNodeRequestHandler,
-  isMainModule,
-  writeResponseToNodeResponse,
-} from '@angular/ssr/node'
 import express, { type Express, type Request } from 'express'
 import process from 'node:process'
-import { dirname, resolve } from 'node:path'
+import { dirname, extname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Agent, fetch as undiciFetch } from 'undici'
 import { createAuthBff, readAuthBffConfig, type AuthDiagnostic } from '@org/auth-data-access/node'
 import type { DevelopmentEnvironment, ProductionEnvironment } from '../config'
 
-export type PlatformSsrEnvironment =
+export type PlatformCsrEnvironment =
   | Pick<DevelopmentEnvironment, 'apiUrl' | 'production' | 'publicOrigin'>
   | Pick<ProductionEnvironment, 'apiUrl' | 'production' | 'publicOrigin'>
 
-export interface PlatformSsrOptions {
+export interface PlatformCsrOptions {
   readonly appId: string
-  readonly environment: PlatformSsrEnvironment
+  readonly environment: PlatformCsrEnvironment
   readonly moduleUrl: string
+  readonly browserDistFolder?: string
+  readonly listen?: boolean
   readonly onDiagnostic?: (diagnostic: AuthDiagnostic) => void
 }
 
-export interface PlatformSsrServer {
+export interface PlatformCsrServer {
   readonly app: Express
-  readonly reqHandler: ReturnType<typeof createNodeRequestHandler>
 }
 
 const LOOPBACK_HOSTS = ['localhost', '127.0.0.1', '[::1]'] as const
@@ -90,12 +85,12 @@ function resolveDevelopmentOrigin(req: Request): string {
   return url.origin
 }
 
-export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSsrServer {
+export function createPlatformCsrServer(options: PlatformCsrOptions): PlatformCsrServer {
   const { appId, environment, moduleUrl } = options
   const { production, apiUrl } = environment
 
   if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(appId)) {
-    throw new Error('Platform SSR appId must be a lowercase URL-safe identifier.')
+    throw new Error('Platform CSR appId must be a lowercase URL-safe identifier.')
   }
 
   if (!production) {
@@ -107,7 +102,8 @@ export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSs
   }
 
   const serverDistFolder = dirname(fileURLToPath(moduleUrl))
-  const browserDistFolder = resolve(serverDistFolder, '../browser')
+  const browserDistFolder =
+    options.browserDistFolder ?? resolve(serverDistFolder, '../../apps', appId, 'browser')
 
   const app = express()
 
@@ -117,9 +113,14 @@ export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSs
     ? [new URL(environment.publicOrigin).hostname]
     : [...LOOPBACK_HOSTS]
 
-  const angularApp = new AngularNodeAppEngine({
-    allowedHosts,
-    trustProxyHeaders: production,
+  app.use((req, res, next) => {
+    if (!allowedHosts.includes(req.hostname)) {
+      return res.status(400).end()
+    }
+
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+    return next()
   })
 
   const onDiagnostic =
@@ -191,53 +192,39 @@ export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSs
     return context.bff(req, res, next)
   })
 
+  // API misses must never fall through to the SPA document.
+  app.use('/api', (_req, res) => res.status(404).json({ messages: ['Not found.'] }))
+
   app.use(
     express.static(browserDistFolder, {
       maxAge: 0,
       index: false,
       redirect: false,
+      setHeaders(res, path) {
+        if (path.endsWith('index.html')) res.setHeader('Cache-Control', 'no-store')
+      },
     }),
   )
 
-  app.use(async (req, res, next) => {
-    res.setHeader('Cache-Control', 'no-store')
-    res.setHeader('X-Content-Type-Options', 'nosniff')
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-
-    try {
-      let context: ReturnType<typeof createAuthContext> | null = null
-
-      try {
-        context = resolveAuthContext(req)
-      } catch {
-        context = null
-      }
-
-      const authSession = (await context?.bff.resolveSession(req, res)) ?? null
-
-      const response = await angularApp.handle(req, {
-        authSession,
-        authApiOrigin: context?.config.publicOrigin,
-      })
-
-      if (!response) {
-        return next()
-      }
-
-      response.headers.set('Cache-Control', 'no-store')
-
-      await writeResponseToNodeResponse(response, res)
-    } catch (error) {
-      next(error)
+  app.get('*', (req, res, next) => {
+    if (!req.accepts('html') || (extname(req.path) && req.path !== '/index.html')) {
+      return next()
     }
+
+    res.setHeader('Cache-Control', 'no-store')
+    res.sendFile(resolve(browserDistFolder, 'index.html'), error => {
+      if (error) next(error)
+    })
   })
 
-  if (isMainModule(moduleUrl) || process.env['pm_id']) {
+  const isMainModule = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(moduleUrl)
+
+  if (options.listen !== false && (isMainModule || process.env['pm_id'])) {
     const port = Number(process.env['PORT'] ?? 4000)
     const host = process.env['HOST'] ?? '127.0.0.1'
 
     const server = app.listen(port, host, () => {
-      console.info('[platform-ssr]', {
+      console.info('[platform-csr]', {
         appId,
         host,
         port,
@@ -256,7 +243,7 @@ export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSs
 
             emitReadySignal(server)
           } catch (error) {
-            console.warn('[platform-ssr] Nx ready signal failed', error)
+            console.warn('[platform-csr] Nx ready signal failed', error)
           }
         })()
       }
@@ -265,6 +252,5 @@ export function createPlatformSsrServer(options: PlatformSsrOptions): PlatformSs
 
   return {
     app,
-    reqHandler: createNodeRequestHandler(app),
   }
 }

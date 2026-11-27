@@ -1,10 +1,10 @@
-import { createPlatformSsrServer } from '@org/platform/node'
+import { createPlatformCsrServer } from '@org/platform/node'
 import { environment } from './environments/environment'
 
-const { reqHandler } = createPlatformSsrServer({
+const { app } = createPlatformCsrServer({
   appId: 'passenger',
   environment,
   moduleUrl: import.meta.url,
 })
 
-export { reqHandler }
+export { app }

@@ -14,11 +14,6 @@ import {
   withComponentInputBinding,
   withInMemoryScrolling,
 } from '@angular/router'
-import {
-  provideClientHydration,
-  withEventReplay,
-  withNoHttpTransferCache,
-} from '@angular/platform-browser'
 import { AUTH_APPEARANCE, provideAuthFeature } from '@org/auth-feature'
 import { provideAuth, SessionStore, type AuthConfig } from '@org/auth-data-access'
 import { provideTheme, ThemeStore, type ThemeOptions } from '@org/theme'
@@ -62,7 +57,6 @@ export function providePlatformApp(
       useValue: Object.freeze({ ...options, auth, themeStorageKey }),
     },
     provideZonelessChangeDetection(),
-    provideClientHydration(withEventReplay(), withNoHttpTransferCache()),
     provideBrowserGlobalErrorListeners(),
     provideTheme({
       ...options.theme,

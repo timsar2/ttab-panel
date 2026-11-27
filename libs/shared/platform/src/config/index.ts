@@ -19,7 +19,7 @@ export type ProductionEnvironment = SharedPlatformEnvironment & {
 export type PlatformEnvironment = DevelopmentEnvironment | ProductionEnvironment
 
 export const PLATFORM_BASE_URL = 'https://api.ttabline.com'
-export const PLATFORM_DEV_BASE_URL = 'https://localhost:5001'
+export const PLATFORM_DEV_BASE_URL = 'https://api.ttabline.com' //'https://localhost:5001'
 
 export const PLATFORM_API_URL = `${PLATFORM_BASE_URL}/api`
 export const PLATFORM_DEV_API_URL = `${PLATFORM_DEV_BASE_URL}/api`

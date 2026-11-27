@@ -20,15 +20,7 @@
             "input": "apps/driver/public"
           }
         ],
-        "styles": ["apps/driver/src/styles.css"],
-        "server": "apps/driver/src/main.server.ts",
-        "ssr": {
-          "entry": "apps/driver/src/server.ts"
-        },
-        "outputMode": "server",
-        "security": {
-          "allowedHosts": ["localhost", "127.0.0.1", "[::1]"]
-        }
+        "styles": ["apps/driver/src/styles.css"]
       },
       "configurations": {
         "production": {
@@ -60,13 +52,45 @@
         }
       }
     },
+    "build-host": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "production",
+        "^production",
+        "{workspaceRoot}/tools/build-csr-host.mjs",
+        "{workspaceRoot}/tsconfig.base.json"
+      ],
+      "outputs": ["{workspaceRoot}/dist/hosts/driver"],
+      "defaultConfiguration": "production",
+      "configurations": {
+        "production": {
+          "command": "node tools/build-csr-host.mjs driver production"
+        },
+        "development": {
+          "command": "node tools/build-csr-host.mjs driver development"
+        }
+      }
+    },
+    "serve-bff": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "bun --watch apps/driver/src/server.ts",
+        "env": { "PORT": "4301" }
+      }
+    },
     "serve": {
+      "dependsOn": ["serve-bff"],
       "continuous": true,
       "readyWhen": {
         "signal": true
       },
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
+      "options": {
+        "proxyConfig": "apps/driver/proxy.conf.json"
+      },
       "configurations": {
         "production": {
           "buildTarget": "driver:build:production"

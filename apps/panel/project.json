@@ -20,15 +20,7 @@
             "input": "apps/panel/public"
           }
         ],
-        "styles": ["apps/panel/src/styles.css"],
-        "server": "apps/panel/src/main.server.ts",
-        "ssr": {
-          "entry": "apps/panel/src/server.ts"
-        },
-        "outputMode": "server",
-        "security": {
-          "allowedHosts": ["localhost", "127.0.0.1", "[::1]"]
-        }
+        "styles": ["apps/panel/src/styles.css"]
       },
       "configurations": {
         "production": {
@@ -60,7 +52,36 @@
         }
       }
     },
+    "build-host": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "production",
+        "^production",
+        "{workspaceRoot}/tools/build-csr-host.mjs",
+        "{workspaceRoot}/tsconfig.base.json"
+      ],
+      "outputs": ["{workspaceRoot}/dist/hosts/panel"],
+      "defaultConfiguration": "production",
+      "configurations": {
+        "production": {
+          "command": "node tools/build-csr-host.mjs panel production"
+        },
+        "development": {
+          "command": "node tools/build-csr-host.mjs panel development"
+        }
+      }
+    },
+    "serve-bff": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "bun --watch apps/panel/src/server.ts",
+        "env": { "PORT": "4304" }
+      }
+    },
     "serve": {
+      "dependsOn": ["serve-bff"],
       "continuous": true,
       "readyWhen": {
         "signal": true

@@ -20,15 +20,7 @@
             "input": "apps/passenger/public"
           }
         ],
-        "styles": ["apps/passenger/src/styles.css"],
-        "server": "apps/passenger/src/main.server.ts",
-        "ssr": {
-          "entry": "apps/passenger/src/server.ts"
-        },
-        "outputMode": "server",
-        "security": {
-          "allowedHosts": ["localhost", "127.0.0.1", "[::1]"]
-        }
+        "styles": ["apps/passenger/src/styles.css"]
       },
       "configurations": {
         "production": {
@@ -60,13 +52,45 @@
         }
       }
     },
+    "build-host": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "production",
+        "^production",
+        "{workspaceRoot}/tools/build-csr-host.mjs",
+        "{workspaceRoot}/tsconfig.base.json"
+      ],
+      "outputs": ["{workspaceRoot}/dist/hosts/passenger"],
+      "defaultConfiguration": "production",
+      "configurations": {
+        "production": {
+          "command": "node tools/build-csr-host.mjs passenger production"
+        },
+        "development": {
+          "command": "node tools/build-csr-host.mjs passenger development"
+        }
+      }
+    },
+    "serve-bff": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "bun --watch apps/passenger/src/server.ts",
+        "env": { "PORT": "4302" }
+      }
+    },
     "serve": {
+      "dependsOn": ["serve-bff"],
       "continuous": true,
       "readyWhen": {
         "signal": true
       },
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
+      "options": {
+        "proxyConfig": "apps/passenger/proxy.conf.json"
+      },
       "configurations": {
         "production": {
           "buildTarget": "passenger:build:production"

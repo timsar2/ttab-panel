@@ -1,0 +1,20 @@
+{
+  "/api": {
+    "target": "http://127.0.0.1:4303",
+    "secure": false,
+    "changeOrigin": false,
+    "ws": true
+  },
+  "/api/**": {
+    "target": "http://127.0.0.1:4303",
+    "secure": false,
+    "changeOrigin": false,
+    "ws": true
+  },
+  "/notifications": {
+    "target": "https://localhost:5001",
+    "secure": false,
+    "changeOrigin": true,
+    "ws": true
+  }
+}

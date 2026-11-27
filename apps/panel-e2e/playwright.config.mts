@@ -53,7 +53,7 @@ export default defineConfig({
     ? {
         command:
           managedServer === 'production'
-            ? 'node dist/apps/panel/server/server.mjs'
+            ? 'bun nx run panel:build-host:development && node dist/hosts/panel/server.mjs'
             : `bun nx run panel:serve --port=${managedURL.port}`,
         env: { PORT: managedURL.port },
         url: baseURL,

@@ -495,7 +495,7 @@ test('company table uses server paging and search with keyboard/mobile RTL and L
   expect(errors).toEqual([])
 })
 
-test('does not accept credentials until hydration owns the form', async ({ page }) => {
+test('renders the login form only after the CSR scripts load', async ({ page }) => {
   let releaseScripts: () => void = () => undefined
   const scriptsReady = new Promise<void>(resolve => {
     releaseScripts = resolve
@@ -512,17 +512,18 @@ test('does not accept credentials until hydration owns the form', async ({ page 
     }),
   )
   try {
-    await page.goto('/login', { waitUntil: 'commit' })
-    await expect(page.locator('#username')).toBeDisabled()
-    await expect(page.locator('button[type="submit"]')).toBeDisabled()
+    const response = await page.goto('/login', { waitUntil: 'commit' })
+    expect(await response?.text()).not.toContain('id="username"')
+    await expect(page.locator('#username')).toHaveCount(0)
+    await expect(page.locator('button[type="submit"]')).toHaveCount(0)
     releaseScripts()
     await expect(page.locator('#username')).toBeEnabled()
-    await page.locator('#username').fill('hydrated@example.test')
+    await page.locator('#username').fill('client@example.test')
     await page.locator('#password').fill('example-password')
     const submitted = page.waitForRequest('**/api/auth/login')
     await page.locator('button[type="submit"]').click()
     expect((await submitted).postDataJSON()).toEqual({
-      username: 'hydrated@example.test',
+      email: 'client@example.test',
       password: 'example-password',
     })
   } finally {

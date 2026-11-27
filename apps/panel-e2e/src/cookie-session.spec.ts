@@ -6,10 +6,10 @@ const fixtureOrigin = process.env['AUTH_FIXTURE_ORIGIN'] ?? 'http://127.0.0.1:51
 test.describe('real cookie BFF with controlled upstream', () => {
   test.skip(
     process.env['AUTH_BFF_E2E'] !== '1',
-    'Requires the SSR BFF and controlled auth-upstream.mts server.',
+    'Requires the authentication BFF and controlled auth-upstream.mts server.',
   )
 
-  test('persists reload, renders authenticated SSR, hides tokens, and revokes logout', async ({
+  test('persists reload, restores the CSR session, hides tokens, and revokes logout', async ({
     page,
     context,
     baseURL,
@@ -40,11 +40,11 @@ test.describe('real cookie BFF with controlled upstream', () => {
     const documentResponse = await page.reload()
     expect(documentResponse?.headers()['cache-control']).toBe('no-store')
     const html = await documentResponse?.text()
-    expect(html).toContain('Example User')
+    expect(html).not.toContain('Example User')
     expect(html).not.toContain(credentials.password)
     expect(html).not.toMatch(/refreshToken|Bearer /)
     await expect(page.getByText('Example User', { exact: true })).toBeVisible()
-    // Preferences restore after hydration; the header follows the saved language.
+    // Preferences restore after the first browser render; the header follows the saved language.
     await page.getByRole('button', { name: /Sign out|خروج/, exact: true }).click()
     await expect(page).toHaveURL(/\/login$/)
     await page.goto('/workspace')

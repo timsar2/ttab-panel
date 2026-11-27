@@ -109,21 +109,21 @@ const DASHBOARD_CONFIG = new InjectionToken<DashboardFeatureConfig>('DASHBOARD_C
           </p>
         } @else if (error()) {
           <p role="alert">{{ error() }}</p>
-        } @else if (selectedTripId()) {
-          <section class="mb-6">
-            <lib-neshan-map
-              [apiKey]="config.neshanMapApiKey"
-              [serviceApiKey]="config.neshanServiceApiKey"
-              [language]="language()"
-              [points]="points()"
-              [routeGeoJson]="routeGeoJson()"
-              [liveLocation]="liveLocation()"
-              [followLive]="true"
-            />
-          </section>
-          @if (trackingError()) {
-            <p role="alert" class="mb-4">{{ trackingError() }}</p>
-          }
+        }
+        <section class="mb-6 h-64 overflow-hidden rounded-lg md:h-80">
+          <lib-neshan-map
+            class="block h-full"
+            [apiKey]="config.neshanMapApiKey"
+            [serviceApiKey]="config.neshanServiceApiKey"
+            [language]="language()"
+            [points]="points()"
+            [routeGeoJson]="routeGeoJson()"
+            [liveLocation]="liveLocation()"
+            [fitContainer]="true"
+          />
+        </section>
+        @if (trackingError()) {
+          <p role="alert" class="mb-4">{{ trackingError() }}</p>
         }
         <section aria-labelledby="dashboard-support-heading" class="mt-6 rounded-lg border p-4">
           <h2 id="dashboard-support-heading" class="mb-3 text-lg font-semibold">

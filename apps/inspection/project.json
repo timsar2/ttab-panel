@@ -20,18 +20,16 @@
             "input": "apps/inspection/public"
           }
         ],
-        "styles": ["apps/inspection/src/styles.css"],
-        "server": "apps/inspection/src/main.server.ts",
-        "ssr": {
-          "entry": "apps/inspection/src/server.ts"
-        },
-        "outputMode": "server",
-        "security": {
-          "allowedHosts": ["localhost", "127.0.0.1", "[::1]"]
-        }
+        "styles": ["apps/inspection/src/styles.css"]
       },
       "configurations": {
         "production": {
+          "fileReplacements": [
+            {
+              "replace": "apps/inspection/src/environments/environment.ts",
+              "with": "apps/inspection/src/environments/environment.prod.ts"
+            }
+          ],
           "budgets": [
             {
               "type": "initial",
@@ -54,13 +52,45 @@
         }
       }
     },
+    "build-host": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "production",
+        "^production",
+        "{workspaceRoot}/tools/build-csr-host.mjs",
+        "{workspaceRoot}/tsconfig.base.json"
+      ],
+      "outputs": ["{workspaceRoot}/dist/hosts/inspection"],
+      "defaultConfiguration": "production",
+      "configurations": {
+        "production": {
+          "command": "node tools/build-csr-host.mjs inspection production"
+        },
+        "development": {
+          "command": "node tools/build-csr-host.mjs inspection development"
+        }
+      }
+    },
+    "serve-bff": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "command": "bun --watch apps/inspection/src/server.ts",
+        "env": { "PORT": "4303" }
+      }
+    },
     "serve": {
+      "dependsOn": ["serve-bff"],
       "continuous": true,
       "readyWhen": {
         "signal": true
       },
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
+      "options": {
+        "proxyConfig": "apps/inspection/proxy.conf.json"
+      },
       "configurations": {
         "production": {
           "buildTarget": "inspection:build:production"

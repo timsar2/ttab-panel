@@ -158,8 +158,7 @@ export class NeshanMapComponent {
       }
       const geometry = route.coordinates as MapCoordinate[]
       this.setRoute(map, geometry)
-      if (!this.liveLocation() && this.liveLocations().length === 0)
-        this.fitCoordinates(map, geometry)
+      this.fitCoordinates(map, geometry)
       this.routeError.set(false)
     })
 
