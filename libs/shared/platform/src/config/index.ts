@@ -29,8 +29,8 @@ export const developmentEnvironment = {
   baseUrl: PLATFORM_DEV_BASE_URL,
   apiUrl: PLATFORM_DEV_API_URL,
   baseUrlNeshan: 'https://api.neshan.org',
-  neshanServiceApiKey: 'YOUR_DEV_SERVICE_KEY',
-  neshanMapApiKey: 'YOUR_MAP_KEY',
+  neshanServiceApiKey: 'service.287e03a9ce1a44eab859a6c923e632f9',
+  neshanMapApiKey: 'web.9d0587a11be14a61851377bd3e739fee',
 } as const satisfies DevelopmentEnvironment
 
 export const productionEnvironment = {
@@ -38,6 +38,6 @@ export const productionEnvironment = {
   baseUrl: PLATFORM_BASE_URL,
   apiUrl: PLATFORM_API_URL,
   baseUrlNeshan: 'https://api.neshan.org',
-  neshanServiceApiKey: 'YOUR_PROD_SERVICE_KEY',
-  neshanMapApiKey: 'YOUR_MAP_KEY',
+  neshanServiceApiKey: 'service.287e03a9ce1a44eab859a6c923e632f9',
+  neshanMapApiKey: 'web.9d0587a11be14a61851377bd3e739fee',
 } as const satisfies Omit<ProductionEnvironment, 'publicOrigin'>
